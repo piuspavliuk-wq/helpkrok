@@ -1,0 +1,1151 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { Calendar, Plus, Edit, Trash2, Clock, BookOpen, Target, CheckCircle, Download, RefreshCw, Users, MapPin, Video, User } from 'lucide-react'
+
+interface StudySchedule {
+  id: string
+  title: string
+  description?: string
+  subject: string
+  step: string
+  faculty: string
+  startDate: string
+  endDate: string
+  isCompleted: boolean
+  priority: 'low' | 'medium' | 'high'
+  createdAt: string
+  updatedAt: string
+}
+
+interface Lesson {
+  id: string
+  title: string
+  description?: string
+  subject: string
+  step: string
+  faculty: string
+  startDate: string
+  endDate: string
+  location?: string
+  teacherName?: string
+  maxStudents?: number
+  isOnline: boolean
+  meetingLink?: string
+  materials?: string
+  status: 'scheduled' | 'ongoing' | 'completed' | 'cancelled'
+  calendarEventId?: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  attendance?: Array<{
+    id: string
+    userId: string
+    status: 'registered' | 'attended' | 'absent' | 'late'
+    joinedAt?: string
+    leftAt?: string
+    notes?: string
+    user: {
+      id: string
+      name?: string
+      email?: string
+      faculty?: string
+    }
+  }>
+}
+
+export default function ScheduleTab() {
+  const { data: session } = useSession()
+  const [scheduleItems, setScheduleItems] = useState<StudySchedule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingItem, setEditingItem] = useState<StudySchedule | null>(null)
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([])
+  const [importingCalendar, setImportingCalendar] = useState(false)
+  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [lessonsLoading, setLessonsLoading] = useState(false)
+  const [userRole, setUserRole] = useState<string>('student')
+  const [activeTab, setActiveTab] = useState<'schedule' | 'lessons'>('schedule')
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchLessons()
+      // Встановлюємо роль з сесії
+      setUserRole(session?.user?.role || 'student')
+    }
+  }, [session])
+
+  const fetchScheduleItems = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/user/schedule')
+      const data = await response.json()
+      
+      if (data.success) {
+        setScheduleItems(data.scheduleItems)
+      } else {
+        // Fallback mock data
+        setScheduleItems([
+          {
+            id: '1',
+            title: 'Підготовка до тесту з анатомії',
+            description: 'Повторити матеріал з будови скелета та м\'язів',
+            subject: 'Анатомія',
+            step: 'krok1',
+            faculty: 'medical',
+            startDate: '2024-01-20T09:00:00Z',
+            endDate: '2024-01-20T12:00:00Z',
+            isCompleted: false,
+            priority: 'high',
+            createdAt: '2024-01-15T10:00:00Z',
+            updatedAt: '2024-01-15T10:00:00Z'
+          },
+          {
+            id: '2',
+            title: 'Перегляд відеолекції з фізіології',
+            description: 'Лекція про серцево-судинну систему',
+            subject: 'Фізіологія',
+            step: 'krok1',
+            faculty: 'medical',
+            startDate: '2024-01-21T14:00:00Z',
+            endDate: '2024-01-21T16:00:00Z',
+            isCompleted: true,
+            priority: 'medium',
+            createdAt: '2024-01-16T10:00:00Z',
+            updatedAt: '2024-01-21T16:00:00Z'
+          },
+          {
+            id: '3',
+            title: 'Тест з біохімії',
+            description: 'Практичний тест з обміну речовин',
+            subject: 'Біохімія',
+            step: 'krok1',
+            faculty: 'medical',
+            startDate: '2024-01-22T10:00:00Z',
+            endDate: '2024-01-22T11:30:00Z',
+            isCompleted: false,
+            priority: 'high',
+            createdAt: '2024-01-17T10:00:00Z',
+            updatedAt: '2024-01-17T10:00:00Z'
+          }
+        ])
+      }
+    } catch (error) {
+      console.error('Error fetching schedule items:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCalendarEvents = async () => {
+    try {
+      const response = await fetch('/api/calendar/events')
+      const data = await response.json()
+      
+      if (data.success) {
+        setCalendarEvents(data.studyTasks || [])
+      }
+    } catch (error) {
+      console.error('Error fetching calendar events:', error)
+    }
+  }
+
+  const importCalendarEvents = async () => {
+    try {
+      setImportingCalendar(true)
+      const response = await fetch('/api/calendar/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          events: calendarEvents,
+          userId: session?.user?.id
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        // Оновлюємо список завдань
+        await fetchScheduleItems()
+        alert(`Успішно імпортовано ${data.tasks.length} завдань з календаря!`)
+      } else {
+        alert('Помилка при імпорті подій з календаря')
+      }
+    } catch (error) {
+      console.error('Error importing calendar events:', error)
+      alert('Помилка при імпорті подій з календаря')
+    } finally {
+      setImportingCalendar(false)
+    }
+  }
+
+  const fetchLessons = async () => {
+    try {
+      setLessonsLoading(true)
+      const response = await fetch('/api/lessons')
+      const data = await response.json()
+      
+      if (data.success) {
+        setLessons(data.lessons || [])
+        // Використовуємо роль з сесії замість API
+        setUserRole(session?.user?.role || 'student')
+      }
+    } catch (error) {
+      console.error('Error fetching lessons:', error)
+    } finally {
+      setLessonsLoading(false)
+    }
+  }
+
+  const syncCalendarWithLessons = async () => {
+    try {
+      setImportingCalendar(true)
+      
+      // Спочатку отримуємо події з календаря
+      const calendarResponse = await fetch('/api/lessons/sync-calendar')
+      const calendarData = await calendarResponse.json()
+      
+      if (calendarData.success && calendarData.events.length > 0) {
+        // Потім синхронізуємо їх з уроками
+        const syncResponse = await fetch('/api/lessons/sync-calendar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            calendarEvents: calendarData.events
+          })
+        })
+        
+        const syncData = await syncResponse.json()
+        
+        if (syncData.success) {
+          await fetchLessons() // Оновлюємо список уроків
+          alert(`Успішно синхронізовано! Створено: ${syncData.created}, Оновлено: ${syncData.updated}`)
+        } else {
+          alert('Помилка при синхронізації з календарем')
+        }
+      } else {
+        alert('Немає подій для синхронізації')
+      }
+    } catch (error) {
+      console.error('Error syncing calendar with lessons:', error)
+      alert('Помилка при синхронізації з календарем')
+    } finally {
+      setImportingCalendar(false)
+    }
+  }
+
+  const handleLessonSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    const lessonData = {
+      title: formData.get('title'),
+      description: formData.get('description'),
+      subject: formData.get('subject'),
+      step: formData.get('step'),
+      faculty: formData.get('faculty'),
+      startDate: formData.get('startDate'),
+      endDate: formData.get('endDate'),
+      location: formData.get('location'),
+      teacherName: formData.get('teacherName'),
+      isOnline: formData.get('isOnline') === 'on',
+      meetingLink: formData.get('meetingLink')
+    }
+
+    try {
+      const response = await fetch('/api/lessons', {
+        method: editingItem ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...lessonData,
+          ...(editingItem && { lessonId: editingItem.id })
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        await fetchLessons() // Оновлюємо список уроків
+        setShowAddForm(false)
+        setEditingItem(null)
+        alert(editingItem ? 'Урок успішно оновлено!' : 'Урок успішно створено!')
+      } else {
+        alert(data.error || 'Помилка при збереженні уроку')
+      }
+    } catch (error) {
+      console.error('Error saving lesson:', error)
+      alert('Помилка при збереженні уроку')
+    }
+  }
+
+  const handleToggleComplete = async (itemId: string) => {
+    try {
+      const response = await fetch(`/api/user/schedule/${itemId}/toggle`, {
+        method: 'PATCH'
+      })
+      
+      if (response.ok) {
+        setScheduleItems(prev => 
+          prev.map(item => 
+            item.id === itemId 
+              ? { ...item, isCompleted: !item.isCompleted }
+              : item
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Error toggling completion:', error)
+    }
+  }
+
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      const response = await fetch(`/api/user/schedule/${itemId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        setScheduleItems(prev => prev.filter(item => item.id !== itemId))
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error)
+    }
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'text-red-600 bg-red-100'
+      case 'medium':
+        return 'text-yellow-600 bg-yellow-100'
+      case 'low':
+        return 'text-green-600 bg-green-100'
+      default:
+        return 'text-gray-600 bg-gray-100'
+    }
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'Високий'
+      case 'medium':
+        return 'Середній'
+      case 'low':
+        return 'Низький'
+      default:
+        return 'Невизначений'
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('uk-UA')
+  }
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('uk-UA', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  }
+
+  const filteredItems = filter === 'all' 
+    ? scheduleItems 
+    : filter === 'completed' 
+    ? scheduleItems.filter(item => item.isCompleted)
+    : scheduleItems.filter(item => !item.isCompleted)
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Tabs */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <h2 className="text-2xl font-bold text-gray-900">Розклад навчання</h2>
+          {userRole === 'admin' && (
+            <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+              👑 Адміністратор
+            </span>
+          )}
+          {userRole === 'teacher' && (
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              👨‍🏫 Викладач
+            </span>
+          )}
+          {userRole === 'student' && (
+            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+              👨‍🎓 Студент
+            </span>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'schedule'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Мій розклад
+            </button>
+            <button
+              onClick={() => setActiveTab('lessons')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'lessons'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Заплановані уроки
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex gap-2">
+          {activeTab === 'lessons' && userRole === 'admin' && (
+            <>
+              <button
+                onClick={syncCalendarWithLessons}
+                disabled={importingCalendar}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {importingCalendar ? 'Синхронізація...' : 'Синхронізувати з календарем'}
+              </button>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Додати урок
+              </button>
+            </>
+          )}
+          {activeTab === 'schedule' && userRole === 'admin' && (
+            <>
+              <button
+                onClick={fetchCalendarEvents}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Оновити календар
+              </button>
+              {calendarEvents.length > 0 && (
+                <button
+                  onClick={importCalendarEvents}
+                  disabled={importingCalendar}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  {importingCalendar ? 'Імпорт...' : `Імпортувати (${calendarEvents.length})`}
+                </button>
+              )}
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Додати
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2">
+        {(['all', 'pending', 'completed'] as const).map((filterType) => (
+          <button
+            key={filterType}
+            onClick={() => setFilter(filterType)}
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              filter === filterType
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {filterType === 'all' ? 'Всі' : 
+             filterType === 'pending' ? 'Заплановані' : 'Завершені'}
+          </button>
+        ))}
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Calendar className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Всього завдань</p>
+              <p className="text-xl font-bold text-gray-900">{scheduleItems.length}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Завершено</p>
+              <p className="text-xl font-bold text-gray-900">
+                {scheduleItems.filter(item => item.isCompleted).length}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Clock className="w-5 h-5 text-yellow-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Заплановано</p>
+              <p className="text-xl font-bold text-gray-900">
+                {scheduleItems.filter(item => !item.isCompleted).length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar Events Preview */}
+      {calendarEvents.length > 0 && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Події з календаря</h3>
+          <div className="space-y-3">
+            {calendarEvents.map((event, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div>
+                    <p className="font-medium text-gray-900">{event.title}</p>
+                    <p className="text-sm text-gray-600">{event.subject} • {event.faculty === 'medical' ? 'Медицина' : 'Фармація'}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">
+                    {new Date(event.startDate).toLocaleDateString('uk-UA')}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {event.priority === 'high' ? 'Високий пріоритет' : 
+                     event.priority === 'medium' ? 'Середній пріоритет' : 'Низький пріоритет'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Google Calendar */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Календар навчання</h3>
+        <div className="w-full overflow-hidden rounded-lg">
+          <iframe 
+            src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=Europe%2FBerlin&showPrint=0&src=eXVsaWlhZG9yb3NoZW5rbzIxMkBnbWFpbC5jb20&color=%23039be5" 
+            style={{border:'solid 1px #777'}} 
+            width="100%" 
+            height="600" 
+            frameBorder="0" 
+            scrolling="no"
+            className="rounded-lg"
+          ></iframe>
+        </div>
+      </div>
+
+      {/* Schedule Items */}
+      {filteredItems.length === 0 ? (
+        <div className="text-center py-12">
+          <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Немає завдань</h3>
+          <p className="text-gray-600 mb-4">
+            {filter === 'all' 
+              ? 'Створіть свій перший план навчання'
+              : filter === 'completed'
+              ? 'Немає завершених завдань'
+              : 'Немає запланованих завдань'
+            }
+          </p>
+          {filter === 'all' && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Додати завдання
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredItems.map((item) => (
+            <div 
+              key={item.id}
+              className={`bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-6 hover:shadow-md transition-shadow ${
+                item.isCompleted ? 'opacity-75' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-4 flex-1">
+                  <button
+                    onClick={() => handleToggleComplete(item.id)}
+                    className={`mt-1 p-1 rounded-full transition-colors ${
+                      item.isCompleted 
+                        ? 'text-green-600 bg-green-100' 
+                        : 'text-gray-400 hover:text-green-600 hover:bg-green-100'
+                    }`}
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                  </button>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h3 className={`text-lg font-semibold ${
+                        item.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'
+                      }`}>
+                        {item.title}
+                      </h3>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.priority)}`}>
+                        {getPriorityLabel(item.priority)}
+                      </span>
+                    </div>
+                    
+                    {item.description && (
+                      <p className="text-gray-600 mb-3">{item.description}</p>
+                    )}
+                    
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <span className="flex items-center">
+                        <BookOpen className="w-4 h-4 mr-1" />
+                        <span>{item.subject}</span>
+                      </span>
+                      
+                      <span className="flex items-center">
+                        <Target className="w-4 h-4 mr-1" />
+                        <span>{item.step.toUpperCase()}</span>
+                      </span>
+                      
+                      <span className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        <span>{formatDate(item.startDate)}</span>
+                      </span>
+                      
+                      <span className="flex items-center">
+                        <Clock className="w-4 h-4 mr-1" />
+                        <span>{formatTime(item.startDate)} - {formatTime(item.endDate)}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2 ml-4">
+                  <button
+                    onClick={() => setEditingItem(item)}
+                    className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Редагувати"
+                  >
+                    <Edit className="w-5 h-5" />
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDeleteItem(item.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Видалити"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lessons Tab Content */}
+      {activeTab === 'lessons' && (
+        <div className="space-y-6">
+          {lessonsLoading ? (
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-32 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          ) : lessons.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Немає запланованих уроків</h3>
+              <p className="text-gray-600 mb-4">
+                {userRole === 'admin' 
+                  ? 'Створіть перший урок або синхронізуйте з календарем'
+                  : 'Заплановані уроки з\'являться тут'
+                }
+              </p>
+              {userRole === 'admin' && (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Створити урок
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {lessons.map((lesson) => (
+                <div 
+                  key={lesson.id}
+                  className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-4 flex-1">
+                      <div className="flex-shrink-0">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          lesson.status === 'completed' ? 'bg-green-100' :
+                          lesson.status === 'ongoing' ? 'bg-blue-100' :
+                          lesson.status === 'cancelled' ? 'bg-red-100' :
+                          'bg-gray-100'
+                        }`}>
+                          {lesson.isOnline ? (
+                            <Video className="w-6 h-6 text-blue-600" />
+                          ) : (
+                            <BookOpen className="w-6 h-6 text-gray-600" />
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{lesson.title}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            lesson.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            lesson.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                            lesson.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {lesson.status === 'completed' ? 'Завершено' :
+                             lesson.status === 'ongoing' ? 'Триває' :
+                             lesson.status === 'cancelled' ? 'Скасовано' :
+                             'Заплановано'}
+                          </span>
+                        </div>
+                        
+                        {lesson.description && (
+                          <p className="text-gray-600 mb-3">{lesson.description}</p>
+                        )}
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <span className="flex items-center">
+                            <BookOpen className="w-4 h-4 mr-1" />
+                            <span>{lesson.subject}</span>
+                          </span>
+                          
+                          <span className="flex items-center">
+                            <Target className="w-4 h-4 mr-1" />
+                            <span>{lesson.step.toUpperCase()}</span>
+                          </span>
+                          
+                          <span className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            <span>{formatDate(lesson.startDate)}</span>
+                          </span>
+                          
+                          <span className="flex items-center">
+                            <Clock className="w-4 h-4 mr-1" />
+                            <span>{formatTime(lesson.startDate)} - {formatTime(lesson.endDate)}</span>
+                          </span>
+                          
+                          {lesson.location && (
+                            <span className="flex items-center">
+                              <MapPin className="w-4 h-4 mr-1" />
+                              <span>{lesson.location}</span>
+                            </span>
+                          )}
+                          
+                          {lesson.teacherName && (
+                            <span className="flex items-center">
+                              <User className="w-4 h-4 mr-1" />
+                              <span>{lesson.teacherName}</span>
+                            </span>
+                          )}
+                          
+                          {lesson.attendance && lesson.attendance.length > 0 && (
+                            <span className="flex items-center">
+                              <Users className="w-4 h-4 mr-1" />
+                              <span>{lesson.attendance.length} студентів</span>
+                            </span>
+                          )}
+                        </div>
+                        
+                        {lesson.isOnline && lesson.meetingLink && (
+                          <div className="mt-3">
+                            <a
+                              href={lesson.meetingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-md text-sm hover:bg-blue-200 transition-colors"
+                            >
+                              <Video className="w-4 h-4 mr-1" />
+                              Приєднатися до уроку
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {userRole === 'admin' && (
+                      <div className="flex items-center space-x-2 ml-4">
+                        <button
+                          onClick={() => setEditingItem(lesson as any)}
+                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Редагувати"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDeleteItem(lesson.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Видалити"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add/Edit Form Modal */}
+      {(showAddForm || editingItem) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {editingItem ? 'Редагувати завдання' : 'Додати завдання'}
+            </h3>
+            
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Назва завдання
+                </label>
+                <input
+                  type="text"
+                  defaultValue={editingItem?.title || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Введіть назву завдання"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Опис
+                </label>
+                <textarea
+                  defaultValue={editingItem?.description || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Опис завдання (необов'язково)"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Предмет
+                  </label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="Анатомія">Анатомія</option>
+                    <option value="Фізіологія">Фізіологія</option>
+                    <option value="Біохімія">Біохімія</option>
+                    <option value="Гістологія">Гістологія</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Пріоритет
+                  </label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="low">Низький</option>
+                    <option value="medium">Середній</option>
+                    <option value="high">Високий</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Дата початку
+                  </label>
+                  <input
+                    type="datetime-local"
+                    defaultValue={editingItem?.startDate ? new Date(editingItem.startDate).toISOString().slice(0, 16) : ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Дата завершення
+                  </label>
+                  <input
+                    type="datetime-local"
+                    defaultValue={editingItem?.endDate ? new Date(editingItem.endDate).toISOString().slice(0, 16) : ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddForm(false)
+                    setEditingItem(null)
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  {editingItem ? 'Зберегти' : 'Додати'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Lesson Form Modal */}
+      {(showAddForm || editingItem) && activeTab === 'lessons' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {editingItem ? 'Редагувати урок' : 'Додати урок'}
+            </h3>
+            
+            <form onSubmit={handleLessonSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Назва уроку *
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  defaultValue={editingItem?.title || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Введіть назву уроку"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Опис
+                </label>
+                <textarea
+                  name="description"
+                  defaultValue={editingItem?.description || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Опис уроку (необов'язково)"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Предмет *
+                  </label>
+                  <select
+                    name="subject"
+                    defaultValue={editingItem?.subject || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Оберіть предмет</option>
+                    <option value="Анатомія">Анатомія</option>
+                    <option value="Фізіологія">Фізіологія</option>
+                    <option value="Біохімія">Біохімія</option>
+                    <option value="Фармакологія">Фармакологія</option>
+                    <option value="Патологія">Патологія</option>
+                    <option value="Мікробіологія">Мікробіологія</option>
+                    <option value="Гістологія">Гістологія</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Крок КРОК *
+                  </label>
+                  <select
+                    name="step"
+                    defaultValue={editingItem?.step || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Оберіть крок</option>
+                    <option value="krok1">КРОК 1</option>
+                    <option value="krok2">КРОК 2</option>
+                    <option value="krok3">КРОК 3</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Факультет *
+                </label>
+                <select
+                  name="faculty"
+                  defaultValue={editingItem?.faculty || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Оберіть факультет</option>
+                  <option value="medical">Медичний</option>
+                  <option value="pharmaceutical">Фармацевтичний</option>
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Дата початку *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="startDate"
+                    defaultValue={editingItem?.startDate ? new Date(editingItem.startDate).toISOString().slice(0, 16) : ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Дата завершення *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="endDate"
+                    defaultValue={editingItem?.endDate ? new Date(editingItem.endDate).toISOString().slice(0, 16) : ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Місце проведення
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  defaultValue={editingItem?.location || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Аудиторія, лабораторія тощо"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Викладач
+                </label>
+                <input
+                  type="text"
+                  name="teacherName"
+                  defaultValue={editingItem?.teacherName || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ім'я викладача"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  name="isOnline"
+                  defaultChecked={editingItem?.isOnline || false}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label className="text-sm font-medium text-gray-700">
+                  Онлайн урок
+                </label>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Посилання на зустріч (для онлайн уроків)
+                </label>
+                <input
+                  type="url"
+                  name="meetingLink"
+                  defaultValue={editingItem?.meetingLink || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://meet.google.com/..."
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddForm(false)
+                    setEditingItem(null)
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  {editingItem ? 'Зберегти' : 'Створити урок'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

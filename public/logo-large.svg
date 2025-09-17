@@ -1,0 +1,49 @@
+<svg width="300" height="100" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Фон -->
+  <rect width="300" height="100" fill="#000000"/>
+  
+  <!-- Символ (покращений дизайн) -->
+  <g transform="translate(60, 50)">
+    <!-- Сегмент 1 (верхній, рожевий) -->
+    <path d="M-20,-20 Q-20,-30 -10,-30 Q0,-30 0,-20 Q0,-10 10,-10 Q20,-10 20,0 Q20,10 10,10 Q0,10 0,20 Q0,30 -10,30 Q-20,30 -20,20 Q-20,10 -30,10 Q-40,10 -40,0 Q-40,-10 -30,-10 Q-20,-10 -20,-20 Z" 
+          fill="#FF1493" 
+          stroke="none"/>
+    
+    <!-- Сегмент 2 (лівий, синій) -->
+    <path d="M-30,-10 Q-40,-10 -40,0 Q-40,10 -30,10 Q-20,10 -20,20 Q-20,30 -10,30 Q0,30 0,20 Q0,10 10,10 Q20,10 20,0 Q20,-10 10,-10 Q0,-10 0,-20 Q0,-30 -10,-30 Q-20,-30 -20,-20 Q-20,-10 -30,-10 Z" 
+          fill="#1E90FF" 
+          stroke="none"/>
+    
+    <!-- Сегмент 3 (нижній, фіолетовий) -->
+    <path d="M-10,20 Q-20,20 -20,10 Q-20,0 -30,0 Q-40,0 -40,-10 Q-40,-20 -30,-20 Q-20,-20 -20,-30 Q-20,-40 -10,-40 Q0,-40 0,-30 Q0,-20 10,-20 Q20,-20 20,-10 Q20,0 10,0 Q0,0 0,10 Q0,20 -10,20 Z" 
+          fill="#8A2BE2" 
+          stroke="none"/>
+    
+    <!-- Сегмент 4 (правий, індиго) -->
+    <path d="M10,0 Q20,0 20,-10 Q20,-20 10,-20 Q0,-20 0,-30 Q0,-40 -10,-40 Q-20,-40 -20,-30 Q-20,-20 -30,-20 Q-40,-20 -40,-10 Q-40,0 -30,0 Q-20,0 -20,10 Q-20,20 -10,20 Q0,20 0,10 Q0,0 10,0 Z" 
+          fill="#4B0082" 
+          stroke="none"/>
+  </g>
+  
+  <!-- Текст "helpkrok" -->
+  <text x="150" y="45" 
+        font-family="Arial, sans-serif" 
+        font-size="32" 
+        font-weight="bold" 
+        fill="#FFFFFF" 
+        text-anchor="middle" 
+        dominant-baseline="middle">
+    helpkrok
+  </text>
+  
+  <!-- Підпис "Platform" -->
+  <text x="150" y="70" 
+        font-family="Arial, sans-serif" 
+        font-size="14" 
+        font-weight="normal" 
+        fill="#CCCCCC" 
+        text-anchor="middle" 
+        dominant-baseline="middle">
+    Platform
+  </text>
+</svg>

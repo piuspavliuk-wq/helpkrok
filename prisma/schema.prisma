@@ -1,0 +1,190 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./data/dev.db"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  emailVerified DateTime?
+  image         String?
+  firstName     String?
+  lastName      String?
+  faculty       String?   // 'medical' | 'pharmaceutical'
+  university    String?   // Назва університету
+  yearOfStudy   Int?      // Рік навчання (1-6)
+  phone         String?   // Телефон
+  dateOfBirth   DateTime? // Дата народження
+  bio           String?   // Біографія
+  preferences   String?   // Налаштування користувача (JSON string)
+  role          String    @default("student") // 'student' | 'admin' | 'teacher'
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  subscriptions UserSubscription[]
+  testAttempts  TestAttempt[]
+  savedItems    SavedItem[]
+  achievements  UserAchievement[]
+  studySchedule StudySchedule[]
+  lessonAttendance LessonAttendance[]
+}
+
+model UserSubscription {
+  id                String    @id @default(cuid())
+  userId            String
+  subscriptionType  String    // 'medical' | 'pharmaceutical' | 'premium'
+  status            String    // 'pending' | 'active' | 'expired' | 'cancelled'
+  startDate         DateTime
+  endDate           DateTime
+  paymentProvider   String    // 'stripe' | 'liqpay' | 'fondy'
+  paymentId         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Тестові спроби користувача
+model TestAttempt {
+  id              String    @id @default(cuid())
+  userId          String
+  testId          String    // ID тесту з бази
+  testName        String    // Назва тесту
+  step            String    // 'krok1' | 'krok2' | 'krok3'
+  faculty         String    // 'medical' | 'pharmaceutical'
+  yearRange       String    // '2001-2015' | '2015-2025'
+  score           Float     // Результат у відсотках
+  totalQuestions  Int       // Загальна кількість питань
+  correctAnswers  Int       // Правильні відповіді
+  timeSpent       Int       // Час у секундах
+  completedAt     DateTime? // Коли завершено
+  isCompleted     Boolean   @default(false)
+  answers         String?   // Збережені відповіді (JSON string)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Збережені елементи (тести, курси, питання)
+model SavedItem {
+  id          String    @id @default(cuid())
+  userId      String
+  itemType    String    // 'test' | 'course' | 'question' | 'video'
+  itemId      String    // ID елемента
+  itemTitle   String    // Назва елемента
+  itemData    String?   // Додаткові дані (JSON string)
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, itemType, itemId])
+}
+
+// Досягнення користувача
+model UserAchievement {
+  id            String    @id @default(cuid())
+  userId        String
+  achievementId String    // ID досягнення
+  title         String    // Назва досягнення
+  description   String    // Опис досягнення
+  icon          String?   // Іконка
+  points        Int       // Очки за досягнення
+  unlockedAt    DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, achievementId])
+}
+
+// Розклад навчання
+model StudySchedule {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String    // Назва завдання
+  description String?   // Опис
+  subject     String    // Предмет
+  step        String    // 'krok1' | 'krok2' | 'krok3'
+  faculty     String    // 'medical' | 'pharmaceutical'
+  startDate   DateTime  // Дата початку
+  endDate     DateTime  // Дата завершення
+  isCompleted Boolean   @default(false)
+  priority    String    @default("medium") // 'low' | 'medium' | 'high'
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Уроки (планування адміном)
+model Lesson {
+  id              String    @id @default(cuid())
+  title           String    // Назва уроку
+  description     String?   // Опис уроку
+  subject         String    // Предмет
+  step            String    // 'krok1' | 'krok2' | 'krok3'
+  faculty         String    // 'medical' | 'pharmaceutical'
+  startDate       DateTime  // Дата та час початку
+  endDate         DateTime  // Дата та час завершення
+  location        String?   // Місце проведення
+  teacherName     String?   // Ім'я викладача
+  maxStudents     Int?      // Максимальна кількість студентів
+  isOnline        Boolean   @default(false) // Онлайн урок чи ні
+  meetingLink     String?   // Посилання на зустріч (для онлайн)
+  materials       String?   // Матеріали уроку (JSON string)
+  status          String    @default("scheduled") // 'scheduled' | 'ongoing' | 'completed' | 'cancelled'
+  calendarEventId String?   // ID події в Google Calendar
+  createdBy       String    // ID адміна, який створив урок
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  attendance      LessonAttendance[]
+}
+
+// Відвідування уроків студентами
+model LessonAttendance {
+  id        String    @id @default(cuid())
+  userId    String
+  lessonId  String
+  status    String    @default("registered") // 'registered' | 'attended' | 'absent' | 'late'
+  joinedAt  DateTime? // Коли приєднався до уроку
+  leftAt    DateTime? // Коли покинув урок
+  notes     String?   // Нотатки викладача
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson    Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, lessonId])
+}
