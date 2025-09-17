@@ -84,3 +84,9 @@ Thumbs.db
 # Documentation files (optional - remove if you want to keep them)
 *.md
 !README.md
+
+# Large files
+*.db
+*.db-journal
+dev.db
+data/
