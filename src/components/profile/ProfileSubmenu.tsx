@@ -55,7 +55,8 @@ export default function ProfileSubmenu() {
   return (
     <div className="relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center">
+        {/* Desktop layout */}
+        <div className="hidden md:flex justify-between items-center">
           <nav className="flex space-x-8">
             {submenuItems.map((item) => {
               const Icon = item.icon
@@ -91,6 +92,50 @@ export default function ProfileSubmenu() {
             <LogOut className="w-4 h-4" />
             <span className="text-sm font-medium">Вийти</span>
           </button>
+        </div>
+
+        {/* Mobile layout with horizontal scroll */}
+        <div className="md:hidden">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Профіль</h2>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center space-x-1 py-1 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-200"
+              title="Вийти з системи"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-xs font-medium">Вийти</span>
+            </button>
+          </div>
+          
+          <div className="overflow-x-auto scrollbar-hide">
+            <nav className="flex space-x-4 min-w-max pb-2">
+              {submenuItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href || 
+                  (item.href === '/profile' && pathname === '/profile') ||
+                  (item.href === '/profile/statistics' && pathname === '/profile/statistics') ||
+                  (item.href === '/profile/rating' && pathname === '/profile/rating')
+                
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`
+                      flex items-center space-x-2 py-3 px-3 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap rounded-t-lg
+                      ${isActive 
+                        ? 'border-blue-500 text-blue-600 bg-blue-50' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
         </div>
       </div>
     </div>
