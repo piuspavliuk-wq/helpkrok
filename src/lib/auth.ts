@@ -18,6 +18,10 @@ export const authOptions: NextAuthOptions = {
 
         if (!supabaseAdmin) {
           console.error('Supabase admin client not initialized')
+          console.error('Environment variables:', {
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+            supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET'
+          })
           return null
         }
 
