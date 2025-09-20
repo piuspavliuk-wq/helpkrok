@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Кнопка - Виправлення</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .purple {
+            background: #9C27B0;
+        }
+        .purple:hover {
+            background: #7B1FA2;
+        }
+        .status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            flex: 1;
+            margin: 0 5px;
+        }
+        .fix-list {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .fix-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+        }
+        .fix-icon {
+            font-size: 24px;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 AI КНОПКА - ВИПРАВЛЕННЯ</h1>
+        
+        <div class="status">
+            <div class="status-item">
+                <h3>🚀 Сервер</h3>
+                <div id="serverStatus">⏳ Перевіряємо...</div>
+            </div>
+            <div class="status-item">
+                <h3>🤖 AI API</h3>
+                <div id="aiStatus">⏳ Перевіряємо...</div>
+            </div>
+        </div>
+
+        <div class="fix-list">
+            <h3>✅ Що виправлено:</h3>
+            <div class="fix-item">
+                <span class="fix-icon">❌</span>
+                <span>Прибрано кнопку AI зверху в заголовку результатів</span>
+            </div>
+            <div class="fix-item">
+                <span class="fix-icon">❌</span>
+                <span>Прибрано дублікат кнопки AI знизу в CardContent</span>
+            </div>
+            <div class="fix-item">
+                <span class="fix-icon">🔧</span>
+                <span>Виправлено функцію showAIExplanationForQuestion для результатів</span>
+            </div>
+            <div class="fix-item">
+                <span class="fix-icon">✅</span>
+                <span>Залишено тільки кнопки AI біля кожного питання в результатах</span>
+            </div>
+        </div>
+
+        <div class="fix-list">
+            <h3>🧪 Тестування:</h3>
+            <p>1. <strong>Під час тесту:</strong> AI кнопки працюють як раніше</p>
+            <p>2. <strong>В результатах:</strong> AI кнопки тепер працюють правильно</p>
+            <p>3. <strong>Зверху:</strong> Тільки кнопка "Пройти знову"</p>
+            <p>4. <strong>Біля питань:</strong> AI кнопки для кожного питання</p>
+        </div>
+
+        <div class="fix-list">
+            <h3>🚀 Тестування:</h3>
+            <a href="http://localhost:3000" class="button purple">🧠 Тест з анатомії</a>
+            <a href="http://localhost:3000/histology" class="button purple">🔬 Тест з гістології</a>
+            <a href="http://localhost:3000/krok" class="button purple">📚 Тест КРОК</a>
+        </div>
+
+        <div class="fix-list">
+            <h3>🔐 Тестові дані:</h3>
+            <p><strong>Email:</strong> test@example.com</p>
+            <p><strong>Пароль:</strong> password123</p>
+        </div>
+    </div>
+
+    <script>
+        async function checkServer() {
+            try {
+                const response = await fetch('/api/debug/env');
+                if (response.ok) {
+                    document.getElementById('serverStatus').innerHTML = '✅ Працює';
+                    return true;
+                }
+            } catch (e) {}
+            document.getElementById('serverStatus').innerHTML = '❌ Не працює';
+            return false;
+        }
+
+        async function checkAI() {
+            try {
+                const response = await fetch('/api/ai/explanation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        questionText: 'Тест AI',
+                        selectedAnswer: 'A',
+                        correctAnswer: 'A',
+                        options: [{ text: 'A' }, { text: 'B' }]
+                    })
+                });
+                if (response.ok) {
+                    document.getElementById('aiStatus').innerHTML = '✅ Працює';
+                    return true;
+                }
+            } catch (e) {}
+            document.getElementById('aiStatus').innerHTML = '❌ Не працює';
+            return false;
+        }
+
+        async function runAllChecks() {
+            await checkServer();
+            await checkAI();
+        }
+
+        // Запускаємо всі перевірки при завантаженні
+        window.onload = runAllChecks;
+    </script>
+</body>
+</html>

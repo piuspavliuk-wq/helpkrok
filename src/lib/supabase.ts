@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -6,18 +6,33 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Створюємо Supabase клієнт тільки якщо змінні середовища налаштовані
 export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createSupabaseClient(supabaseUrl, supabaseAnonKey)
   : null
 
 // Створюємо Supabase клієнт з service role key для адміністративних операцій
-export const supabaseAdmin = supabaseUrl && supabaseServiceKey 
-  ? createClient(supabaseUrl, supabaseServiceKey, {
+export const supabaseAdmin = supabaseUrl && supabaseServiceKey
+  ? createSupabaseClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : supabaseUrl && supabaseAnonKey
+  ? createSupabaseClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
       }
     })
   : null
+
+// Функція для створення клієнта (для серверних компонентів)
+export function createSupabaseClientForServer() {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase URL або ключ не налаштовані')
+  }
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
+}
 
 // Database types
 export interface Database {

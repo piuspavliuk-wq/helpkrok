@@ -3,13 +3,17 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { 
   Home, 
   Search, 
   Database, 
   Sparkles, 
   User,
-  Settings
+  Settings,
+  FileText,
+  Bookmark,
+  Heart
 } from 'lucide-react'
 
 interface MenuItem {
@@ -50,11 +54,25 @@ const menuItems: MenuItem[] = [
     icon: Settings
   },
   {
+    id: 'brochures',
+    label: 'Буклети',
+    mobileLabel: 'Буклети',
+    href: '/brochures',
+    icon: FileText
+  },
+  {
     id: 'randomizer',
     label: 'Randomizer PRO',
     mobileLabel: 'Randomizer',
     href: '/randomizer',
     icon: Sparkles
+  },
+  {
+    id: 'saved-questions',
+    label: 'Збережені питання',
+    mobileLabel: 'Збережені',
+    href: '/saved-questions',
+    icon: Bookmark
   },
   {
     id: 'profile',
@@ -67,11 +85,46 @@ const menuItems: MenuItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const [isMobileNavHidden, setIsMobileNavHidden] = useState(false)
+
+  // Слухаємо зміни класу body для приховування мобільної навігації під час тесту
+  useEffect(() => {
+    const checkBodyClass = () => {
+      const hasHideClass = document.body.classList.contains('hide-mobile-nav')
+      // Приховуємо мобільну навігацію тільки на мобільних пристроях (ширина екрану < 768px)
+      const isMobile = window.innerWidth < 768
+      setIsMobileNavHidden(hasHideClass && isMobile)
+    }
+
+    // Перевіряємо початковий стан
+    checkBodyClass()
+
+    // Додаємо слухач зміни розміру екрану
+    const handleResize = () => {
+      const hasHideClass = document.body.classList.contains('hide-mobile-nav')
+      const isMobile = window.innerWidth < 768
+      setIsMobileNavHidden(hasHideClass && isMobile)
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    // Створюємо MutationObserver для відстеження змін класів body
+    const observer = new MutationObserver(checkBodyClass)
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class']
+    })
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64 bg-blue-50 fixed left-0 top-0 h-screen p-6 overflow-y-auto z-10 shadow-lg">
+      {/* Desktop Sidebar - завжди показуємо на десктопі */}
+      <aside className="hidden md:block w-64 bg-blue-50 fixed left-0 top-0 h-screen p-6 overflow-y-auto z-[100] shadow-lg" suppressHydrationWarning>
         {/* Logo */}
         <div className="mb-8 pt-4">
           <Link href="/" className="flex items-center space-x-3">
@@ -116,8 +169,8 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-blue-50 border-t border-gray-200 px-2 py-1.5 z-50">
+      {/* Mobile Bottom Navigation - приховуємо тільки на мобільних під час тесту */}
+      <nav className={`${isMobileNavHidden ? 'hidden' : 'md:hidden'} mobile-nav fixed bottom-0 left-0 right-0 bg-blue-50 border-t border-gray-200 px-2 py-1.5 z-[100]`} suppressHydrationWarning>
         <div className="flex justify-around">
           {menuItems.map((item) => {
             const Icon = item.icon

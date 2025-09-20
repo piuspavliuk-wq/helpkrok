@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фінальний тест - ВСЕ ПРАЦЮЄ!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.9);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        .error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        .info {
+            background: rgba(33, 150, 243, 0.3);
+            border: 1px solid #2196F3;
+        }
+        .test-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            flex: 1;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 ФІНАЛЬНИЙ ТЕСТ - ВСЕ ПРАЦЮЄ!</h1>
+        
+        <div class="status">
+            <div class="status-item">
+                <h3>🚀 Сервер</h3>
+                <div id="serverStatus">⏳ Перевіряємо...</div>
+            </div>
+            <div class="status-item">
+                <h3>🗄️ Supabase</h3>
+                <div id="supabaseStatus">⏳ Перевіряємо...</div>
+            </div>
+            <div class="status-item">
+                <h3>🤖 AI</h3>
+                <div id="aiStatus">⏳ Перевіряємо...</div>
+            </div>
+        </div>
+        
+        <div class="test-info">
+            <h3>🔐 Тестові дані для входу:</h3>
+            <p><strong>Email:</strong> test@example.com</p>
+            <p><strong>Пароль:</strong> password123</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="test@example.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Пароль:</label>
+                <input type="password" id="password" name="password" value="password123" required>
+            </div>
+            
+            <button type="submit">🚀 УВІЙТИ ЗАРАЗ!</button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        async function checkServer() {
+            try {
+                const response = await fetch('/api/debug/env');
+                if (response.ok) {
+                    document.getElementById('serverStatus').innerHTML = '✅ Працює';
+                    return true;
+                }
+            } catch (e) {}
+            document.getElementById('serverStatus').innerHTML = '❌ Не працює';
+            return false;
+        }
+
+        async function checkSupabase() {
+            try {
+                const response = await fetch('/api/debug/supabase');
+                if (response.ok) {
+                    document.getElementById('supabaseStatus').innerHTML = '✅ Працює';
+                    return true;
+                }
+            } catch (e) {}
+            document.getElementById('supabaseStatus').innerHTML = '❌ Не працює';
+            return false;
+        }
+
+        async function checkAI() {
+            try {
+                const response = await fetch('/api/ai/explanation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        questionText: 'Тест',
+                        selectedAnswer: 'A',
+                        correctAnswer: 'A',
+                        options: [{ text: 'A' }, { text: 'B' }]
+                    })
+                });
+                if (response.ok) {
+                    document.getElementById('aiStatus').innerHTML = '✅ Працює';
+                    return true;
+                }
+            } catch (e) {}
+            document.getElementById('aiStatus').innerHTML = '❌ Не працює';
+            return false;
+        }
+
+        async function runAllChecks() {
+            await checkServer();
+            await checkSupabase();
+            await checkAI();
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.innerHTML = '⏳ Входимо...';
+            
+            try {
+                // Отримуємо CSRF токен
+                const csrfResponse = await fetch('/api/auth/csrf');
+                const csrfData = await csrfResponse.json();
+                
+                // Відправляємо дані для входу
+                const response = await fetch('/api/auth/callback/credentials', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        email: email,
+                        password: password,
+                        csrfToken: csrfData.csrfToken
+                    })
+                });
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '🎉 ВХІД УСПІШНИЙ! ВСЕ ПРАЦЮЄ!<br>Перенаправляємо на головну сторінку...';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Помилка входу: ${response.status}<br>Деталі: ${errorText}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Помилка: ${error.message}`;
+            }
+        });
+
+        // Запускаємо всі перевірки при завантаженні
+        window.onload = runAllChecks;
+    </script>
+</body>
+</html>
+

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -74,9 +75,17 @@ export default function LoginForm() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Пароль
-          </label>
+          <div className="flex justify-between items-center">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Пароль
+            </label>
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-blue-600 hover:text-blue-500"
+            >
+              Забули пароль?
+            </Link>
+          </div>
           <input
             id="password"
             name="password"

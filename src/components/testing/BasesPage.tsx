@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { TestCard } from '@/components/testing/TestCard'
 import { CustomSelect } from '@/components/ui/CustomSelect'
+import { useSession } from 'next-auth/react'
 
 interface TestSubject {
   id: string
@@ -25,46 +26,19 @@ interface BasesPageProps {
 }
 
 export function BasesPage({ faculty = 'medical' }: BasesPageProps) {
-  const [activeStep, setActiveStep] = useState<'krok1' | 'krok2' | 'krok3'>('krok1')
   const [selectedFaculty, setSelectedFaculty] = useState<'medical' | 'pharmaceutical'>(faculty)
-  const [selectedYearRange, setSelectedYearRange] = useState<'2001-2015' | '2015-2025'>('2001-2015')
+  const { data: session } = useSession()
+
   // Fallback mock data for medical subjects (Крок 1)
   const medicalSubjectsKrok1: TestSubject[] = [
-    { id: 'anatomy', title: 'Анатомія', totalQuestions: 207 },
-    { id: 'biology', title: 'Біологія', totalQuestions: 142 },
-    { id: 'biochemistry', title: 'Біохімія', totalQuestions: 308 },
-    { id: 'physiology', title: 'Фізіологія', totalQuestions: 280 },
-    { id: 'histology', title: 'Гістологія', totalQuestions: 102 },
-    { 
-      id: 'microbiology', 
-      title: 'Мікробіологія', 
-      totalQuestions: 144, 
-      completedQuestions: 0, 
-      hasProgress: true 
-    },
-    { 
-      id: 'pathomorphology', 
-      title: 'Патоморфологія', 
-      totalQuestions: 228, 
-      completedQuestions: 5, 
-      hasProgress: true, 
-      isCompleted: true 
-    },
-    { 
-      id: 'pathophysiology', 
-      title: 'Патофізіологія', 
-      totalQuestions: 274, 
-      completedQuestions: 0, 
-      hasProgress: true 
-    },
-    { 
-      id: 'pharmacology', 
-      title: 'Фармакологія', 
-      totalQuestions: 267, 
-      completedQuestions: 0, 
-      bestScore: 78.0, 
-      hasProgress: true 
-    }
+    { id: 'anatomy', title: 'Анатомія', totalQuestions: 200, hasProgress: true },
+    { id: 'histology', title: 'Гістологія', totalQuestions: 100, hasProgress: true },
+    { id: 'physiology', title: 'Фізіологія', totalQuestions: 300, hasProgress: true },
+    { id: 'pharmacology', title: 'Фармакологія', totalQuestions: 296, hasProgress: true },
+    { id: 'biology', title: 'Біологія', totalQuestions: 140, hasProgress: true },
+    { id: 'pathology', title: 'Патологія', totalQuestions: 221, hasProgress: true },
+    { id: 'pathophysiology', title: 'Патологічна фізіологія', totalQuestions: 107, hasProgress: true },
+    { id: 'microbiology', title: 'Мікробіологія', totalQuestions: 563, hasProgress: true }
   ]
 
   // Fallback mock data for pharmaceutical subjects
@@ -77,9 +51,40 @@ export function BasesPage({ faculty = 'medical' }: BasesPageProps) {
     { id: 'pharm-economics', title: 'Фармацевтична економіка', totalQuestions: 110 }
   ]
 
-  const [subjects, setSubjects] = useState<TestSubject[]>(medicalSubjectsKrok1) // Початкові дані
+  const [subjects, setSubjects] = useState<TestSubject[]>([]) // Початкові дані
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Функція для завантаження прогресу користувача
+  const loadUserProgress = async (subjects: TestSubject[]) => {
+    if (!session?.user?.id) {
+      return subjects // Якщо користувач не авторизований, повертаємо без прогресу
+    }
+
+    const subjectsWithProgress = await Promise.all(
+      subjects.map(async (subject) => {
+        try {
+          const response = await fetch(`/api/test-progress?testType=${subject.id}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.success && data.progress) {
+              const completedQuestions = Object.keys(data.progress).length
+              return {
+                ...subject,
+                completedQuestions,
+                hasProgress: true
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Помилка завантаження прогресу для ${subject.title}:`, error)
+        }
+        return subject
+      })
+    )
+
+    return subjectsWithProgress
+  }
 
   const fetchSubjects = async () => {
     setLoading(true)
@@ -87,29 +92,39 @@ export function BasesPage({ faculty = 'medical' }: BasesPageProps) {
     
     try {
       const params = new URLSearchParams({
-        faculty: selectedFaculty,
-        step: activeStep,
-        yearRange: selectedYearRange
+        faculty: selectedFaculty
       })
       
       const response = await fetch(`/api/tests?${params}`)
       const data: ApiResponse = await response.json()
       
+      let subjectsData: TestSubject[] = []
+      
       if (data.success && data.subjects) {
-        setSubjects(data.subjects)
+        subjectsData = data.subjects
       } else {
         throw new Error('Помилка при завантаженні тестів')
       }
+      
+      // Завантажуємо прогрес користувача
+      const subjectsWithProgress = await loadUserProgress(subjectsData)
+      setSubjects(subjectsWithProgress)
+      
     } catch (err) {
       console.error('Error fetching subjects:', err)
       setError(err instanceof Error ? err.message : 'Помилка при завантаженні тестів')
       
       // Fallback to mock data
+      let fallbackSubjects: TestSubject[] = []
       if (selectedFaculty === 'medical') {
-        setSubjects(medicalSubjectsKrok1)
+        fallbackSubjects = medicalSubjectsKrok1
       } else {
-        setSubjects(pharmaceuticalSubjectsKrok1)
+        fallbackSubjects = pharmaceuticalSubjectsKrok1
       }
+      
+      // Завантажуємо прогрес для fallback даних
+      const subjectsWithProgress = await loadUserProgress(fallbackSubjects)
+      setSubjects(subjectsWithProgress)
     } finally {
       setLoading(false)
     }
@@ -117,11 +132,59 @@ export function BasesPage({ faculty = 'medical' }: BasesPageProps) {
 
   useEffect(() => {
     fetchSubjects()
-  }, [selectedFaculty, activeStep, selectedYearRange])
+  }, [selectedFaculty, session?.user?.id])
 
   const handleStartTest = (testId: string) => {
-    // Перенаправляємо на сторінку тесту
-    window.location.href = `/test/${testId}?step=${activeStep}&faculty=${selectedFaculty}&yearRange=${selectedYearRange}`
+    // Для анатомії перенаправляємо на нову сторінку тесту
+    if (testId === 'anatomy') {
+      window.location.href = '/anatomy-test'
+      return
+    }
+    
+    // Для гістології перенаправляємо на нову сторінку тесту
+    if (testId === 'histology') {
+      window.location.href = '/histology-test'
+      return
+    }
+    
+    // Для фізіології перенаправляємо на нову сторінку тесту
+    if (testId === 'physiology') {
+      window.location.href = '/physiology-test'
+      return
+    }
+    
+    // Для фармакології перенаправляємо на нову сторінку тесту
+    if (testId === 'pharmacology') {
+      window.location.href = '/pharmacology-test'
+      return
+    }
+    
+    // Для біології перенаправляємо на нову сторінку тесту
+    if (testId === 'biology') {
+      window.location.href = '/biology-test'
+      return
+    }
+    
+    // Для патології перенаправляємо на нову сторінку тесту
+    if (testId === 'pathology') {
+      window.location.href = '/pathology-test'
+      return
+    }
+    
+    // Для патологічної фізіології перенаправляємо на нову сторінку тесту
+    if (testId === 'pathophysiology') {
+      window.location.href = '/pathophysiology-test'
+      return
+    }
+    
+    // Для мікробіології перенаправляємо на нову сторінку тесту
+    if (testId === 'microbiology') {
+      window.location.href = '/microbiology-test'
+      return
+    }
+    
+    // Для інших тестів - стандартне перенаправлення
+    window.location.href = `/test/${testId}?faculty=${selectedFaculty}`
   }
 
   return (
@@ -131,20 +194,8 @@ export function BasesPage({ faculty = 'medical' }: BasesPageProps) {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Бази</h1>
           
-          {/* Step Selection */}
+          {/* Faculty Selection */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            {/* Step Filter */}
-            <CustomSelect
-              value={activeStep}
-              onChange={(value) => setActiveStep(value as any)}
-              options={[
-                { value: 'krok1', label: 'Крок 1' },
-                { value: 'krok2', label: 'Крок 2' },
-                { value: 'krok3', label: 'Крок 3' }
-              ]}
-              className="min-w-[120px]"
-            />
-
             {/* Faculty Filter */}
             <CustomSelect
               value={selectedFaculty}
@@ -152,17 +203,6 @@ export function BasesPage({ faculty = 'medical' }: BasesPageProps) {
               options={[
                 { value: 'medical', label: 'Медицина' },
                 { value: 'pharmaceutical', label: 'Фармація' }
-              ]}
-              className="min-w-[140px]"
-            />
-
-            {/* Year Range Filter */}
-            <CustomSelect
-              value={selectedYearRange}
-              onChange={(value) => setSelectedYearRange(value as any)}
-              options={[
-                { value: '2001-2015', label: '2001-2015' },
-                { value: '2015-2025', label: '2015-2025' }
               ]}
               className="min-w-[140px]"
             />

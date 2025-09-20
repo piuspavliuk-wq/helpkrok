@@ -46,9 +46,14 @@ export function TestCard({
       {/* Progress Info */}
       {hasProgress && (
         <div className="mb-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-            <Clock className="w-4 h-4" />
-            <span>{completedQuestions}/{totalQuestions}</span>
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              <span>{completedQuestions}/{totalQuestions}</span>
+            </div>
+            <span className="font-medium text-blue-600">
+              {Math.round(progressPercentage)}%
+            </span>
           </div>
           
           {/* Progress Bar */}
@@ -83,7 +88,7 @@ export function TestCard({
         onClick={() => onStartTest(id)}
         className="w-full bg-blue-500/80 backdrop-blur-sm hover:bg-blue-600/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
       >
-        {hasProgress ? 'Продовжити' : 'Почати спробу'}
+        {hasProgress && completedQuestions > 0 ? 'Продовжити' : 'Почати спробу'}
       </button>
     </div>
   )

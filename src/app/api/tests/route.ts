@@ -5,46 +5,17 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const faculty = searchParams.get('faculty') as 'medical' | 'pharmaceutical' | null
-    const step = searchParams.get('step') as 'krok1' | 'krok2' | 'krok3' | null
-    const yearRange = searchParams.get('yearRange') as '2001-2015' | '2015-2025' | null
 
     // Тимчасово використовуємо mock дані поки база даних не налаштована
     const mockSubjects = [
-      { id: 'anatomy', title: 'Анатомія', totalQuestions: 207 },
-      { id: 'biology', title: 'Біологія', totalQuestions: 142 },
-      { id: 'biochemistry', title: 'Біохімія', totalQuestions: 308 },
-      { id: 'physiology', title: 'Фізіологія', totalQuestions: 280 },
-      { id: 'histology', title: 'Гістологія', totalQuestions: 102 },
-      { 
-        id: 'microbiology', 
-        title: 'Мікробіологія', 
-        totalQuestions: 144, 
-        completedQuestions: 0, 
-        hasProgress: true 
-      },
-      { 
-        id: 'pathomorphology', 
-        title: 'Патоморфологія', 
-        totalQuestions: 228, 
-        completedQuestions: 5, 
-        hasProgress: true, 
-        isCompleted: true 
-      },
-      { 
-        id: 'pathophysiology', 
-        title: 'Патофізіологія', 
-        totalQuestions: 274, 
-        completedQuestions: 0, 
-        hasProgress: true 
-      },
-      { 
-        id: 'pharmacology', 
-        title: 'Фармакологія', 
-        totalQuestions: 267, 
-        completedQuestions: 0, 
-        bestScore: 78.0, 
-        hasProgress: true 
-      }
+      { id: 'anatomy', title: 'Анатомія', totalQuestions: 200, hasProgress: true },
+      { id: 'histology', title: 'Гістологія', totalQuestions: 100, hasProgress: true },
+      { id: 'physiology', title: 'Фізіологія', totalQuestions: 300, hasProgress: true },
+      { id: 'pharmacology', title: 'Фармакологія', totalQuestions: 296, hasProgress: true },
+      { id: 'biology', title: 'Біологія', totalQuestions: 140, hasProgress: true },
+      { id: 'pathology', title: 'Патологія', totalQuestions: 221, hasProgress: true },
+      { id: 'pathophysiology', title: 'Патологічна фізіологія', totalQuestions: 107, hasProgress: true },
+      { id: 'microbiology', title: 'Мікробіологія', totalQuestions: 563, hasProgress: true }
     ]
 
     const pharmaceuticalSubjects = [
@@ -63,9 +34,7 @@ export async function GET(request: NextRequest) {
       success: true,
       subjects,
       filters: {
-        faculty,
-        step,
-        yearRange
+        faculty
       },
       note: 'Використовуються тестові дані. База даних буде налаштована пізніше.'
     })

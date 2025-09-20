@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff; }
+        .success { background: #d4edda; border-left-color: #28a745; }
+        .error { background: #f8d7da; border-left-color: #dc3545; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Простий тест збереження питань</h1>
+    
+    <div>
+        <h2>Крок 1: Перевірка авторизації</h2>
+        <button onclick="checkAuth()">Перевірити авторизацію</button>
+        <div id="authResult"></div>
+    </div>
+    
+    <div>
+        <h2>Крок 2: Тест збереження</h2>
+        <button onclick="testSave()">Зберегти питання</button>
+        <div id="saveResult"></div>
+    </div>
+    
+    <div>
+        <h2>Крок 3: Тест завантаження</h2>
+        <button onclick="testLoad()">Завантажити збережені</button>
+        <div id="loadResult"></div>
+    </div>
+    
+    <div>
+        <h2>Крок 4: Повний тест</h2>
+        <button onclick="runFullTest()">Запустити повний тест</button>
+        <div id="fullTestResult"></div>
+    </div>
+
+    <script>
+        let userId = null;
+
+        function addResult(containerId, message, isSuccess = true) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `result ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            container.appendChild(div);
+            console.log(message);
+        }
+
+        async function checkAuth() {
+            addResult('authResult', '🔍 Перевіряємо авторизацію...');
+            
+            try {
+                const response = await fetch('/api/auth/me');
+                const data = await response.json();
+                
+                if (data.user) {
+                    userId = data.user.id;
+                    addResult('authResult', `✅ Авторизований! User ID: ${userId} (тип: ${typeof userId})`, true);
+                    return true;
+                } else {
+                    addResult('authResult', '❌ Не авторизований! Увійдіть в систему.', false);
+                    return false;
+                }
+            } catch (error) {
+                addResult('authResult', `❌ Помилка: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        async function testSave() {
+            if (!userId) {
+                addResult('saveResult', '❌ Спочатку перевірте авторизацію!', false);
+                return;
+            }
+
+            addResult('saveResult', '💾 Тестуємо збереження питання...');
+            
+            try {
+                const testData = {
+                    questionId: 1,
+                    notes: 'Test note from simple test'
+                };
+                
+                addResult('saveResult', `📤 Відправляємо дані: ${JSON.stringify(testData)}`);
+                
+                const response = await fetch('/api/physiology/saved', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                });
+                
+                addResult('saveResult', `📥 Статус відповіді: ${response.status}`);
+                
+                const data = await response.json();
+                addResult('saveResult', `📄 Дані відповіді: <pre>${JSON.stringify(data, null, 2)}</pre>`);
+                
+                if (response.ok) {
+                    addResult('saveResult', '✅ Збереження успішне!', true);
+                } else {
+                    addResult('saveResult', `❌ Помилка збереження: ${data.error}`, false);
+                }
+            } catch (error) {
+                addResult('saveResult', `❌ Помилка: ${error.message}`, false);
+            }
+        }
+
+        async function testLoad() {
+            addResult('loadResult', '📥 Тестуємо завантаження збережених питань...');
+            
+            try {
+                const response = await fetch('/api/physiology/saved');
+                const data = await response.json();
+                
+                addResult('loadResult', `📄 Статус: ${response.status}`);
+                addResult('loadResult', `📄 Дані: <pre>${JSON.stringify(data, null, 2)}</pre>`);
+                
+                if (response.ok) {
+                    addResult('loadResult', `✅ Завантажено ${data.savedQuestions?.length || 0} питань`, true);
+                } else {
+                    addResult('loadResult', `❌ Помилка завантаження: ${data.error}`, false);
+                }
+            } catch (error) {
+                addResult('loadResult', `❌ Помилка: ${error.message}`, false);
+            }
+        }
+
+        async function runFullTest() {
+            addResult('fullTestResult', '🚀 Запускаємо повний тест...');
+            
+            // Крок 1: Авторизація
+            const authOk = await checkAuth();
+            if (!authOk) {
+                addResult('fullTestResult', '❌ Тест зупинено: не авторизований', false);
+                return;
+            }
+            
+            // Крок 2: Збереження
+            await testSave();
+            
+            // Крок 3: Завантаження
+            await testLoad();
+            
+            addResult('fullTestResult', '✅ Повний тест завершено!', true);
+        }
+
+        // Автоматично перевіряємо авторизацію при завантаженні
+        window.onload = function() {
+            addResult('authResult', '🔄 Сторінка завантажена. Натисніть "Перевірити авторизацію"');
+        };
+    </script>
+</body>
+</html>

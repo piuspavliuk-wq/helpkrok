@@ -1,0 +1,596 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useSession } from 'next-auth/react';
+import { Bookmark, BookmarkCheck, Brain } from 'lucide-react';
+import AIExplanation from '@/components/ui/AIExplanation';
+
+interface AnatomyQuestion {
+  id: number;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  option_e: string;
+  correct_answer: string;
+}
+
+interface TestResult {
+  questionId: number;
+  selectedAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  questionText: string;
+}
+
+interface SavedQuestionStatus {
+  [questionId: number]: boolean;
+}
+
+export default function AnatomyTest() {
+  const { data: session } = useSession();
+  const [questions, setQuestions] = useState<AnatomyQuestion[]>([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: string }>({});
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [isTestStarted, setIsTestStarted] = useState(false);
+  const [isTestCompleted, setIsTestCompleted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCorrectAnswers, setShowCorrectAnswers] = useState(false);
+  const [savedQuestionsStatus, setSavedQuestionsStatus] = useState<SavedQuestionStatus>({});
+  const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
+  const [loadingSavedStatus, setLoadingSavedStatus] = useState(false);
+  const [shuffledQuestions, setShuffledQuestions] = useState<AnatomyQuestion[]>([]);
+  const [showAIExplanation, setShowAIExplanation] = useState(false);
+  const [currentQuestionForAI, setCurrentQuestionForAI] = useState<any>(null);
+
+  // Завантаження питань з бази даних
+  useEffect(() => {
+    loadQuestions();
+  }, []);
+
+  // Завантаження статусу збережених питань при зміні сесії
+  useEffect(() => {
+    if (session?.user?.id && questions.length > 0) {
+      loadSavedQuestionsStatus(questions);
+    }
+  }, [session?.user?.id, questions]);
+
+  const loadQuestions = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/anatomy/questions');
+      if (response.ok) {
+        const data = await response.json();
+        setQuestions(data || []);
+        
+        // Завантажуємо статус збереження питань асинхронно (не блокуємо основний UI)
+        if (session?.user?.id) {
+          loadSavedQuestionsStatus(data || []);
+        }
+      }
+    } catch (error) {
+      console.error('Помилка завантаження питань:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSavedQuestionsStatus = async (questionsList: AnatomyQuestion[]) => {
+    if (!session?.user?.id || questionsList.length === 0) return;
+
+    try {
+      setLoadingSavedStatus(true);
+      // Отримуємо всі збережені питання одним запитом
+      const response = await fetch('/api/anatomy/saved');
+      if (response.ok) {
+        const data = await response.json();
+        const savedQuestionIds = new Set(data.savedQuestions?.map((sq: any) => sq.anatomy_questions?.id) || []);
+        
+        const statusMap: SavedQuestionStatus = {};
+        questionsList.forEach(question => {
+          statusMap[question.id] = savedQuestionIds.has(question.id);
+        });
+        
+        setSavedQuestionsStatus(statusMap);
+      }
+    } catch (error) {
+      console.error('Помилка завантаження статусу збережених питань:', error);
+    } finally {
+      setLoadingSavedStatus(false);
+    }
+  };
+
+  const toggleSaveQuestion = async (questionId: number) => {
+    if (!session?.user?.id) {
+      alert('Для збереження питань необхідна авторизація');
+      return;
+    }
+
+    setSavingQuestion(questionId);
+    
+    try {
+      const isCurrentlySaved = savedQuestionsStatus[questionId];
+      
+      if (isCurrentlySaved) {
+        // Видаляємо зі збережених
+        const response = await fetch(`/api/anatomy/saved?questionId=${questionId}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          setSavedQuestionsStatus(prev => ({
+            ...prev,
+            [questionId]: false
+          }));
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Помилка видалення питання зі збережених');
+        }
+      } else {
+        // Зберігаємо питання
+        const response = await fetch('/api/anatomy/saved', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ questionId })
+        });
+        
+        if (response.ok) {
+          setSavedQuestionsStatus(prev => ({
+            ...prev,
+            [questionId]: true
+          }));
+        } else {
+          const data = await response.json();
+          if (data.alreadySaved) {
+            setSavedQuestionsStatus(prev => ({
+              ...prev,
+              [questionId]: true
+            }));
+          } else {
+            alert(data.error || 'Помилка збереження питання');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Помилка збереження/видалення питання:', error);
+      alert('Помилка збереження питання');
+    } finally {
+      setSavingQuestion(null);
+    }
+  };
+
+  const startTest = () => {
+    // Створюємо перемішані питання з перемішаними варіантами відповідей
+    const shuffledQuestionsList = questions.map(question => {
+      const shuffled = shuffleAnswers(question);
+      return {
+        ...question,
+        shuffledOptions: shuffled.shuffledOptions,
+        shuffledCorrectAnswer: shuffled.correctAnswer
+      };
+    });
+    
+    setShuffledQuestions(shuffledQuestionsList);
+    setIsTestStarted(true);
+    setSelectedAnswers({});
+    setTestResults([]);
+    setIsTestCompleted(false);
+    setShowCorrectAnswers(false);
+  };
+
+  const handleAnswerSelect = (questionId: number, answer: string) => {
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [questionId]: answer
+    }));
+  };
+
+  const finishTest = () => {
+    const results: TestResult[] = shuffledQuestions.map(question => {
+      const selectedAnswer = selectedAnswers[question.id];
+      const correctAnswer = question.shuffledCorrectAnswer || question.correct_answer;
+      const isCorrect = selectedAnswer === correctAnswer;
+
+      return {
+        questionId: question.id,
+        selectedAnswer: selectedAnswer || '',
+        correctAnswer,
+        isCorrect,
+        questionText: question.question_text
+      };
+    });
+
+    setTestResults(results);
+    setIsTestCompleted(true);
+  };
+
+  const resetTest = () => {
+    setIsTestStarted(false);
+    setIsTestCompleted(false);
+    setSelectedAnswers({});
+    setTestResults([]);
+    setShowCorrectAnswers(false);
+  };
+
+  const getAnswerText = (question: AnatomyQuestion, answerKey: string) => {
+    switch (answerKey) {
+      case 'A': return question.option_a;
+      case 'B': return question.option_b;
+      case 'C': return question.option_c;
+      case 'D': return question.option_d;
+      case 'E': return question.option_e;
+      default: return '';
+    }
+  };
+
+  const shuffleAnswers = (question: AnatomyQuestion) => {
+    const options = [
+      { key: 'A', text: question.option_a },
+      { key: 'B', text: question.option_b },
+      { key: 'C', text: question.option_c },
+      { key: 'D', text: question.option_d },
+      { key: 'E', text: question.option_e }
+    ];
+    
+    // Перемішуємо варіанти
+    const shuffled = options.sort(() => Math.random() - 0.5);
+    
+    // Додаємо нові букви для перемішаних варіантів
+    const shuffledWithNewKeys = shuffled.map((option, index) => ({
+      ...option,
+      displayKey: String.fromCharCode(65 + index), // A, B, C, D, E
+      originalKey: option.key
+    }));
+    
+    // Знаходимо нову позицію правильної відповіді
+    const correctIndex = shuffledWithNewKeys.findIndex(opt => opt.originalKey === question.correct_answer);
+    
+    return {
+      shuffledOptions: shuffledWithNewKeys,
+      correctAnswer: shuffledWithNewKeys[correctIndex].displayKey
+    };
+  };
+
+  const getCorrectAnswersCount = () => {
+    return testResults.filter(result => result.isCorrect).length;
+  };
+
+  const showAIExplanationForQuestion = (question: any) => {
+    const selectedAnswer = selectedAnswers[question.id];
+    const correctAnswer = question.shuffledCorrectAnswer || question.correct_answer;
+    
+    setCurrentQuestionForAI({
+      questionText: question.question_text,
+      selectedAnswer,
+      correctAnswer,
+      options: question.shuffledOptions || [
+        { key: 'A', text: question.option_a },
+        { key: 'B', text: question.option_b },
+        { key: 'C', text: question.option_c },
+        { key: 'D', text: question.option_d },
+        { key: 'E', text: question.option_e }
+      ]
+    });
+    setShowAIExplanation(true);
+  };
+
+  const getAnswerButtonClass = (answerKey: string, question: any, selectedAnswer?: string) => {
+    const isSelected = selectedAnswer === answerKey;
+    const correctAnswer = question.shuffledCorrectAnswer || question.correct_answer;
+    const isCorrect = answerKey === correctAnswer;
+    
+    if (showCorrectAnswers) {
+      if (isCorrect) {
+        return 'bg-green-100 border-green-500 text-green-800 hover:bg-green-200';
+      }
+      if (isSelected && !isCorrect) {
+        return 'bg-red-100 border-red-500 text-red-800 hover:bg-red-200';
+      }
+    }
+    
+    if (isSelected) {
+      return 'bg-blue-100 border-blue-500 text-blue-800 hover:bg-blue-200';
+    }
+    
+    return 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Завантаження питань з анатомії...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isTestStarted && !isTestCompleted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+              Тест з Анатомії
+            </CardTitle>
+            <p className="text-gray-600 text-lg">
+              Всього питань: <span className="font-semibold text-blue-600">{questions.length}</span>
+            </p>
+          </CardHeader>
+          <CardContent className="text-center space-y-6">
+            <div className="bg-blue-50 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold text-blue-800 mb-3">Інструкції:</h3>
+              <ul className="text-left text-gray-700 space-y-2">
+                <li>• Відповідайте на питання, обираючи один з варіантів A, B, C, D або E</li>
+                <li>• Можете переходити між питаннями за допомогою кнопок "Наступне" / "Попереднє"</li>
+                <li>• Після завершення тесту побачите результати та правильні відповіді</li>
+                <li>• Використовуйте перемикач для показу правильних відповідей під час тесту</li>
+              </ul>
+            </div>
+            
+            <div className="flex items-center justify-center space-x-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={showCorrectAnswers}
+                  onChange={(e) => setShowCorrectAnswers(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-gray-700">Показувати правильні відповіді</span>
+              </label>
+            </div>
+
+            <Button 
+              onClick={startTest}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-semibold"
+            >
+              Почати тест
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isTestCompleted) {
+    const correctCount = getCorrectAnswersCount();
+    const percentage = Math.round((correctCount / questions.length) * 100);
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 p-4">
+        <div className="max-w-4xl mx-auto">
+          <Card className="mb-6">
+            <CardHeader className="text-center">
+              <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+                Результати тесту з Анатомії
+              </CardTitle>
+              <div className="text-2xl font-semibold text-gray-700">
+                Правильних відповідей: {correctCount} з {questions.length}
+              </div>
+              <div className={`text-3xl font-bold ${
+                percentage >= 80 ? 'text-green-600' : 
+                percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {percentage}%
+              </div>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Button 
+                onClick={resetTest}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+              >
+                Пройти тест знову
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            {testResults.map((result, index) => {
+              const question = shuffledQuestions.find(q => q.id === result.questionId) || questions.find(q => q.id === result.questionId);
+              if (!question) return null;
+
+              return (
+                <Card key={result.questionId} className={`${
+                  result.isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                }`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                        result.isCorrect ? 'bg-green-500' : 'bg-red-500'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-4">
+                          <p className="text-lg font-medium text-gray-800 flex-1">
+                            {question.question_text}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleSaveQuestion(question.id)}
+                            disabled={savingQuestion === question.id}
+                            className={`ml-4 ${
+                              savedQuestionsStatus[question.id] 
+                                ? 'bg-blue-100 border-blue-500 text-blue-700 hover:bg-blue-200' 
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {savingQuestion === question.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                            ) : savedQuestionsStatus[question.id] ? (
+                              <BookmarkCheck className="w-4 h-4" />
+                            ) : (
+                              <Bookmark className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {(question.shuffledOptions || ['A', 'B', 'C', 'D', 'E'].map(opt => ({ displayKey: opt, text: getAnswerText(question, opt), originalKey: opt }))).map((option, answerIndex) => {
+                            const isSelected = result.selectedAnswer === option.displayKey;
+                            const isCorrect = result.correctAnswer === option.displayKey;
+                            
+                            return (
+                              <div
+                                key={option.displayKey}
+                                className={`p-3 rounded-lg border ${
+                                  isCorrect ? 'bg-green-100 border-green-500 text-green-800' :
+                                  isSelected && !isCorrect ? 'bg-red-100 border-red-500 text-red-800' :
+                                  'bg-gray-50 border-gray-300 text-gray-700'
+                                }`}
+                              >
+                                <span className="font-semibold">{option.displayKey}.</span> {option.text}
+                                {isCorrect && <span className="ml-2 text-green-600 font-bold">✓</span>}
+                                {isSelected && !isCorrect && <span className="ml-2 text-red-600 font-bold">✗</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isTestStarted && !isTestCompleted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 p-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Заголовок та перемикач */}
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-bold text-blue-800">
+                  Тест з Анатомії - Всі питання
+                </CardTitle>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={showCorrectAnswers}
+                      onChange={(e) => setShowCorrectAnswers(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Показувати правильні відповіді</span>
+                  </label>
+                  <Button 
+                    onClick={finishTest}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
+                  >
+                    Завершити тест
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Всі питання */}
+          <div className="space-y-6">
+            {shuffledQuestions.map((question, index) => {
+              const selectedAnswer = selectedAnswers[question.id];
+              
+              return (
+                <Card key={question.id} className="mb-6">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg font-bold text-gray-800 flex-1">
+                        {index + 1}. {question.question_text}
+                      </CardTitle>
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => showAIExplanationForQuestion(question)}
+                          className="bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                        >
+                          <Brain className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleSaveQuestion(question.id)}
+                          disabled={savingQuestion === question.id}
+                          className={`${
+                            savedQuestionsStatus[question.id] 
+                              ? 'bg-blue-100 border-blue-500 text-blue-700 hover:bg-blue-200' 
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {savingQuestion === question.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                          ) : savedQuestionsStatus[question.id] ? (
+                            <BookmarkCheck className="w-4 h-4" />
+                          ) : (
+                            <Bookmark className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {question.shuffledOptions?.map((option, optionIndex) => (
+                        <Button
+                          key={option.originalKey}
+                          variant="outline"
+                          className={`w-full justify-start text-left p-4 h-auto ${getAnswerButtonClass(option.displayKey, question, selectedAnswer)}`}
+                          onClick={() => handleAnswerSelect(question.id, option.displayKey)}
+                        >
+                          <span className="font-semibold mr-3">{option.displayKey}.</span>
+                          {option.text}
+                        </Button>
+                      )) || ['A', 'B', 'C', 'D', 'E'].map(option => (
+                        <Button
+                          key={option}
+                          variant="outline"
+                          className={`w-full justify-start text-left p-4 h-auto ${getAnswerButtonClass(option, question, selectedAnswer)}`}
+                          onClick={() => handleAnswerSelect(question.id, option)}
+                        >
+                          <span className="font-semibold mr-3">{option}.</span>
+                          {getAnswerText(question, option)}
+                        </Button>
+                      ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* AI Пояснення */}
+        {showAIExplanation && currentQuestionForAI && (
+          <AIExplanation
+            questionText={currentQuestionForAI.questionText}
+            selectedAnswer={currentQuestionForAI.selectedAnswer}
+            correctAnswer={currentQuestionForAI.correctAnswer}
+            options={currentQuestionForAI.options}
+            onClose={() => {
+              setShowAIExplanation(false);
+              setCurrentQuestionForAI(null);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-xl text-gray-600">Завантаження питань з анатомії...</p>
+      </div>
+    </div>
+  );
+}
