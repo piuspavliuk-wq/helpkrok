@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
-function ResetPasswordForm() {
+const ResetPasswordForm = dynamic(() => Promise.resolve(function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -157,12 +158,11 @@ function ResetPasswordForm() {
       </div>
     </div>
   );
-}
+}), {
+  ssr: false,
+  loading: () => <div>Loading...</div>
+});
 
 export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <ResetPasswordForm />
-    </Suspense>
-  );
+  return <ResetPasswordForm />;
 }
