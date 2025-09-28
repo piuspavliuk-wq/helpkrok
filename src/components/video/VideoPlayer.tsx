@@ -42,6 +42,25 @@ export function VideoPlayer({
   const [progress, setProgress] = useState(initialProgress)
   const [isLoading, setIsLoading] = useState(true)
 
+  const updateProgress = useCallback(async (newProgress: number) => {
+    try {
+      await fetch('/api/user/progress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topic_id: topicId,
+          video_progress: newProgress,
+          video_completed: newProgress >= 95, // Вважаємо завершеним при 95%
+        }),
+      })
+      onProgressUpdate(newProgress)
+    } catch (error) {
+      console.error('Error updating progress:', error)
+    }
+  }, [topicId, onProgressUpdate])
+
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
@@ -91,25 +110,6 @@ export function VideoPlayer({
       video.removeEventListener('pause', handlePause)
     }
   }, [duration, initialProgress, onVideoComplete, updateProgress])
-
-  const updateProgress = useCallback(async (newProgress: number) => {
-    try {
-      await fetch('/api/user/progress', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          topic_id: topicId,
-          video_progress: newProgress,
-          video_completed: newProgress >= 95, // Вважаємо завершеним при 95%
-        }),
-      })
-      onProgressUpdate(newProgress)
-    } catch (error) {
-      console.error('Error updating progress:', error)
-    }
-  }, [topicId, onProgressUpdate])
 
   const togglePlayPause = () => {
     const video = videoRef.current
