@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Групуємо статистику по базах (простий підхід)
-    const basesStats = basesStatistics?.reduce((acc: any, item: any) => {
+    const basesStats = basesStatistics?.reduce((acc: Record<string, { correct: number; incorrect: number; total: number }>, item: { test_type: string; is_correct: boolean }) => {
       const baseName = item.test_type
       if (!acc[baseName]) {
         acc[baseName] = { correct: 0, incorrect: 0, total: 0 }
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
       completedTests: Number(statistics?.completed_tests) || 0,
       
       // Проста статистика по базах (тільки загальна)
-      basesStatistics: Object.entries(basesStats).map(([baseName, stats]: [string, any]) => ({
+      basesStatistics: Object.entries(basesStats).map(([baseName, stats]: [string, { correct: number; incorrect: number; total: number }]) => ({
         baseName: baseName,
         baseTitle: getBaseTitle(baseName),
         totalQuestions: stats.total,
