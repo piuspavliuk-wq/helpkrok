@@ -162,7 +162,7 @@ export default function FolderTest({ folderId, onBack }: FolderTestProps) {
       });
 
       if (response.ok) {
-        setQuestions(prev => prev.filter(q => q.question_id !== questionId));
+        setQuestions(prev => prev.filter(q => q.id !== questionId));
         alert('Питання видалено з папки!');
       } else {
         const errorData = await response.json();
