@@ -460,7 +460,7 @@ export default function FolderTest({ folderId, onBack }: FolderTestProps) {
                   </span>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                  {currentQuestion.question_text || currentQuestion.question}
+                  {currentQuestion.question}
                 </h3>
               </div>
               <button
