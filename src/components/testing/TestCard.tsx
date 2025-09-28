@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React from 'react'
 import { Clock, Flag, Trophy } from 'lucide-react'
 
 interface TestCardProps {

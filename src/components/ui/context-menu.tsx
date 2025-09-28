@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { MoreVertical, Trash2 } from 'lucide-react';
+import { useRef, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 
 interface ContextMenuProps {
   isOpen: boolean;
