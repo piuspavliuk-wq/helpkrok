@@ -48,7 +48,7 @@ interface SavedQuestionStatus {
 }
 
 interface UniversalTestProps {
-  testType: 'anatomy' | 'histology' | 'krok';
+  testType: 'anatomy' | 'histology' | 'krok' | 'biology';
   testName: string;
   isRandomizer?: boolean;
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
@@ -92,7 +92,7 @@ export function VideoPlayer({
     }
   }, [duration, initialProgress, onVideoComplete, updateProgress])
 
-  const updateProgress = async (newProgress: number) => {
+  const updateProgress = useCallback(async (newProgress: number) => {
     try {
       await fetch('/api/user/progress', {
         method: 'PUT',
@@ -109,7 +109,7 @@ export function VideoPlayer({
     } catch (error) {
       console.error('Error updating progress:', error)
     }
-  }
+  }, [topicId, onProgressUpdate])
 
   const togglePlayPause = () => {
     const video = videoRef.current
