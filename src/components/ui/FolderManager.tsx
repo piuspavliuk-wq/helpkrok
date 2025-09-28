@@ -31,7 +31,7 @@ interface Folder {
 
 interface FolderManagerProps {
   questionId: number;
-  questionType: 'krok' | 'anatomy' | 'histology';
+  questionType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology';
   isSaved: boolean;
   onSaveChange: (saved: boolean) => void;
 }
