@@ -31,9 +31,7 @@ interface SelectValueProps {
   placeholder?: string
 }
 
-export function Select({ value, onValueChange, children, className }: SelectProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  
+export function Select({ children, className }: SelectProps) {
   return (
     <div className={cn('relative', className)}>
       {children}
@@ -68,7 +66,7 @@ export function SelectContent({ className, children }: SelectContentProps) {
   )
 }
 
-export function SelectItem({ value, className, children }: SelectItemProps) {
+export function SelectItem({ className, children }: SelectItemProps) {
   return (
     <div
       className={cn(

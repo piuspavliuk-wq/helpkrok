@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   Play, 
   Pause, 
@@ -27,7 +27,6 @@ interface VideoPlayerProps {
 export function VideoPlayer({ 
   videoUrl, 
   topicId, 
-  userId, 
   onProgressUpdate, 
   onVideoComplete,
   initialProgress = 0 
@@ -91,7 +90,7 @@ export function VideoPlayer({
       video.removeEventListener('play', handlePlay)
       video.removeEventListener('pause', handlePause)
     }
-  }, [duration, initialProgress, onVideoComplete])
+  }, [duration, initialProgress, onVideoComplete, updateProgress])
 
   const updateProgress = async (newProgress: number) => {
     try {

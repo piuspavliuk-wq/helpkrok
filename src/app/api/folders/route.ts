@@ -123,42 +123,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// GET - Отримання конкретної папки
-export async function GET_FOLDER(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const session = await getServerSession(request);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: folder, error } = await supabase
-      .from('user_folders')
-      .select(`
-        *,
-        folder_questions(count)
-      `)
-      .eq('id', params.id)
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (error) {
-      console.error('Error fetching folder:', error);
-      return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
-    }
-
-    // Додаємо кількість питань
-    const folderWithCount = {
-      ...folder,
-      question_count: folder.folder_questions?.[0]?.count || 0
-    };
-
-    return NextResponse.json({ folder: folderWithCount });
-  } catch (error) {
-    console.error('Error in GET /api/folders/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
 
 // POST - Створення нової папки
 export async function POST(request: NextRequest) {
