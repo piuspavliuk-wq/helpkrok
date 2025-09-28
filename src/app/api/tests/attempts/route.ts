@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createSupabaseClientForServer } from '@/lib/supabase/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Необхідна авторизація' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { 
       topic_id, 
@@ -21,25 +32,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Отримуємо токен з cookies
-    const token = request.cookies.get('auth-token')?.value
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Не автентифікований' },
-        { status: 401 }
-      )
-    }
-
-    // Тут має бути логіка валідації токена та отримання user_id
-    const userId = 'temp-user-id' // В реальному додатку це має бути з токена
-
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'База даних недоступна' },
-        { status: 500 }
-      )
-    }
+    const supabase = createSupabaseClientForServer()
+    const userId = session.user.id
 
     // Створюємо запис про спробу тесту
     const { data: attempt, error: attemptError } = await supabase
@@ -65,6 +59,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Оновлюємо статистику користувача після завершення тесту
+    try {
+      await updateUserStatistics(userId, supabase)
+    } catch (statsError) {
+      console.error('Error updating user statistics:', statsError)
+      // Не зупиняємо процес, якщо статистика не оновилася
+    }
+
     return NextResponse.json({
       success: true,
       attempt,
@@ -80,30 +82,22 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Необхідна авторизація' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const topicId = searchParams.get('topic_id')
     const attemptType = searchParams.get('attempt_type')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    // Отримуємо токен з cookies
-    const token = request.cookies.get('auth-token')?.value
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Не автентифікований' },
-        { status: 401 }
-      )
-    }
-
-    // Тут має бути логіка валідації токена та отримання user_id
-    const userId = 'temp-user-id' // В реальному додатку це має бути з токена
-
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'База даних недоступна' },
-        { status: 500 }
-      )
-    }
+    const supabase = createSupabaseClientForServer()
+    const userId = session.user.id
 
     let query = supabase
       .from('test_attempts')
@@ -140,5 +134,53 @@ export async function GET(request: NextRequest) {
       { error: 'Внутрішня помилка сервера' },
       { status: 500 }
     )
+  }
+}
+
+// Функція для оновлення статистики користувача
+async function updateUserStatistics(userId: string, supabase: any) {
+  try {
+    // Отримуємо статистику з user_test_progress
+    const { data: progressData } = await supabase
+      .from('user_test_progress')
+      .select('is_correct')
+      .eq('user_id', userId)
+    
+    if (progressData) {
+      const totalAnswered = progressData.length
+      const correctAnswers = progressData.filter(p => p.is_correct).length
+      const incorrectAnswers = totalAnswered - correctAnswers
+      const averagePercentage = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100 * 100) / 100 : 0
+      
+      // Отримуємо кількість завершених тестів
+      const { data: testAttempts } = await supabase
+        .from('test_attempts')
+        .select('id')
+        .eq('user_id', userId)
+        .not('completed_at', 'is', null)
+      
+      const completedTests = testAttempts?.length || 0
+      
+      // Оновлюємо статистику
+      await supabase
+        .from('user_statistics')
+        .upsert({
+          user_id: userId,
+          total_questions_answered: totalAnswered,
+          correct_answers: correctAnswers,
+          incorrect_answers: incorrectAnswers,
+          average_percentage: averagePercentage,
+          ratio_percentage: averagePercentage,
+          total_tests: completedTests,
+          completed_tests: completedTests,
+          last_calculated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+    }
+  } catch (error) {
+    console.error('Error updating user statistics:', error)
+    throw error
   }
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Calendar, User, Bookmark, BarChart3, Trophy, LogOut } from 'lucide-react'
+import { Calendar, User, BarChart3, Trophy, LogOut } from 'lucide-react'
 
 interface SubmenuItem {
   id: string
@@ -16,13 +16,13 @@ const submenuItems: SubmenuItem[] = [
   {
     id: 'schedule',
     label: 'Розклад',
-    href: '/profile/schedule',
+    href: '/profile',
     icon: Calendar
   },
   {
     id: 'profile',
     label: 'Профіль',
-    href: '/profile',
+    href: '/profile/edit',
     icon: User
   },
   {
@@ -36,12 +36,6 @@ const submenuItems: SubmenuItem[] = [
     label: 'Рейтинг',
     href: '/profile/rating',
     icon: Trophy
-  },
-  {
-    id: 'saved',
-    label: 'Збережені',
-    href: '/profile/saved',
-    icon: Bookmark
   }
 ]
 
@@ -61,7 +55,8 @@ export default function ProfileSubmenu() {
             {submenuItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || 
-                (item.href === '/profile' && pathname === '/profile') ||
+                (item.href === '/profile' && (pathname === '/profile' || pathname === '/profile/schedule')) ||
+                (item.href === '/profile/edit' && pathname === '/profile/edit') ||
                 (item.href === '/profile/statistics' && pathname === '/profile/statistics') ||
                 (item.href === '/profile/rating' && pathname === '/profile/rating')
               
@@ -113,7 +108,8 @@ export default function ProfileSubmenu() {
               {submenuItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href || 
-                  (item.href === '/profile' && pathname === '/profile') ||
+                  (item.href === '/profile' && (pathname === '/profile' || pathname === '/profile/schedule')) ||
+                  (item.href === '/profile/edit' && pathname === '/profile/edit') ||
                   (item.href === '/profile/statistics' && pathname === '/profile/statistics') ||
                   (item.href === '/profile/rating' && pathname === '/profile/rating')
                 

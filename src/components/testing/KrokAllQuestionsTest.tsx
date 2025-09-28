@@ -7,17 +7,17 @@ import { useSession } from 'next-auth/react';
 
 interface Question {
   id: number;
-  question_number: number;
   question_text: string;
+  year: number;
+  faculty: string;
   category: string;
-  difficulty_level: string;
+  difficulty: string;
+  options: Answer[];
 }
 
 interface Answer {
-  id: number;
-  question_id: number;
-  answer_option: string;
-  answer_text: string;
+  letter: string;
+  text: string;
   is_correct: boolean;
 }
 
@@ -27,7 +27,7 @@ interface TestResult {
   correctAnswer: string;
   isCorrect: boolean;
   questionText: string;
-  answers: Answer[];
+  options: Answer[];
 }
 
 interface SavedQuestionStatus {
@@ -37,7 +37,6 @@ interface SavedQuestionStatus {
 export default function KrokAllQuestionsTest() {
   const { data: session } = useSession();
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Answer[]>([]);
   const [testQuestions, setTestQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: string }>({});
   const [testResults, setTestResults] = useState<TestResult[]>([]);
@@ -77,11 +76,11 @@ export default function KrokAllQuestionsTest() {
   const loadQuestions = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/krok/questions');
+      // Завантажуємо всі доступні питання
+      const response = await fetch('/api/krok/questions?random=true&limit=10000');
       if (response.ok) {
         const data = await response.json();
         setQuestions(data.questions || []);
-        setAnswers(data.answers || []);
         
         // Завантажуємо статус збереження питань асинхронно (не блокуємо основний UI)
         if (session?.user?.id) {
@@ -188,7 +187,7 @@ export default function KrokAllQuestionsTest() {
 
     // Функція для перевірки чи є у питання варіанти відповідей
     const hasAnswers = (question: Question) => {
-      return answers.some(answer => answer.question_id === question.id);
+      return question.options && question.options.length >= 4;
     };
 
     // Вибираємо питання з варіантами відповідей
@@ -222,21 +221,62 @@ export default function KrokAllQuestionsTest() {
     
     testQuestions.forEach(question => {
       const selectedAnswer = selectedAnswers[question.id];
-      const questionAnswers = answers.filter(a => a.question_id === question.id);
-      const correctAnswer = questionAnswers.find(a => a.is_correct);
+      const correctAnswer = question.options.find(option => option.is_correct);
       
       results.push({
         questionId: question.id,
         selectedAnswer: selectedAnswer || '',
-        correctAnswer: correctAnswer?.answer_option || '',
-        isCorrect: selectedAnswer === correctAnswer?.answer_option,
+        correctAnswer: correctAnswer?.letter || '',
+        isCorrect: selectedAnswer === correctAnswer?.letter,
         questionText: question.question_text,
-        answers: questionAnswers
+        options: question.options
       });
     });
     
     setTestResults(results);
     setIsTestCompleted(true);
+    
+    // Зберігаємо результат тесту
+    saveTestResult(results);
+  };
+
+  const saveTestResult = async (results: TestResult[]) => {
+    try {
+      const correctAnswers = results.filter(r => r.isCorrect).length;
+      const totalQuestions = results.length;
+      const score = Math.round((correctAnswers / totalQuestions) * 100);
+
+      // Зберігаємо спробу тесту
+      await fetch('/api/tests/attempts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topic_id: null,
+          attempt_type: 'krok_all_questions',
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          score: score,
+          time_spent: 0, // Можна додати таймер
+          completed_at: new Date().toISOString(),
+        }),
+      });
+
+      // Оновлюємо рейтинг користувача
+      await fetch('/api/user/update-rating', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Відправляємо подію про оновлення рейтингу
+      window.dispatchEvent(new CustomEvent('ratingUpdated'));
+
+    } catch (error) {
+      console.error('Error saving test result:', error);
+    }
   };
 
   const resetTest = () => {
@@ -256,9 +296,10 @@ export default function KrokAllQuestionsTest() {
   };
 
   const getQuestionAnswers = (questionId: number) => {
-    const questionAnswers = answers.filter(a => a.question_id === questionId);
+    const question = testQuestions.find(q => q.id === questionId);
+    if (!question) return [];
     // Перемішуємо варіанти відповідей для кожного питання
-    return questionAnswers.sort(() => Math.random() - 0.5);
+    return question.options.sort(() => Math.random() - 0.5);
   };
 
   if (isLoading) {
@@ -341,24 +382,23 @@ export default function KrokAllQuestionsTest() {
                 </p>
                 
                 <div className="space-y-2">
-                  {result.answers.map((answer, answerIndex) => {
-                    const displayOption = String.fromCharCode(65 + answerIndex); // A, B, C, D, E
+                  {result.options.map((option, optionIndex) => {
                     return (
                       <div
-                        key={answer.id}
+                        key={optionIndex}
                         className={`p-2 rounded border ${
-                          answer.is_correct
+                          option.is_correct
                             ? 'bg-green-50 border-green-200 text-green-800 font-medium'
-                            : result.selectedAnswer === answer.answer_option
+                            : result.selectedAnswer === option.letter
                             ? 'bg-red-50 border-red-200 text-red-800 font-medium'
                             : 'bg-gray-50 border-gray-200 text-gray-700'
                         }`}
                       >
-                        <span className="font-medium">{displayOption}.</span> {answer.answer_text}
-                        {answer.is_correct && (
+                        <span className="font-medium">{option.letter}.</span> {option.text}
+                        {option.is_correct && (
                           <span className="ml-2 text-green-600 font-bold">✓ Правильна відповідь</span>
                         )}
-                        {result.selectedAnswer === answer.answer_option && !answer.is_correct && (
+                        {result.selectedAnswer === option.letter && !option.is_correct && (
                           <span className="ml-2 text-red-600 font-bold">✗ Ваша відповідь</span>
                         )}
                       </div>
@@ -438,19 +478,18 @@ export default function KrokAllQuestionsTest() {
                       </p>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {questionAnswers.map((answer, answerIndex) => {
-                          const displayOption = String.fromCharCode(65 + answerIndex); // A, B, C, D, E
+                        {questionAnswers.map((option, optionIndex) => {
                           return (
                             <button
-                              key={answer.id}
-                              onClick={() => handleAnswerSelect(question.id, answer.answer_option)}
+                              key={optionIndex}
+                              onClick={() => handleAnswerSelect(question.id, option.letter)}
                               className={`p-3 text-left border rounded-lg transition-all duration-200 ${
-                                selectedAnswer === answer.answer_option
+                                selectedAnswer === option.letter
                                   ? 'border-blue-500 bg-blue-100 text-gray-700 hover:bg-blue-200 hover:text-gray-700'
                                   : 'border-gray-300 hover:border-gray-300 hover:bg-blue-50 hover:text-gray-700'
                               }`}
                             >
-                              <span className="font-medium">{displayOption}.</span> {answer.answer_text}
+                              <span className="font-medium">{option.letter}.</span> {option.text}
                             </button>
                           );
                         })}
@@ -517,19 +556,18 @@ export default function KrokAllQuestionsTest() {
                   </p>
                   
                   <div className="grid grid-cols-1 gap-3">
-                    {questionAnswers.map((answer, answerIndex) => {
-                      const displayOption = String.fromCharCode(65 + answerIndex); // A, B, C, D, E
+                    {questionAnswers.map((option, optionIndex) => {
                       return (
                         <button
-                          key={answer.id}
-                          onClick={() => handleAnswerSelect(question.id, answer.answer_option)}
+                          key={optionIndex}
+                          onClick={() => handleAnswerSelect(question.id, option.letter)}
                           className={`p-3 text-left border rounded-lg transition-all duration-200 ${
-                            selectedAnswer === answer.answer_option
+                            selectedAnswer === option.letter
                               ? 'border-blue-500 bg-blue-100 text-gray-700 hover:bg-blue-200 hover:text-gray-700'
                               : 'border-gray-300 hover:border-gray-300 hover:bg-blue-50 hover:text-gray-700'
                           }`}
                         >
-                          <span className="font-medium">{displayOption}.</span> {answer.answer_text}
+                          <span className="font-medium">{option.letter}.</span> {option.text}
                         </button>
                       );
                     })}
@@ -547,9 +585,9 @@ export default function KrokAllQuestionsTest() {
               <p className="text-gray-600 mb-2 md:mb-0 text-sm">
                 Відповідей: {Object.keys(selectedAnswers).length} з {testQuestions.length}
               </p>
-              <div className="w-full md:w-40 bg-gray-200 rounded-full h-3">
+              <div className="w-full md:w-40 progress-bar">
                 <div 
-                  className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                  className="progress-fill"
                   style={{ width: `${(Object.keys(selectedAnswers).length / testQuestions.length) * 100}%` }}
                 ></div>
               </div>
@@ -581,7 +619,7 @@ export default function KrokAllQuestionsTest() {
           </p>
           
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-blue-800 mb-2">📊 Доступно питань: {questions.filter(q => answers.some(a => a.question_id === q.id)).length}</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">📊 Доступно питань: {questions.filter(q => q.options && q.options.length > 0).length}</h3>
             <p className="text-sm text-blue-600">
               Система випадково вибере 10 питань з питань, що мають варіанти відповідей
             </p>
@@ -594,13 +632,13 @@ export default function KrokAllQuestionsTest() {
 
           <Button
             onClick={startRandomTest}
-            disabled={questions.filter(q => answers.some(a => a.question_id === q.id)).length < 10}
+            disabled={questions.filter(q => q.options && q.options.length > 0).length < 10}
             className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3"
           >
             Почати тест
           </Button>
           
-          {questions.filter(q => answers.some(a => a.question_id === q.id)).length < 10 && (
+          {questions.filter(q => q.options && q.options.length > 0).length < 10 && (
             <p className="text-red-600 text-sm mt-2">
               Недостатньо питань з варіантами відповідей для тесту. Потрібно мінімум 10 питань.
             </p>

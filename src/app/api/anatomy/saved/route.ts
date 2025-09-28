@@ -7,6 +7,9 @@ import { authOptions } from '@/lib/auth';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    console.log('GET Session in /api/anatomy/saved:', session);
+    console.log('GET User ID:', session?.user?.id);
+    console.log('GET User email:', session?.user?.email);
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -18,6 +21,7 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseClientForServer();
 
     // Отримуємо збережені питання користувача з повною інформацією
+    console.log('Querying saved questions for user:', session.user.id, 'type: anatomy');
     const { data: savedQuestions, error: savedError } = await supabase
       .from('user_saved_questions')
       .select(`
@@ -30,6 +34,8 @@ export async function GET(request: NextRequest) {
       .eq('user_id', session.user.id)
       .eq('question_type', 'anatomy')
       .order('saved_at', { ascending: false });
+
+    console.log('Query result:', { savedQuestions, savedError });
 
     if (savedError) {
       console.error('Помилка отримання збережених питань з анатомії:', savedError);
@@ -69,6 +75,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    console.log('POST Session in /api/anatomy/saved:', session);
+    console.log('POST User ID:', session?.user?.id);
+    console.log('POST User email:', session?.user?.email);
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -158,6 +167,9 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    console.log('DELETE Session in /api/anatomy/saved:', session);
+    console.log('DELETE User ID:', session?.user?.id);
+    console.log('DELETE User email:', session?.user?.email);
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -168,6 +180,9 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const questionId = searchParams.get('questionId');
+    const savedQuestionId = searchParams.get('savedQuestionId'); // ID запису в таблиці збережених питань
+    console.log('DELETE questionId:', questionId);
+    console.log('DELETE savedQuestionId:', savedQuestionId);
 
     if (!questionId) {
       return NextResponse.json(
@@ -179,12 +194,30 @@ export async function DELETE(request: NextRequest) {
     const supabase = createSupabaseClientForServer();
 
     // Видаляємо зі збережених
-    const { error: deleteError } = await supabase
+    console.log('Attempting to delete question:', {
+      user_id: session.user.id,
+      question_type: 'anatomy',
+      question_id: questionId,
+      saved_question_id: savedQuestionId
+    });
+    
+    let deleteQuery = supabase
       .from('user_saved_questions')
       .delete()
       .eq('user_id', session.user.id)
-      .eq('question_type', 'anatomy')
-      .eq('question_id', questionId);
+      .eq('question_type', 'anatomy');
+
+    // Якщо є savedQuestionId, видаляємо конкретний запис
+    if (savedQuestionId) {
+      deleteQuery = deleteQuery.eq('id', savedQuestionId);
+    } else {
+      // Інакше видаляємо по question_id (стара логіка)
+      deleteQuery = deleteQuery.eq('question_id', questionId);
+    }
+
+    const { error: deleteError } = await deleteQuery;
+
+    console.log('Delete result:', { deleteError });
 
     if (deleteError) {
       console.error('Помилка видалення питання:', deleteError);

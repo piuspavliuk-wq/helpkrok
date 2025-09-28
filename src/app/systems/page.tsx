@@ -1,6 +1,6 @@
 export default function SystemsPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
       {/* Фонові візерунки */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-20 left-20 w-32 h-32 border border-blue-200 rounded-full animate-pulse"></div>

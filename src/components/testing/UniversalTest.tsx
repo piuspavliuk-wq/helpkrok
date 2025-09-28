@@ -1,22 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
-import { Bookmark, BookmarkCheck, Brain, Check, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Brain, Check, X, MoreVertical, Eye, EyeOff, Trash2 } from 'lucide-react';
 import AIExplanation from '@/components/ui/AIExplanation';
+import ConfirmationModal from '@/components/ui/confirmation-modal';
+import FolderManager from '@/components/ui/FolderManager';
 
 interface Question {
   id: number;
   question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
-  option_e: string;
-  correct_answer: string;
-  created_at: string;
+  option_a?: string;
+  option_b?: string;
+  option_c?: string;
+  option_d?: string;
+  option_e?: string;
+  correct_answer?: string;
+  created_at?: string;
+  year?: number;
+  faculty?: string;
+  category?: string;
+  difficulty?: string;
+  options?: Array<{
+    letter: string;
+    text: string;
+    is_correct: boolean;
+  }>;
   shuffledOptions?: Array<{
     originalKey: string;
     text: string;
@@ -39,9 +50,10 @@ interface SavedQuestionStatus {
 interface UniversalTestProps {
   testType: 'anatomy' | 'histology' | 'krok';
   testName: string;
+  isRandomizer?: boolean;
 }
 
-export default function UniversalTest({ testType, testName }: UniversalTestProps) {
+export default function UniversalTest({ testType, testName, isRandomizer = false }: UniversalTestProps) {
   const { data: session } = useSession();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: string}>({});
@@ -56,6 +68,12 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
   const [showAIExplanation, setShowAIExplanation] = useState(false);
   const [currentQuestionForAI, setCurrentQuestionForAI] = useState<any>(null);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
+  const [showAnswers, setShowAnswers] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [revealAllAnswers, setRevealAllAnswers] = useState(false);
+  const [enableAI, setEnableAI] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [showClearModal, setShowClearModal] = useState(false);
 
   // Завантаження питань з бази даних та автоматичний запуск тесту
   useEffect(() => {
@@ -67,16 +85,36 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
   // Автоматичний запуск тесту після завантаження питань
   useEffect(() => {
     if (questions.length > 0 && !isTestStarted && !isTestCompleted) {
+      console.log(`Запускаємо тест з ${questions.length} питаннями`);
       startTest();
+    } else if (questions.length === 0 && !isLoading) {
+      console.log('Немає питань для тесту');
     }
-  }, [questions.length, isTestStarted, isTestCompleted]);
+  }, [questions.length, isTestStarted, isTestCompleted, isLoading]);
 
-  // Завантаження статусу збережених питань
+  // Завантаження статусу збережених питань (тільки для не-randomizer тестів)
   useEffect(() => {
-    if (session?.user?.id && questions.length > 0) {
+    if (session?.user?.id && questions.length > 0 && !isRandomizer) {
       loadSavedQuestionsStatus();
     }
-  }, [session?.user?.id, questions, testType]);
+  }, [session?.user?.id, questions, testType, isRandomizer]);
+
+  // Закриття меню при кліку поза ним
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
 
   // Завантаження прогресу після створення перемішаних питань
   useEffect(() => {
@@ -111,13 +149,54 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
     }
   }, [isLoading, isTestStarted]);
 
+  // Закриваємо меню при кліку поза ним
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu && !(event.target as Element).closest('.relative')) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
   const loadQuestions = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/${testType}/questions`);
+      let url = `/api/${testType}/questions`;
+      
+      // Для КРОК тестів додаємо параметри з URL
+      if (testType === 'krok') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const year = urlParams.get('year');
+        const faculty = urlParams.get('faculty');
+        
+        // Для randomizer додаємо параметри random та limit
+        if (isRandomizer) {
+          url += '?random=true&limit=150';
+        } else {
+          if (year) url += `?year=${year}`;
+          if (faculty) url += `${year ? '&' : '?'}faculty=${faculty}`;
+        }
+      }
+      
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        setQuestions(data.questions || data);
+        const questions = data.questions || data;
+        
+        // Для КРОК питань фільтруємо тільки ті, що мають варіанти відповідей
+        if (testType === 'krok' && questions.length > 0) {
+          const validQuestions = questions.filter((q: any) => q.options && q.options.length > 0);
+          console.log(`Завантажено ${validQuestions.length} КРОК питань з ${questions.length} загальних`);
+          setQuestions(validQuestions);
+        } else {
+          console.log(`Завантажено ${questions.length} питань для ${testType}`);
+          setQuestions(questions);
+        }
       } else {
         console.error(`Помилка завантаження питань з ${testName}`);
       }
@@ -129,28 +208,41 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
   };
 
   const loadSavedQuestionsStatus = async () => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      console.log('Користувач не авторизований, пропускаємо завантаження збережених питань');
+      return;
+    }
 
+    console.log(`loadSavedQuestionsStatus для ${testType}, user_id: ${session.user.id}`);
     setLoadingSavedStatus(true);
     try {
       console.log(`Завантаження збережених питань для ${testType}...`);
       const response = await fetch(`/api/${testType}/saved`);
+      console.log(`Response status: ${response.status}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('API response data:', data);
         const savedQuestions = data.savedQuestions || [];
         const statusMap: SavedQuestionStatus = {};
         savedQuestions.forEach((item: any) => {
           // Використовуємо комбінацію question_type + question_id як ключ
           const key = `${testType}_${item.question_id}`;
           statusMap[key] = true;
+          console.log(`Added to status map: ${key}`);
         });
         console.log(`Завантажено ${savedQuestions.length} збережених питань для ${testType}`);
+        console.log('Final status map:', statusMap);
         setSavedQuestionsStatus(statusMap);
       } else {
         console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        // Не показуємо помилку користувачу, просто логуємо
+        if (response.status === 401) {
+          console.log('Користувач не авторизований для збережених питань');
+        }
       }
     } catch (error) {
       console.error(`Помилка завантаження збережених питань з ${testName}:`, error);
+      // Не показуємо помилку користувачу, просто логуємо
     } finally {
       setLoadingSavedStatus(false);
     }
@@ -197,19 +289,23 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
       return;
     }
 
+    console.log('UniversalTest toggleSaveQuestion:', { questionId, testType, user_id: session.user.id });
     setSavingQuestion(questionId);
     const key = `${testType}_${questionId}`;
     const isCurrentlySaved = savedQuestionsStatus[key];
+    console.log('Current saved status:', { key, isCurrentlySaved });
 
     try {
       let response;
       if (isCurrentlySaved) {
         // DELETE запит з query параметром
+        console.log('Attempting DELETE for question:', questionId);
         response = await fetch(`/api/${testType}/saved?questionId=${questionId}`, {
           method: 'DELETE',
         });
       } else {
         // POST запит з body
+        console.log('Attempting POST for question:', questionId);
         response = await fetch(`/api/${testType}/saved`, {
           method: 'POST',
           headers: {
@@ -221,11 +317,19 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
         });
       }
 
+      console.log('Response status:', response.status);
       if (response.ok) {
-        setSavedQuestionsStatus(prev => ({
-          ...prev,
-          [key]: !isCurrentlySaved
-        }));
+        const responseData = await response.json();
+        console.log('Response data:', responseData);
+        console.log('Updating saved status from', isCurrentlySaved, 'to', !isCurrentlySaved);
+        setSavedQuestionsStatus(prev => {
+          const newStatus = {
+            ...prev,
+            [key]: !isCurrentlySaved
+          };
+          console.log('New saved status:', newStatus);
+          return newStatus;
+        });
       } else {
         const errorData = await response.json();
         console.error('Помилка API:', errorData);
@@ -240,19 +344,32 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
   };
 
   const shuffleAnswers = (question: Question) => {
-    const options = [
-      { originalKey: 'A', text: question.option_a },
-      { originalKey: 'B', text: question.option_b },
-      { originalKey: 'C', text: question.option_c },
-      { originalKey: 'D', text: question.option_d },
-      { originalKey: 'E', text: question.option_e }
-    ];
+    // Для КРОК питань використовуємо options, для інших - option_a, option_b, etc.
+    let options;
+    
+    if (question.options && question.options.length > 0) {
+      // КРОК питання
+      options = question.options.map(opt => ({
+        originalKey: opt.letter,
+        text: opt.text
+      }));
+    } else {
+      // Анатомія/Гістологія питання
+      options = [
+        { originalKey: 'A', text: question.option_a || '' },
+        { originalKey: 'B', text: question.option_b || '' },
+        { originalKey: 'C', text: question.option_c || '' },
+        { originalKey: 'D', text: question.option_d || '' },
+        { originalKey: 'E', text: question.option_e || '' }
+      ].filter(opt => opt.text); // Видаляємо порожні варіанти
+    }
 
     // Перемішуємо масив варіантів
     const shuffled = [...options].sort(() => Math.random() - 0.5);
     
     // Знаходимо індекс правильної відповіді у перемішаному масиві
-    const correctIndex = shuffled.findIndex(option => option.originalKey === question.correct_answer);
+    const correctAnswer = question.correct_answer || (question.options?.find(opt => opt.is_correct)?.letter) || 'A';
+    const correctIndex = shuffled.findIndex(option => option.originalKey === correctAnswer);
     
     // Присвоюємо нові букви A, B, C, D, E до перемішаних варіантів
     const shuffledWithNewKeys = shuffled.map((option, index) => ({
@@ -263,7 +380,7 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
     return {
       ...question,
       shuffledOptions: shuffledWithNewKeys,
-      shuffledCorrectAnswer: shuffledWithNewKeys[correctIndex].displayKey
+      shuffledCorrectAnswer: shuffledWithNewKeys[correctIndex]?.displayKey || 'A'
     };
   };
 
@@ -283,8 +400,10 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
       [questionId]: answer
     }));
 
-    // Додаємо питання до списку відповіданих
-    setAnsweredQuestions(prev => new Set([...prev, questionId]));
+    // Додаємо питання до списку відповіданих, якщо showAnswers увімкнено
+    if (showAnswers) {
+      setAnsweredQuestions(prev => new Set([...prev, questionId]));
+    }
 
     // Зберігаємо відповідь в базі даних
     if (session?.user?.id) {
@@ -300,9 +419,15 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
         }
 
         // Визначаємо правильну відповідь (оригінальний ключ)
-        const correctAnswer = question.correct_answer;
+        let correctAnswer;
+        if (question.options && question.options.length > 0) {
+          const correctOption = question.options.find(opt => opt.is_correct);
+          correctAnswer = correctOption?.letter || 'A';
+        } else {
+          correctAnswer = question.correct_answer || 'A';
+        }
         
-        await fetch('/api/test-progress', {
+        const response = await fetch('/api/test-progress', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -314,6 +439,11 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
             correctAnswer
           }),
         });
+
+        if (response.ok) {
+          // Відправляємо подію про оновлення рейтингу
+          window.dispatchEvent(new CustomEvent('ratingUpdated'));
+        }
       } catch (error) {
         console.error('Помилка збереження відповіді:', error);
       }
@@ -331,18 +461,67 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
         originalSelectedAnswer = option?.originalKey || selectedAnswer;
       }
       
-      const correctAnswer = question.correct_answer; // Використовуємо оригінальний правильний ключ
+      // Для КРОК питань використовуємо options, для інших - correct_answer
+      let correctAnswer;
+      if (question.options && question.options.length > 0) {
+        const correctOption = question.options.find(opt => opt.is_correct);
+        correctAnswer = correctOption?.letter || 'A';
+      } else {
+        correctAnswer = question.correct_answer || 'A';
+      }
       
       return {
         questionId: question.id,
         selectedAnswer: selectedAnswer || '', // Залишаємо display ключ для відображення
-        correctAnswer: question.shuffledCorrectAnswer || question.correct_answer, // Використовуємо display ключ для відображення
+        correctAnswer: question.shuffledCorrectAnswer || correctAnswer, // Використовуємо display ключ для відображення
         isCorrect: originalSelectedAnswer === correctAnswer // Порівнюємо оригінальні ключі
       };
     });
 
     setTestResults(results);
     setIsTestCompleted(true);
+    
+    // Зберігаємо результат тесту
+    saveTestResult(results);
+  };
+
+  const saveTestResult = async (results: TestResult[]) => {
+    try {
+      const correctAnswers = results.filter(r => r.isCorrect).length;
+      const totalQuestions = results.length;
+      const score = Math.round((correctAnswers / totalQuestions) * 100);
+
+      // Зберігаємо спробу тесту
+      await fetch('/api/tests/attempts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topic_id: null,
+          attempt_type: testType,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          score: score,
+          time_spent: 0, // Можна додати таймер
+          completed_at: new Date().toISOString(),
+        }),
+      });
+
+      // Оновлюємо рейтинг користувача
+      await fetch('/api/user/update-rating', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Відправляємо подію про оновлення рейтингу
+      window.dispatchEvent(new CustomEvent('ratingUpdated'));
+
+    } catch (error) {
+      console.error('Error saving test result:', error);
+    }
   };
 
   const resetTest = () => {
@@ -353,39 +532,84 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
     setAnsweredQuestions(new Set());
   };
 
-  const clearAnswers = async () => {
-    if (!session?.user?.id) {
-      alert('Будь ласка, увійдіть в систему для видалення відповідей');
-      return;
-    }
-
-    if (confirm('Ви впевнені, що хочете видалити всі свої відповіді? Цю дію неможливо скасувати.')) {
-      try {
-        const response = await fetch(`/api/test-progress?testType=${testType}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          setSelectedAnswers({});
-          setAnsweredQuestions(new Set());
-          alert('Всі відповіді видалено');
-        } else {
-          throw new Error('Помилка видалення відповідей');
-        }
-      } catch (error) {
-        console.error('Помилка видалення відповідей:', error);
-        alert('Помилка видалення відповідей');
-      }
+  const toggleShowAnswers = () => {
+    setShowAnswers(!showAnswers);
+    if (!showAnswers) {
+      // Якщо увімкнюємо показ відповідей, додаємо всі відповідані питання
+      const answeredIds = new Set(Object.keys(selectedAnswers).map(Number));
+      setAnsweredQuestions(answeredIds);
+    } else {
+      // Якщо вимикаємо показ відповідей, приховуємо всі відповіді
+      setAnsweredQuestions(new Set());
     }
   };
 
+  const toggleRevealAllAnswers = () => {
+    setRevealAllAnswers(!revealAllAnswers);
+    if (!revealAllAnswers) {
+      // Якщо увімкнюємо розкриття всіх відповідей, додаємо всі питання
+      const allQuestionIds = new Set(shuffledQuestions.map(q => q.id));
+      setAnsweredQuestions(allQuestionIds);
+    } else {
+      // Якщо вимикаємо розкриття всіх відповідей, залишаємо тільки ті, на які користувач відповів
+      const answeredIds = new Set(Object.keys(selectedAnswers).map(Number));
+      setAnsweredQuestions(answeredIds);
+    }
+  };
+
+  const toggleAI = () => {
+    setEnableAI(!enableAI);
+  };
+
+  const handleClearAnswersClick = () => {
+    setShowMenu(false);
+    setShowClearModal(true);
+  };
+
+  const handleClearAnswersConfirm = async () => {
+    if (!session?.user?.id) {
+      alert('Будь ласка, увійдіть в систему для видалення відповідей');
+      setShowClearModal(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/test-progress?testType=${testType}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setSelectedAnswers({});
+        setAnsweredQuestions(new Set());
+      } else {
+        throw new Error('Помилка видалення відповідей');
+      }
+    } catch (error) {
+      console.error('Помилка видалення відповідей:', error);
+      alert('Помилка видалення відповідей');
+    } finally {
+      setShowClearModal(false);
+    }
+  };
+
+  const handleClearAnswersCancel = () => {
+    setShowClearModal(false);
+  };
+
   const getAnswerText = (question: Question, optionKey: string) => {
+    // Для КРОК питань використовуємо options
+    if (question.options && question.options.length > 0) {
+      const option = question.options.find(opt => opt.letter === optionKey);
+      return option?.text || '';
+    }
+    
+    // Для анатомії/гістології використовуємо option_a, option_b, etc.
     switch (optionKey) {
-      case 'A': return question.option_a;
-      case 'B': return question.option_b;
-      case 'C': return question.option_c;
-      case 'D': return question.option_d;
-      case 'E': return question.option_e;
+      case 'A': return question.option_a || '';
+      case 'B': return question.option_b || '';
+      case 'C': return question.option_c || '';
+      case 'D': return question.option_d || '';
+      case 'E': return question.option_e || '';
       default: return '';
     }
   };
@@ -415,15 +639,21 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
         key: option.displayKey,
         text: option.text
       }));
+    } else if (question.options && question.options.length > 0) {
+      // Для КРОК питань використовуємо options
+      options = question.options.map((option: any) => ({
+        key: option.letter,
+        text: option.text
+      }));
     } else {
       // Якщо немає перемішаних опцій, використовуємо стандартні
       options = [
-        { key: 'A', text: question.option_a },
-        { key: 'B', text: question.option_b },
-        { key: 'C', text: question.option_c },
-        { key: 'D', text: question.option_d },
-        { key: 'E', text: question.option_e }
-      ];
+        { key: 'A', text: question.option_a || '' },
+        { key: 'B', text: question.option_b || '' },
+        { key: 'C', text: question.option_c || '' },
+        { key: 'D', text: question.option_d || '' },
+        { key: 'E', text: question.option_e || '' }
+      ].filter(opt => opt.text); // Видаляємо порожні варіанти
     }
     
     setCurrentQuestionForAI({
@@ -437,8 +667,18 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
 
   const getAnswerButtonClass = (answerKey: string, question: any, selectedAnswer?: string) => {
     const isSelected = selectedAnswer === answerKey;
-    const isAnswered = answeredQuestions.has(question.id);
-    const isCorrectAnswer = answerKey === (question.shuffledCorrectAnswer || question.correct_answer);
+    const isAnswered = answeredQuestions.has(question.id) || revealAllAnswers;
+    
+    // Визначаємо правильну відповідь
+    let correctAnswer;
+    if (question.options && question.options.length > 0) {
+      const correctOption = question.options.find((opt: any) => opt.is_correct);
+      correctAnswer = correctOption?.letter || 'A';
+    } else {
+      correctAnswer = question.correct_answer || 'A';
+    }
+    
+    const isCorrectAnswer = answerKey === (question.shuffledCorrectAnswer || correctAnswer);
     
     // Якщо питання ще не відповідано
     if (!isAnswered) {
@@ -460,7 +700,7 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-600">Завантаження питань з {testName}...</p>
@@ -469,13 +709,14 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
     );
   }
 
+
   if (isTestCompleted) {
     const correctAnswers = getCorrectAnswersCount();
     const totalQuestions = shuffledQuestions.length;
     const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
         <div className="max-w-4xl mx-auto">
           <Card className="mb-6">
             <CardHeader className="text-center">
@@ -526,25 +767,23 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
                             {question.question_text}
                           </h3>
                           <div className="flex items-center space-x-2 ml-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => toggleSaveQuestion(question.id)}
-                              disabled={savingQuestion === question.id}
-                              className={`${
-                                savedQuestionsStatus[`${testType}_${question.id}`] 
-                                  ? 'bg-blue-100 border-blue-500 text-gray-700 hover:bg-blue-200 hover:text-gray-700' 
-                                  : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-gray-700'
-                              }`}
-                            >
-                              {savingQuestion === question.id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                              ) : savedQuestionsStatus[`${testType}_${question.id}`] ? (
-                                <BookmarkCheck className="w-4 h-4" />
-                              ) : (
-                                <Bookmark className="w-4 h-4" />
-                              )}
-                            </Button>
+                            {!isRandomizer && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleSaveQuestion(question.id)}
+                                disabled={savingQuestion === question.id}
+                                title={!session?.user?.id ? 'Увійдіть в систему для збереження питань' : ''}
+                              >
+                                {savingQuestion === question.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                                ) : savedQuestionsStatus[`${testType}_${question.id}`] ? (
+                                  <BookmarkCheck className="w-4 h-4" />
+                                ) : (
+                                  <Bookmark className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -604,7 +843,7 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
       <div className="max-w-4xl mx-auto pt-16 md:pt-20">
         {/* Заголовок та перемикач */}
         <Card className="mb-6">
@@ -612,6 +851,11 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl font-bold text-blue-800">
                 Тест з {testName} ({shuffledQuestions.length} питань)
+                {isRandomizer && (
+                  <span className="text-sm font-normal text-gray-600 ml-2">
+                    з бази 2991 питань
+                  </span>
+                )}
               </CardTitle>
               <div className="flex items-center space-x-3">
                 {shuffledQuestions.length > 0 && (
@@ -619,16 +863,13 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
                     Питання 1-{shuffledQuestions.length}
                   </div>
                 )}
-                {session?.user?.id && Object.keys(selectedAnswers).length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearAnswers}
-                    className="text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    🗑️ Видалити відповіді
-                  </Button>
+                {!session?.user?.id && !isRandomizer && (
+                  <div className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                    🔒 Увійдіть для збереження питань
+                  </div>
                 )}
+                
+                
               </div>
             </div>
           </CardHeader>
@@ -648,31 +889,42 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
                       {question.question_text}
                     </CardTitle>
                     <div className="flex items-center space-x-2 ml-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <button
                         onClick={() => toggleSaveQuestion(question.id)}
                         disabled={savingQuestion === question.id}
-                        className={`${
-                          savedQuestionsStatus[`${testType}_${question.id}`] 
-                            ? 'bg-blue-100 border-blue-500 text-gray-700 hover:bg-blue-200 hover:text-gray-700' 
-                            : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-gray-700'
-                        }`}
+                        title={!session?.user?.id ? 'Увійдіть в систему для збереження питань' : ''}
+                        className="p-2 hover:bg-gray-100 rounded focus:outline-none focus:ring-0 transition-colors duration-200 disabled:opacity-50"
                       >
                         {savingQuestion === question.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
                         ) : savedQuestionsStatus[`${testType}_${question.id}`] ? (
-                          <BookmarkCheck className="w-4 h-4" />
+                          <BookmarkCheck className="w-4 h-4 text-blue-600" />
                         ) : (
-                          <Bookmark className="w-4 h-4" />
+                          <Bookmark className="w-4 h-4 text-gray-400" />
                         )}
-                      </Button>
+                      </button>
+                      
+                      {session?.user?.id && (
+                        <div className="relative">
+                          <FolderManager
+                            questionId={question.id}
+                            questionType={testType}
+                            isSaved={savedQuestionsStatus[`${testType}_${question.id}`] || false}
+                            onSaveChange={(saved) => {
+                              setSavedQuestionsStatus(prev => ({
+                                ...prev,
+                                [`${testType}_${question.id}`]: saved
+                              }));
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {question.shuffledOptions?.map((option, optionIndex) => {
-                    const isAnswered = answeredQuestions.has(question.id);
+                    const isAnswered = answeredQuestions.has(question.id) || revealAllAnswers;
                     const isSelected = selectedAnswer === option.displayKey;
                     const isCorrectAnswer = option.displayKey === (question.shuffledCorrectAnswer || question.correct_answer);
                     
@@ -696,7 +948,7 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
                       </Button>
                     );
                   }) || ['A', 'B', 'C', 'D', 'E'].map(option => {
-                    const isAnswered = answeredQuestions.has(question.id);
+                    const isAnswered = answeredQuestions.has(question.id) || revealAllAnswers;
                     const isSelected = selectedAnswer === option;
                     const isCorrectAnswer = option === question.correct_answer;
                     
@@ -721,18 +973,20 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
                     );
                   })}
                   
-                  {/* Кнопка AI Пояснення */}
-                  <div className="mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => showAIExplanationForQuestion(question)}
-                      className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
-                    >
-                      <Brain className="w-4 h-4 mr-2" />
-                      🤖 Отримати AI Пояснення
-                    </Button>
-                  </div>
+                  {/* Кнопка AI Пояснення - коли AI увімкнено або після завершення тесту */}
+                  {(enableAI || isTestCompleted) && (
+                    <div className="mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => showAIExplanationForQuestion(question)}
+                        className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                      >
+                        <Brain className="w-4 h-4 mr-2" />
+                        🤖 Згенерувати AI відповідь
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -753,6 +1007,84 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
           />
         )}
 
+        {/* Фіксована кнопка меню в правому верхньому куті */}
+        <div className="fixed top-4 right-4 z-[9999]">
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-3 hover:bg-white/80 bg-white/90 backdrop-blur-sm shadow-lg border border-gray-200 rounded focus:outline-none focus:ring-0 transition-colors duration-200"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]">
+                <div className="py-2">
+                  {/* Показувати відповіді */}
+                  <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <div className="flex items-center space-x-3">
+                      {showAnswers ? <Eye className="w-4 h-4 text-blue-600" /> : <EyeOff className="w-4 h-4 text-gray-400" />}
+                      <span className="text-sm font-medium text-gray-700">Показувати відповіді</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showAnswers}
+                        onChange={toggleShowAnswers}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  
+                  {/* Розкрити всі відповіді */}
+                  <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <div className="flex items-center space-x-3">
+                      <Eye className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-medium text-gray-700">Розкрити всі відповіді</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={revealAllAnswers}
+                        onChange={toggleRevealAllAnswers}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  
+                  {/* AI пояснення */}
+                  <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                    <div className="flex items-center space-x-3">
+                      <Brain className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm font-medium text-gray-700">AI пояснення</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enableAI}
+                        onChange={toggleAI}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  
+                  {/* Видалити всі відповіді */}
+                  <div 
+                    className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                    onClick={handleClearAnswersClick}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                    <span className="text-sm font-medium text-red-600 ml-3">Видалити всі відповіді</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Прогрес-бар і кнопка завершення - закріплені знизу на мобільних, зверху на ПК */}
         <div className="test-progress-bar fixed bottom-0 left-0 right-0 md:fixed md:top-0 md:left-64 md:right-0 md:w-auto md:h-[50px] bg-white md:bg-blue-50 md:backdrop-blur-sm border-t md:border-b border-gray-200 md:border-gray-200 shadow-lg md:shadow-sm p-3 md:px-6 md:py-2 md:pb-3 z-[200] relative">
           <div className="text-center md:flex md:items-center md:justify-between md:max-w-4xl md:mx-auto md:w-full">
@@ -763,9 +1095,9 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
               <p className="text-gray-500 text-xs mb-2 md:mb-0">
                 Прогрес: {Math.round((Object.keys(selectedAnswers).length / shuffledQuestions.length) * 100)}%
               </p>
-              <div className="w-full sm:w-48 md:w-64 lg:w-80 xl:w-96 bg-gray-200 rounded-full h-3">
+              <div className="w-full sm:w-48 md:w-64 lg:w-80 xl:w-96 progress-bar">
                 <div 
-                  className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                  className="progress-fill"
                   style={{ width: `${(Object.keys(selectedAnswers).length / shuffledQuestions.length) * 100}%` }}
                 ></div>
               </div>
@@ -780,6 +1112,17 @@ export default function UniversalTest({ testType, testName }: UniversalTestProps
           </div>
         </div>
       </div>
+
+      {/* Модальне вікно підтвердження видалення всіх відповідей */}
+      <ConfirmationModal
+        isOpen={showClearModal}
+        onClose={handleClearAnswersCancel}
+        onConfirm={handleClearAnswersConfirm}
+        title="Видалення всіх відповідей"
+        message="Ви впевнені, що хочете видалити всі свої відповіді? Цю дію неможливо скасувати."
+        confirmText="Видалити"
+        cancelText="Скасувати"
+      />
     </div>
   );
 }

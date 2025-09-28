@@ -1,165 +1,109 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+// API для роботи з прогресом користувача
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-export async function PUT(request: NextRequest) {
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// GET - отримати прогрес користувача
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { topic_id, video_progress, video_completed, test_completed, test_score } = body
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId') || 'test-user-123'; // Для тестування
+    const year = searchParams.get('year');
+    const faculty = searchParams.get('faculty') || 'medical';
 
-    if (!topic_id) {
-      return NextResponse.json(
-        { error: 'ID теми обов\'язковий' },
-        { status: 400 }
-      )
-    }
-
-    // Отримуємо токен з cookies
-    const token = request.cookies.get('auth-token')?.value
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Не автентифікований' },
-        { status: 401 }
-      )
-    }
-
-    // Тут має бути логіка валідації токена та отримання user_id
-    // Для спрощення поки що використовуємо заглушку
-    const userId = 'temp-user-id' // В реальному додатку це має бути з токена
-
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'База даних недоступна' },
-        { status: 500 }
-      )
-    }
-
-    // Перевіряємо чи існує запис прогресу
-    const { data: existingProgress, error: fetchError } = await supabase
-      .from('user_topic_progress')
+    let query = supabase
+      .from('user_krok_progress')
       .select('*')
-      .eq('user_id', userId)
-      .eq('topic_id', topic_id)
-      .single()
+      .eq('user_id', userId);
 
-    const updateData = {
-      video_progress: video_progress !== undefined ? video_progress : 0,
-      video_completed: video_completed !== undefined ? video_completed : false,
-      test_completed: test_completed !== undefined ? test_completed : false,
-      test_score: test_score !== undefined ? test_score : null,
-      last_accessed: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    if (year) {
+      query = query.eq('year', parseInt(year));
+    }
+    if (faculty) {
+      query = query.eq('faculty', faculty);
     }
 
-    let result
+    const { data: progress, error } = await query;
 
-    if (existingProgress) {
-      // Оновлюємо існуючий запис
-      const { data: updatedProgress, error: updateError } = await supabase
-        .from('user_topic_progress')
-        .update(updateData)
-        .eq('id', existingProgress.id)
-        .select()
-        .single()
-
-      if (updateError) {
-        console.error('Error updating progress:', updateError)
-        return NextResponse.json(
-          { error: 'Помилка при оновленні прогресу' },
-          { status: 500 }
-        )
-      }
-
-      result = updatedProgress
-    } else {
-      // Створюємо новий запис
-      const { data: newProgress, error: createError } = await supabase
-        .from('user_topic_progress')
-        .insert({
-          user_id: userId,
-          topic_id,
-          ...updateData,
-        })
-        .select()
-        .single()
-
-      if (createError) {
-        console.error('Error creating progress:', createError)
-        return NextResponse.json(
-          { error: 'Помилка при створенні запису прогресу' },
-          { status: 500 }
-        )
-      }
-
-      result = newProgress
+    if (error) {
+      console.error('Помилка отримання прогресу:', error);
+      return NextResponse.json({ error: 'Помилка отримання прогресу' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      progress: result,
-    })
+      progress: progress || []
+    });
+
   } catch (error) {
-    console.error('Progress update error:', error)
-    return NextResponse.json(
-      { error: 'Внутрішня помилка сервера' },
-      { status: 500 }
-    )
+    console.error('Помилка API:', error);
+    return NextResponse.json({ error: 'Внутрішня помилка сервера' }, { status: 500 });
   }
 }
 
-export async function GET(request: NextRequest) {
+// POST - оновити прогрес користувача
+export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const topicId = searchParams.get('topic_id')
+    const { userId, year, faculty, completedQuestions, totalQuestions } = await request.json();
 
-    // Отримуємо токен з cookies
-    const token = request.cookies.get('auth-token')?.value
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Не автентифікований' },
-        { status: 401 }
-      )
+    if (!userId || !year || !faculty || completedQuestions === undefined || !totalQuestions) {
+      return NextResponse.json({ error: 'Відсутні обов\'язкові поля' }, { status: 400 });
     }
 
-    // Тут має бути логіка валідації токена та отримання user_id
-    const userId = 'temp-user-id' // В реальному додатку це має бути з токена
-
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'База даних недоступна' },
-        { status: 500 }
-      )
-    }
-
-    let query = supabase
-      .from('user_topic_progress')
-      .select('*')
+    // Перевіряємо чи існує запис
+    const { data: existing } = await supabase
+      .from('user_krok_progress')
+      .select('id')
       .eq('user_id', userId)
+      .eq('year', year)
+      .eq('faculty', faculty)
+      .single();
 
-    if (topicId) {
-      query = query.eq('topic_id', topicId)
-    }
+    let result;
+    if (existing) {
+      // Оновлюємо існуючий запис
+      const { data, error } = await supabase
+        .from('user_krok_progress')
+        .update({
+          completed_questions: completedQuestions,
+          total_questions: totalQuestions,
+          last_updated: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
 
-    const { data: progress, error } = await query
+      if (error) throw error;
+      result = data;
+    } else {
+      // Створюємо новий запис
+      const { data, error } = await supabase
+        .from('user_krok_progress')
+        .insert({
+          user_id: userId,
+          year: year,
+          faculty: faculty,
+          completed_questions: completedQuestions,
+          total_questions: totalQuestions
+        })
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Error fetching progress:', error)
-      return NextResponse.json(
-        { error: 'Помилка при отриманні прогресу' },
-        { status: 500 }
-      )
+      if (error) throw error;
+      result = data;
     }
 
     return NextResponse.json({
       success: true,
-      progress: topicId ? progress?.[0] || null : progress || [],
-    })
+      progress: result
+    });
+
   } catch (error) {
-    console.error('Progress fetch error:', error)
-    return NextResponse.json(
-      { error: 'Внутрішня помилка сервера' },
-      { status: 500 }
-    )
+    console.error('Помилка оновлення прогресу:', error);
+    return NextResponse.json({ error: 'Помилка оновлення прогресу' }, { status: 500 });
   }
 }

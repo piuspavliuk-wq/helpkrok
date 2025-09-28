@@ -8,7 +8,6 @@ import UserProfile from '@/components/auth/UserProfile'
 import ProfileEditForm from '@/components/profile/ProfileEditForm'
 import StatisticsTab from '@/components/profile/StatisticsTab'
 import RatingTab from '@/components/profile/RatingTab'
-import SavedTab from '@/components/profile/SavedTab'
 import ScheduleTab from '@/components/profile/ScheduleTab'
 
 export default function ProfilePage() {
@@ -24,9 +23,9 @@ export default function ProfilePage() {
   }, [session, status, router])
 
   const renderTabContent = () => {
-    // Для основної сторінки профілю завжди показуємо форму редагування
+    // Для основної сторінки профілю за замовчуванням показуємо розклад
     if (pathname === '/profile') {
-      return <ProfileEditForm />
+      return <ScheduleTab />
     }
     
     switch (pathname) {
@@ -34,18 +33,18 @@ export default function ProfilePage() {
         return <StatisticsTab />
       case '/profile/rating':
         return <RatingTab />
-      case '/profile/saved':
-        return <SavedTab />
       case '/profile/schedule':
         return <ScheduleTab />
-      default:
+      case '/profile/edit':
         return <ProfileEditForm />
+      default:
+        return <ScheduleTab />
     }
   }
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     )
@@ -56,7 +55,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
       {/* Фонові візерунки */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-20 left-20 w-32 h-32 border border-blue-200 rounded-full animate-pulse"></div>
@@ -71,14 +70,6 @@ export default function ProfilePage() {
       
       <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8 relative z-10">
         <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Профіль
-            </h1>
-            <p className="mt-2 text-gray-600">
-              Керуйте своїм профілем та налаштуваннями
-            </p>
-          </div>
 
           <div className="max-w-6xl mx-auto">
             {renderTabContent()}

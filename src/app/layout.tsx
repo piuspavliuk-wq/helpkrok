@@ -78,11 +78,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="uk">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`} style={{backgroundColor: 'var(--background)'}}>
         <SessionProvider>
           <div className="min-h-screen">
             <Sidebar />
-            <main className="bg-white pb-20 min-h-screen md:pl-64">
+            <main className="min-h-screen md:pl-64">
               {children}
             </main>
           </div>

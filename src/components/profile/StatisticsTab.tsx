@@ -215,9 +215,9 @@ export default function StatisticsTab() {
               <span>Прогрес навчання</span>
               <span>{(statistics.averagePercentage || 0).toFixed(1)}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="progress-bar">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-500"
+                className="progress-fill bg-blue-500"
                 style={{ width: `${Math.min(statistics.averagePercentage || 0, 100)}%` }}
               ></div>
             </div>

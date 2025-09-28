@@ -7,8 +7,12 @@ import { authOptions } from '@/lib/auth';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    console.log('Session in /api/krok/saved:', session);
+    console.log('User ID:', session?.user?.id);
+    console.log('User email:', session?.user?.email);
     
     if (!session?.user?.id) {
+      console.log('No session or user ID found');
       return NextResponse.json(
         { error: 'Необхідна авторизація' },
         { status: 401 }
@@ -16,24 +20,22 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createSupabaseClientForServer();
+    console.log('Supabase client created');
 
-    // Отримуємо збережені питання користувача з повною інформацією
+    // Отримуємо збережені питання користувача (спрощена версія без JOIN)
+    console.log('Querying user_saved_krok_questions for user:', session.user.id);
     const { data: savedQuestions, error: savedError } = await supabase
       .from('user_saved_krok_questions')
       .select(`
         id,
         saved_at,
         notes,
-        krok_questions (
-          id,
-          question_number,
-          question_text,
-          category,
-          difficulty_level
-        )
+        question_id
       `)
       .eq('user_id', session.user.id)
       .order('saved_at', { ascending: false });
+
+    console.log('Query result:', { savedQuestions, savedError });
 
     if (savedError) {
       console.error('Помилка отримання збережених питань:', savedError);
@@ -43,32 +45,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Отримуємо відповіді для збережених питань
-    const questionIds = savedQuestions?.map(sq => sq.krok_questions?.id).filter(Boolean) || [];
-    console.log('Saved questions:', savedQuestions?.length);
-    console.log('Question IDs:', questionIds);
-    let answers = [];
-    
-    if (questionIds.length > 0) {
-      const { data: answersData, error: answersError } = await supabase
-        .from('krok_answers')
-        .select('*')
-        .in('question_id', questionIds)
-        .order('question_id, answer_option');
+    // Форматуємо відповідь у формат, сумісний з існуючими компонентами
+    const formattedSavedQuestions = savedQuestions?.map(sq => ({
+      id: sq.id,
+      saved_at: sq.saved_at,
+      notes: sq.notes,
+      question_id: sq.question_id
+    })) || [];
 
-      if (answersError) {
-        console.error('Помилка отримання відповідей:', answersError);
-      } else {
-        answers = answersData || [];
-        console.log('Answers loaded:', answers.length);
-      }
-    }
+    console.log('Saved questions:', formattedSavedQuestions.length);
 
     return NextResponse.json({
       success: true,
-      savedQuestions: savedQuestions || [],
-      answers: answers,
-      totalSaved: savedQuestions?.length || 0
+      savedQuestions: formattedSavedQuestions,
+      totalSaved: formattedSavedQuestions.length
     });
 
   } catch (error) {
@@ -103,9 +93,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createSupabaseClientForServer();
 
-    // Перевіряємо, чи існує питання
+    // Перевіряємо, чи існує питання в єдиній таблиці
     const { data: question, error: questionError } = await supabase
-      .from('krok_questions')
+      .from('krok_questions_unified')
       .select('id')
       .eq('id', questionId)
       .single();

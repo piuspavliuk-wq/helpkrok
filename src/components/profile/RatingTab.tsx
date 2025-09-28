@@ -47,6 +47,20 @@ export default function RatingTab() {
     }
   }, [session])
 
+  // Додаємо слухач для оновлення рейтингу
+  useEffect(() => {
+    const handleRatingUpdate = () => {
+      fetchRankingData()
+    }
+
+    // Слухаємо події оновлення рейтингу
+    window.addEventListener('ratingUpdated', handleRatingUpdate)
+    
+    return () => {
+      window.removeEventListener('ratingUpdated', handleRatingUpdate)
+    }
+  }, [])
+
   const fetchRankingData = async () => {
     try {
       setLoading(true)
@@ -233,6 +247,12 @@ export default function RatingTab() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Рейтинг</h2>
         <div className="flex gap-2">
+          <button
+            onClick={fetchRankingData}
+            className="px-3 py-1 rounded-md text-sm font-medium bg-green-500 text-white hover:bg-green-600 transition-colors"
+          >
+            🔄 Оновити
+          </button>
           {(['overall', 'medical', 'pharmaceutical'] as const).map((tab) => (
             <button
               key={tab}
@@ -318,18 +338,30 @@ export default function RatingTab() {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-6">
+              {/* Desktop Stats */}
+              <div className="hidden sm:flex items-center space-x-2 sm:space-x-4 lg:space-x-6 flex-shrink-0">
                 <div className="text-center">
-                  <p className="text-sm text-gray-500">Тестів</p>
-                  <p className="font-medium text-gray-900">{user.testsCompleted}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Тестів</p>
+                  <p className="font-medium text-gray-900 text-sm sm:text-base">{user.testsCompleted}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-500">Середній бал</p>
-                  <p className="font-medium text-gray-900">{user.averageScore.toFixed(1)}%</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Середній бал</p>
+                  <p className="font-medium text-gray-900 text-sm sm:text-base">{user.averageScore.toFixed(1)}%</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-500">Очки</p>
-                  <p className="font-bold text-gray-900">{user.points}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Очки</p>
+                  <p className="font-bold text-gray-900 text-sm sm:text-base">{user.points}</p>
+                </div>
+              </div>
+
+              {/* Mobile Stats */}
+              <div className="sm:hidden flex flex-col items-end space-y-1">
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Очки</p>
+                  <p className="font-bold text-gray-900 text-sm">{user.points}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">{user.testsCompleted} тестів • {user.averageScore.toFixed(1)}%</p>
                 </div>
               </div>
             </div>
@@ -337,6 +369,111 @@ export default function RatingTab() {
         </div>
       </div>
 
+      {/* Achievements Section */}
+      {rankingData.achievements && rankingData.achievements.length > 0 && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
+            Досягнення
+          </h3>
+          
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-medium text-gray-500">Досягнення</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500">Опис</th>
+                  <th className="text-center py-3 px-4 font-medium text-gray-500">Очки</th>
+                  <th className="text-center py-3 px-4 font-medium text-gray-500">Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rankingData.achievements.map((achievement) => (
+                  <tr key={achievement.id} className="border-b border-gray-100">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{achievement.icon}</span>
+                      <div>
+                        <p className="font-medium text-gray-900">{achievement.title}</p>
+                      </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600">{achievement.description}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        +{achievement.points}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {achievement.unlocked ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          ✅ Отримано
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          ⏳ Заблоковано
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-3">
+            {rankingData.achievements.map((achievement) => (
+              <div
+                key={achievement.id}
+                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                  achievement.unlocked
+                    ? 'bg-green-50 border-green-200 shadow-md'
+                    : 'bg-gray-50 border-gray-200 opacity-60'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl flex-shrink-0">{achievement.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className={`font-medium text-sm ${
+                        achievement.unlocked ? 'text-gray-900' : 'text-gray-500'
+                      }`}>
+                        {achievement.title}
+                      </h4>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        achievement.unlocked 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {achievement.unlocked ? '✅' : '⏳'}
+                      </span>
+                    </div>
+                    <p className={`text-xs ${
+                      achievement.unlocked ? 'text-gray-600' : 'text-gray-400'
+                    } mb-2`}>
+                      {achievement.description}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-medium ${
+                        achievement.unlocked ? 'text-green-600' : 'text-gray-400'
+                      }`}>
+                        +{achievement.points} очок
+                      </span>
+                      {achievement.unlocked && achievement.unlockedAt && (
+                        <span className="text-xs text-gray-500">
+                          {new Date(achievement.unlockedAt).toLocaleDateString('uk-UA')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   )

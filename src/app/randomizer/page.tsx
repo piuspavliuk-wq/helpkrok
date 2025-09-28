@@ -1,8 +1,8 @@
-import KrokAllQuestionsTest from '@/components/testing/KrokAllQuestionsTest';
+import RandomizerTest from '@/components/testing/RandomizerTest';
 
 export default function RandomizerPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
       {/* Фонові візерунки */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-20 left-20 w-32 h-32 border border-blue-200 rounded-full animate-pulse"></div>
@@ -14,7 +14,7 @@ export default function RandomizerPage() {
       </div>
       
       <div className="p-2 md:p-8 relative z-10">
-        <KrokAllQuestionsTest />
+        <RandomizerTest />
       </div>
     </div>
   )

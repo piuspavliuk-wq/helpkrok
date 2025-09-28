@@ -120,6 +120,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Оновлюємо статистику та рейтинг після збереження відповіді
+    try {
+      await updateUserStatisticsAndRating(session.user.id, supabase);
+    } catch (statsError) {
+      console.error('Error updating statistics and rating:', statsError);
+      // Не зупиняємо процес, якщо статистика не оновилася
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Відповідь збережено',
@@ -159,11 +167,12 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = createSupabaseClientForServer();
 
-    // Використовуємо функцію для видалення відповідей та оновлення статистики
-    const { error } = await supabase.rpc('clear_user_answers_and_update_stats', {
-      p_user_id: session.user.id,
-      p_test_type: testType
-    });
+    // Видаляємо відповіді з таблиці
+    const { error } = await supabase
+      .from('user_test_progress')
+      .delete()
+      .eq('user_id', session.user.id)
+      .eq('test_type', testType);
 
     if (error) {
       console.error('Помилка видалення прогресу:', error);
@@ -184,5 +193,69 @@ export async function DELETE(request: NextRequest) {
       { error: 'Внутрішня помилка сервера' },
       { status: 500 }
     );
+  }
+}
+
+// Функція для оновлення статистики та рейтингу користувача
+async function updateUserStatisticsAndRating(userId: string, supabase: any) {
+  try {
+    // Отримуємо статистику з user_test_progress
+    const { data: progressData } = await supabase
+      .from('user_test_progress')
+      .select('is_correct')
+      .eq('user_id', userId)
+    
+    if (progressData) {
+      const totalAnswered = progressData.length
+      const correctAnswers = progressData.filter((p: any) => p.is_correct).length
+      const incorrectAnswers = totalAnswered - correctAnswers
+      const averagePercentage = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100 * 100) / 100 : 0
+      
+      // Отримуємо кількість завершених тестів
+      const { data: testAttempts } = await supabase
+        .from('test_attempts')
+        .select('id')
+        .eq('user_id', userId)
+        .not('completed_at', 'is', null)
+      
+      const completedTests = testAttempts?.length || 0
+      
+      // Оновлюємо статистику
+      await supabase
+        .from('user_statistics')
+        .upsert({
+          user_id: userId,
+          total_questions_answered: totalAnswered,
+          correct_answers: correctAnswers,
+          incorrect_answers: incorrectAnswers,
+          average_percentage: averagePercentage,
+          ratio_percentage: averagePercentage,
+          total_tests: completedTests,
+          completed_tests: completedTests,
+          last_calculated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+
+      // Оновлюємо рейтинг
+      const totalPoints = correctAnswers + (completedTests * 10) + (averagePercentage * 5)
+      
+      await supabase
+        .from('user_ratings')
+        .upsert({
+          user_id: userId,
+          total_points: totalPoints,
+          tests_completed: completedTests,
+          average_score: averagePercentage,
+          last_updated: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+    }
+  } catch (error) {
+    console.error('Error updating user statistics and rating:', error)
+    throw error
   }
 }

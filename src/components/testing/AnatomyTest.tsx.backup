@@ -302,7 +302,7 @@ export default function AnatomyTest() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-600">Завантаження питань з анатомії...</p>
@@ -313,7 +313,7 @@ export default function AnatomyTest() {
 
   if (!isTestStarted && !isTestCompleted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
@@ -363,7 +363,7 @@ export default function AnatomyTest() {
     const percentage = Math.round((correctCount / questions.length) * 100);
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
         <div className="max-w-4xl mx-auto">
           <Card className="mb-6">
             <CardHeader className="text-center">
@@ -467,7 +467,7 @@ export default function AnatomyTest() {
 
   if (isTestStarted && !isTestCompleted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
         <div className="max-w-6xl mx-auto">
           {/* Заголовок та перемикач */}
           <Card className="mb-6">
@@ -586,7 +586,7 @@ export default function AnatomyTest() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-25 to-blue-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
         <p className="text-xl text-gray-600">Завантаження питань з анатомії...</p>
