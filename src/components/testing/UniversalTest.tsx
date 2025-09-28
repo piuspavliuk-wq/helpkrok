@@ -48,7 +48,7 @@ interface SavedQuestionStatus {
 }
 
 interface UniversalTestProps {
-  testType: 'anatomy' | 'histology' | 'krok' | 'biology';
+  testType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology';
   testName: string;
   isRandomizer?: boolean;
 }
