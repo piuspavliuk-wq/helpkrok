@@ -148,7 +148,7 @@ async function updateUserStatistics(userId: string, supabase: any) {
     
     if (progressData) {
       const totalAnswered = progressData.length
-      const correctAnswers = progressData.filter(p => p.is_correct).length
+      const correctAnswers = progressData.filter((p: { is_correct: boolean }) => p.is_correct).length
       const incorrectAnswers = totalAnswered - correctAnswers
       const averagePercentage = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100 * 100) / 100 : 0
       
