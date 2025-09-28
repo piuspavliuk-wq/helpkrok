@@ -31,6 +31,8 @@ cp env.example .env.local
 
 ### 2.2 Налаштування змінних середовища
 
+**ВАЖЛИВО**: Проект налаштований для PostgreSQL (Supabase), не SQLite!
+
 В Vercel Dashboard:
 
 1. Перейдіть до Settings → Environment Variables
