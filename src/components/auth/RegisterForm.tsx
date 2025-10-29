@@ -10,7 +10,8 @@ export default function RegisterForm() {
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    faculty: 'medical'
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -41,7 +42,7 @@ export default function RegisterForm() {
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/auth/register-supabase-only', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,6 +52,7 @@ export default function RegisterForm() {
           lastName: formData.lastName,
           email: formData.email,
           password: formData.password,
+          faculty: formData.faculty,
         }),
       })
 
@@ -79,7 +81,7 @@ export default function RegisterForm() {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
@@ -176,6 +178,23 @@ export default function RegisterForm() {
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             placeholder="Повторіть пароль"
           />
+        </div>
+
+        <div>
+          <label htmlFor="faculty" className="block text-sm font-medium text-gray-700">
+            Факультет
+          </label>
+          <select
+            id="faculty"
+            name="faculty"
+            required
+            value={formData.faculty}
+            onChange={handleInputChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="medical">Медичний факультет</option>
+            <option value="pharmaceutical">Фармацевтичний факультет</option>
+          </select>
         </div>
 
         <button

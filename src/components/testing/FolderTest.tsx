@@ -11,7 +11,6 @@ interface Question {
   question: string;
   options: string[];
   correct_answer: number;
-  explanation?: string;
   question_type: string;
   created_at: string;
 }
@@ -506,13 +505,6 @@ export default function FolderTest({ folderId, onBack }: FolderTestProps) {
               </div>
             )}
 
-            {/* Пояснення */}
-            {currentQuestion.explanation && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Пояснення:</h4>
-                <p className="text-blue-800">{currentQuestion.explanation}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>

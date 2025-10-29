@@ -3,28 +3,18 @@
 import { GraduationCap, BookOpen, Users, Award, CheckCircle, Star } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import Image from 'next/image'
+import { useState } from 'react'
+import TestSelectionModal from '@/components/ui/TestSelectionModal'
 
 export default function Home() {
   const { data: session, status } = useSession()
+  const [showTestModal, setShowTestModal] = useState(false)
 
   return (
     <div className="min-h-screen" style={{backgroundColor: 'var(--background)'}}>
       {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          {/* Logo */}
-          <div className="mb-8 flex flex-col items-center">
-            <Image 
-              src="/logo-original.png" 
-              alt="Help Krok Logo" 
-              width={120} 
-              height={120}
-              className="w-30 h-30 mb-4"
-            />
-            <h2 className="text-3xl font-bold mb-2" style={{color: '#4C1D95'}}>HelpKrok</h2>
-            <p className="text-lg" style={{color: '#8B5CF6'}}>by j.helpNMU</p>
-          </div>
           
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
             Підготовка до <span className="text-gradient">КРОК</span>
@@ -322,7 +312,10 @@ export default function Home() {
           <p className="text-xl text-gray-600 mb-8">
             Пройдіть тест, щоб зрозуміти де ви зараз
           </p>
-          <button className="bg-gradient-to-r from-[#1128C6] to-[#D23DE3] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200">
+          <button 
+            onClick={() => setShowTestModal(true)}
+            className="bg-gradient-to-r from-[#1128C6] to-[#D23DE3] text-white px-16 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200"
+          >
             Почати зараз
           </button>
         </div>
@@ -370,6 +363,12 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Test Selection Modal */}
+      <TestSelectionModal 
+        isOpen={showTestModal}
+        onClose={() => setShowTestModal(false)}
+      />
     </div>
   )
 }

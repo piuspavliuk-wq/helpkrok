@@ -7,7 +7,6 @@ import ProfileSubmenu from '@/components/profile/ProfileSubmenu'
 import UserProfile from '@/components/auth/UserProfile'
 import ProfileEditForm from '@/components/profile/ProfileEditForm'
 import StatisticsTab from '@/components/profile/StatisticsTab'
-import RatingTab from '@/components/profile/RatingTab'
 import ScheduleTab from '@/components/profile/ScheduleTab'
 
 export default function ProfilePage() {
@@ -31,8 +30,6 @@ export default function ProfilePage() {
     switch (pathname) {
       case '/profile/statistics':
         return <StatisticsTab />
-      case '/profile/rating':
-        return <RatingTab />
       case '/profile/schedule':
         return <ScheduleTab />
       case '/profile/edit':

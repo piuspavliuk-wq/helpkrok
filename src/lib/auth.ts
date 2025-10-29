@@ -1,7 +1,20 @@
 import { NextAuthOptions } from "next-auth"
-import { supabaseAdmin } from "@/lib/supabase"
+import { createClient } from '@supabase/supabase-js'
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
+
+// Створюємо Supabase клієнт безпосередньо в auth файлі
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+const supabaseAdmin = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -14,6 +27,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials')
           return null
         }
 
@@ -27,6 +41,11 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          if (!supabaseAdmin) {
+            console.error('Supabase admin client is null')
+            return null
+          }
+
           const { data: user, error } = await supabaseAdmin
             .from('users')
             .select('id, first_name, last_name, email, password, role')

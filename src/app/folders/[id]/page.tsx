@@ -14,8 +14,6 @@ interface Question {
   question_text?: string;
   options: string[] | Array<{letter: string, text: string, is_correct: boolean}>;
   correct_answer: string | number;
-  explanation?: string;
-  explanation_text?: string;
   question_type: string;
   created_at: string;
 }
@@ -501,12 +499,6 @@ export default function FolderPage() {
                         )}
                       </div>
                       
-                      {(question.explanation || question.explanation_text) && (
-                        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                          <h4 className="font-medium text-blue-900 mb-2">Пояснення:</h4>
-                          <p className="text-blue-800">{question.explanation_text || question.explanation}</p>
-                        </div>
-                      )}
 
                       {/* AI пояснення кнопка */}
                       {enableAI && (

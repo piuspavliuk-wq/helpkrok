@@ -254,7 +254,7 @@ export default function KrokAllQuestionsTest() {
         },
         body: JSON.stringify({
           topic_id: null,
-          attempt_type: 'krok_all_questions',
+          attempt_type: 'krok_simulation',
           total_questions: totalQuestions,
           correct_answers: correctAnswers,
           score: score,
@@ -264,15 +264,8 @@ export default function KrokAllQuestionsTest() {
       });
 
       // Оновлюємо рейтинг користувача
-      await fetch('/api/user/update-rating', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
       // Відправляємо подію про оновлення рейтингу
-      window.dispatchEvent(new CustomEvent('ratingUpdated'));
 
     } catch (error) {
       console.error('Error saving test result:', error);

@@ -131,9 +131,17 @@ export async function GET(request: NextRequest) {
       correct_answer: q.correct_answer
     }));
 
+    // Отримуємо загальну кількість питань у базі для відображення
+    const { count: totalInDatabase } = await supabase
+      .from('krok_questions_unified')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('faculty', faculty || 'medical');
+
     return NextResponse.json({ 
       questions: formattedQuestions,
-      total: formattedQuestions.length,
+      total: totalInDatabase || formattedQuestions.length,
+      returned: formattedQuestions.length,
       filters: {
         year,
         faculty,

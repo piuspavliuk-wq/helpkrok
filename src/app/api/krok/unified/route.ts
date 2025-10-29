@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const faculty = searchParams.get('faculty') || 'medical';
     const category = searchParams.get('category');
     const difficulty = searchParams.get('difficulty');
+    const test_identifier = searchParams.get('test_identifier');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10000;
     const random = searchParams.get('random') === 'true';
 
@@ -41,6 +42,13 @@ export async function GET(request: NextRequest) {
 
     if (difficulty) {
       query = query.eq('difficulty', difficulty);
+    }
+
+    if (test_identifier) {
+      query = query.eq('test_identifier', test_identifier);
+    } else {
+      // Якщо test_identifier не передано, показуємо тільки записи без test_identifier
+      query = query.is('test_identifier', null);
     }
 
     // Сортування
@@ -79,6 +87,9 @@ export async function GET(request: NextRequest) {
       faculty: q.faculty,
       category: q.category,
       difficulty: q.difficulty,
+      title: q.title,
+      test_identifier: q.test_identifier,
+      description: q.description,
       // Форматуємо варіанти відповідей у формат, очікуваний компонентами
       options: [
         { letter: 'A', text: q.option_a || '', is_correct: q.correct_answer === 'A' },

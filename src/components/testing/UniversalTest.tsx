@@ -12,17 +12,25 @@ import FolderManager from '@/components/ui/FolderManager';
 interface Question {
   id: number;
   question_text: string;
+  question_image?: string;
   option_a?: string;
+  option_a_image?: string;
   option_b?: string;
+  option_b_image?: string;
   option_c?: string;
+  option_c_image?: string;
   option_d?: string;
+  option_d_image?: string;
   option_e?: string;
+  option_e_image?: string;
   correct_answer?: string;
   created_at?: string;
   year?: number;
   faculty?: string;
+  subject?: string;
   category?: string;
   difficulty?: string;
+  question_type?: string;
   options?: Array<{
     letter: string;
     text: string;
@@ -48,7 +56,7 @@ interface SavedQuestionStatus {
 }
 
 interface UniversalTestProps {
-  testType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology';
+  testType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology' | 'pathomorphology' | 'pharmaceutical' | 'microbiology-pharmaceutical' | 'biochemistry-pharmaceutical' | 'pharmacology-pharmaceutical' | 'botany-pharmaceutical' | 'pathophysiology-pharmaceutical' | 'physical-chemistry-pharmaceutical' | 'organic-chemistry-pharmaceutical';
   testName: string;
   isRandomizer?: boolean;
 }
@@ -56,7 +64,7 @@ interface UniversalTestProps {
 export default function UniversalTest({ testType, testName, isRandomizer = false }: UniversalTestProps) {
   const { data: session } = useSession();
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: string}>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<{[key: number | string]: string}>({});
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isTestStarted, setIsTestStarted] = useState(false);
   const [isTestCompleted, setIsTestCompleted] = useState(false);
@@ -67,10 +75,11 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
   const [showAIExplanation, setShowAIExplanation] = useState(false);
   const [currentQuestionForAI, setCurrentQuestionForAI] = useState<any>(null);
-  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
+  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number | string>>(new Set());
   const [showAnswers, setShowAnswers] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [revealAllAnswers, setRevealAllAnswers] = useState(false);
+  const [totalQuestionsInDatabase, setTotalQuestionsInDatabase] = useState<number>(0);
   const [enableAI, setEnableAI] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [showClearModal, setShowClearModal] = useState(false);
@@ -174,13 +183,58 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         const year = urlParams.get('year');
         const faculty = urlParams.get('faculty');
         
-        // Для randomizer додаємо параметри random та limit
+        // Для randomizer додаємо параметри random та limit для 150 випадкових питань
         if (isRandomizer) {
-          url += '?random=true&limit=150';
+          url += '?random=true&faculty=medical&limit=150';
         } else {
           if (year) url += `?year=${year}`;
           if (faculty) url += `${year ? '&' : '?'}faculty=${faculty}`;
         }
+      }
+      
+      // Для фармацевтичних тестів використовуємо новий API
+      if (testType === 'pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=analytical_chemistry&limit=1000`;
+      }
+      
+      // Для мікробіології фармації використовуємо pharmaceutical API
+      if (testType === 'microbiology-pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=мікробіологія&limit=1000`;
+      }
+      
+      // Для біохімії фармації використовуємо pharmaceutical API
+      if (testType === 'biochemistry-pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=біохімія&limit=1000`;
+      }
+      
+      // Для фармакології фармації використовуємо pharmaceutical API
+      if (testType === 'pharmacology-pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=фармакологія&limit=1000`;
+      }
+      
+      // Для ботаніки фармації використовуємо pharmaceutical API
+      if (testType === 'botany-pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=ботаніка&limit=1000`;
+      }
+      
+      // Для патофізіології фармації використовуємо pharmaceutical API
+      if (testType === 'pathophysiology-pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=патофізіологія&limit=1000`;
+      }
+      
+      // Для патоморфології використовуємо новий API
+      if (testType === 'pathomorphology') {
+        url = `/api/pathomorphology/questions?subject=pathomorphology&limit=1000`;
+      }
+      
+      // Для фізичної та колоїдної хімії фармації використовуємо pharmaceutical API
+      if (testType === 'physical-chemistry-pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=фізична_та_колоїдна_хімія&limit=1000`;
+      }
+      
+      // Для органічної хімії фармації використовуємо pharmaceutical API
+      if (testType === 'organic-chemistry-pharmaceutical') {
+        url = `/api/pharmaceutical/questions?subject=органічна_хімія&limit=1000`;
       }
       
       const response = await fetch(url);
@@ -193,6 +247,10 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
           const validQuestions = questions.filter((q: any) => q.options && q.options.length > 0);
           console.log(`Завантажено ${validQuestions.length} КРОК питань з ${questions.length} загальних`);
           setQuestions(validQuestions);
+          // Зберігаємо загальну кількість питань у базі для рандомізатора
+          if (isRandomizer && data.total) {
+            setTotalQuestionsInDatabase(data.total);
+          }
         } else {
           console.log(`Завантажено ${questions.length} питань для ${testType}`);
           setQuestions(questions);
@@ -210,6 +268,246 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
   const loadSavedQuestionsStatus = async () => {
     if (!session?.user?.id) {
       console.log('Користувач не авторизований, пропускаємо завантаження збережених питань');
+      return;
+    }
+
+    // Для фармацевтичних тестів використовуємо pharmaceutical API
+    if (testType === 'pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=analytical_chemistry`);
+        console.log(`Pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
+      return;
+    }
+    
+    // Для мікробіології фармації використовуємо pharmaceutical API
+    if (testType === 'microbiology-pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=мікробіологія`);
+        console.log(`Microbiology pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Microbiology pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для мікробіології фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з мікробіології фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
+      return;
+    }
+    
+    // Для біохімії фармації використовуємо pharmaceutical API
+    if (testType === 'biochemistry-pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=біохімія`);
+        console.log(`Biochemistry pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Biochemistry pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для біохімії фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з біохімії фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
+      return;
+    }
+    
+    // Для фармакології фармації використовуємо pharmaceutical API
+    if (testType === 'pharmacology-pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=фармакологія`);
+        console.log(`Pharmacology pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Pharmacology pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для фармакології фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з фармакології фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
+      return;
+    }
+    
+    // Для ботаніки фармації використовуємо pharmaceutical API
+    if (testType === 'botany-pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=ботаніка`);
+        console.log(`Botany pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Botany pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для ботаніки фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з ботаніки фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
+      return;
+    }
+    
+    // Для патофізіології фармації використовуємо pharmaceutical API
+    if (testType === 'pathophysiology-pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=патофізіологія`);
+        console.log(`Pathophysiology pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Pathophysiology pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для патофізіології фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з патофізіології фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
+      return;
+    }
+    
+    // Для фізичної та колоїдної хімії фармації використовуємо pharmaceutical API
+    if (testType === 'physical-chemistry-pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=фізична_та_колоїдна_хімія`);
+        console.log(`Physical chemistry pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Physical chemistry pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для фізичної та колоїдної хімії фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з фізичної та колоїдної хімії фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
+      return;
+    }
+    
+    // Для органічної хімії фармації використовуємо pharmaceutical API
+    if (testType === 'organic-chemistry-pharmaceutical') {
+      setLoadingSavedStatus(true);
+      try {
+        const response = await fetch(`/api/pharmaceutical/saved?subject=органічна_хімія`);
+        console.log(`Organic chemistry pharmaceutical saved questions response status: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Organic chemistry pharmaceutical API response data:', data);
+          const savedQuestions = data.savedQuestions || [];
+          const statusMap: SavedQuestionStatus = {};
+          savedQuestions.forEach((item: any) => {
+            const key = `${testType}_${item.question_id}`;
+            statusMap[key] = true;
+            console.log(`Added to status map: ${key}`);
+          });
+          console.log(`Завантажено ${savedQuestions.length} збережених питань для органічної хімії фармації`);
+          console.log('Final status map:', statusMap);
+          setSavedQuestionsStatus(statusMap);
+        } else {
+          console.error(`Помилка відповіді API для ${testType}:`, response.status);
+        }
+      } catch (error) {
+        console.error(`Помилка завантаження збережених питань з органічної хімії фармації:`, error);
+      } finally {
+        setLoadingSavedStatus(false);
+      }
       return;
     }
 
@@ -249,18 +547,24 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
   };
 
   const loadTestProgress = async () => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) {
+      console.log('Користувач не авторизований, прогрес не завантажується');
+      return;
+    }
 
     try {
+      console.log(`Завантаження прогресу фармації для testType: ${testType}`);
       const response = await fetch(`/api/test-progress?testType=${testType}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Відповідь API прогресу фармації:', data);
         if (data.success && data.progress) {
           // Конвертуємо збережені оригінальні ключі в display ключі для поточного перемішування
-          const convertedAnswers: {[key: number]: string} = {};
+          const convertedAnswers: {[key: number | string]: string} = {};
           
           Object.entries(data.progress).forEach(([questionIdStr, originalAnswerKey]) => {
-            const questionId = parseInt(questionIdStr);
+            // Для фармації questionId - це UUID (рядок), для інших тестів - число
+            const questionId = testType === 'pharmaceutical' ? questionIdStr : parseInt(questionIdStr);
             const question = shuffledQuestions.find(q => q.id === questionId);
             
             if (question && question.shuffledOptions) {
@@ -275,8 +579,11 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
             }
           });
           
+          console.log('Конвертовані відповіді фармації:', convertedAnswers);
           setSelectedAnswers(convertedAnswers);
         }
+      } else {
+        console.error('Помилка завантаження прогресу фармації:', response.status, response.statusText);
       }
     } catch (error) {
       console.error(`Помилка завантаження прогресу з ${testName}:`, error);
@@ -297,16 +604,60 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
 
     try {
       let response;
+      
+      // Визначаємо URL для API в залежності від типу тесту
+      let baseUrl = `/api/${testType}/saved`;
+      
+      // Для фармацевтичних тестів використовуємо pharmaceutical API
+      if (testType === 'pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+      
+      // Для мікробіології фармації використовуємо pharmaceutical API
+      if (testType === 'microbiology-pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+      
+      // Для біохімії фармації використовуємо pharmaceutical API
+      if (testType === 'biochemistry-pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+      
+      // Для фармакології фармації використовуємо pharmaceutical API
+      if (testType === 'pharmacology-pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+      
+      // Для ботаніки фармації використовуємо pharmaceutical API
+      if (testType === 'botany-pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+      
+      // Для патофізіології фармації використовуємо pharmaceutical API
+      if (testType === 'pathophysiology-pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+      
+      // Для фізичної та колоїдної хімії фармації використовуємо pharmaceutical API
+      if (testType === 'physical-chemistry-pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+      
+      // Для органічної хімії фармації використовуємо pharmaceutical API
+      if (testType === 'organic-chemistry-pharmaceutical') {
+        baseUrl = '/api/pharmaceutical/saved';
+      }
+
       if (isCurrentlySaved) {
         // DELETE запит з query параметром
         console.log('Attempting DELETE for question:', questionId);
-        response = await fetch(`/api/${testType}/saved?questionId=${questionId}`, {
+        response = await fetch(`${baseUrl}?questionId=${questionId}`, {
           method: 'DELETE',
         });
       } else {
         // POST запит з body
         console.log('Attempting POST for question:', questionId);
-        response = await fetch(`/api/${testType}/saved`, {
+        response = await fetch(baseUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -394,7 +745,7 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
     setIsTestCompleted(false);
   };
 
-  const handleAnswerSelect = async (questionId: number, answer: string) => {
+  const handleAnswerSelect = async (questionId: number | string, answer: string) => {
     setSelectedAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -427,6 +778,14 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
           correctAnswer = question.correct_answer || 'A';
         }
         
+        console.log('Збереження прогресу фармації:', {
+          testType,
+          questionId,
+          selectedAnswer: originalAnswerKey,
+          correctAnswer,
+          userId: session.user.id
+        });
+        
         const response = await fetch('/api/test-progress', {
           method: 'POST',
           headers: {
@@ -441,12 +800,18 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         });
 
         if (response.ok) {
+          console.log('Прогрес фармації збережено успішно');
           // Відправляємо подію про оновлення рейтингу
-          window.dispatchEvent(new CustomEvent('ratingUpdated'));
+        } else {
+          console.error('Помилка збереження прогресу фармації:', response.status, response.statusText);
+          const errorData = await response.json();
+          console.error('Деталі помилки API:', errorData);
         }
       } catch (error) {
         console.error('Помилка збереження відповіді:', error);
       }
+    } else {
+      console.log('Користувач не авторизований, прогрес не зберігається');
     }
   };
 
@@ -508,16 +873,6 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         }),
       });
 
-      // Оновлюємо рейтинг користувача
-      await fetch('/api/user/update-rating', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // Відправляємо подію про оновлення рейтингу
-      window.dispatchEvent(new CustomEvent('ratingUpdated'));
 
     } catch (error) {
       console.error('Error saving test result:', error);
@@ -853,7 +1208,7 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                 Тест з {testName} ({shuffledQuestions.length} питань)
                 {isRandomizer && (
                   <span className="text-sm font-normal text-gray-600 ml-2">
-                    з бази 2991 питань
+                    з бази {totalQuestionsInDatabase || questions.length} питань
                   </span>
                 )}
               </CardTitle>
@@ -887,6 +1242,16 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                     <CardTitle className="text-lg font-bold text-gray-800 flex-1">
                       <span className="text-blue-600 font-bold mr-3">{index + 1}.</span>
                       {question.question_text}
+                      {question.question_image && (
+                        <div className="mt-3">
+                          <img 
+                            src={question.question_image} 
+                            alt="Question image" 
+                            className="max-w-full h-auto rounded-lg border border-gray-200"
+                            style={{ maxHeight: '300px' }}
+                          />
+                        </div>
+                      )}
                     </CardTitle>
                     <div className="flex items-center space-x-2 ml-4">
                       <button
@@ -908,7 +1273,7 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                         <div className="relative">
                           <FolderManager
                             questionId={question.id}
-                            questionType={testType}
+                            questionType={testType as any}
                             isSaved={savedQuestionsStatus[`${testType}_${question.id}`] || false}
                             onSaveChange={(saved) => {
                               setSavedQuestionsStatus(prev => ({
@@ -937,7 +1302,19 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                       >
                         <div className="flex items-center w-full">
                           <span className="font-semibold mr-3">{option.displayKey}.</span>
-                          <span className="flex-1">{option.text}</span>
+                          <div className="flex-1">
+                            <span>{option.text}</span>
+                            {(question as any)[`option_${option.originalKey.toLowerCase()}_image`] && (
+                              <div className="mt-2">
+                                <img 
+                                  src={(question as any)[`option_${option.originalKey.toLowerCase()}_image`]} 
+                                  alt={`Option ${option.displayKey} image`}
+                                  className="max-w-full h-auto rounded border border-gray-200"
+                                  style={{ maxHeight: '150px' }}
+                                />
+                              </div>
+                            )}
+                          </div>
                           {isAnswered && isCorrectAnswer && (
                             <Check className="w-5 h-5 text-green-600 ml-2" />
                           )}
@@ -961,7 +1338,19 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                       >
                         <div className="flex items-center w-full">
                           <span className="font-semibold mr-3">{option}.</span>
-                          <span className="flex-1">{getAnswerText(question, option)}</span>
+                          <div className="flex-1">
+                            <span>{getAnswerText(question, option)}</span>
+                            {(question as any)[`option_${option.toLowerCase()}_image`] && (
+                              <div className="mt-2">
+                                <img 
+                                  src={(question as any)[`option_${option.toLowerCase()}_image`]} 
+                                  alt={`Option ${option} image`}
+                                  className="max-w-full h-auto rounded border border-gray-200"
+                                  style={{ maxHeight: '150px' }}
+                                />
+                              </div>
+                            )}
+                          </div>
                           {isAnswered && isCorrectAnswer && (
                             <Check className="w-5 h-5 text-green-600 ml-2" />
                           )}

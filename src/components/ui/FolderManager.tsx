@@ -26,12 +26,13 @@ interface Folder {
     krok_questions: number;
     anatomy_questions: number;
     histology_questions: number;
+    pharmaceutical_questions: number;
   };
 }
 
 interface FolderManagerProps {
-  questionId: number;
-  questionType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology';
+  questionId: number | string;
+  questionType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology' | 'pharmaceutical' | 'microbiology-pharmaceutical' | 'biochemistry-pharmaceutical' | 'pharmacology-pharmaceutical' | 'botany-pharmaceutical' | 'pathophysiology-pharmaceutical' | 'physical-chemistry-pharmaceutical' | 'organic-chemistry-pharmaceutical';
   isSaved: boolean;
   onSaveChange: (saved: boolean) => void;
 }
@@ -50,9 +51,7 @@ export default function FolderManager({
   
   // Форма створення папки
   const [newFolder, setNewFolder] = useState({
-    name: '',
-    description: '',
-    color: '#3B82F6'
+    name: ''
   });
 
   // Завантаження папок
@@ -88,9 +87,8 @@ export default function FolderManager({
       if (response.ok) {
         const data = await response.json();
         setFolders(prev => [data.folder, ...prev]);
-        setNewFolder({ name: '', description: '', color: '#3B82F6' });
+        setNewFolder({ name: '' });
         setShowCreateModal(false);
-        alert('Папку створено успішно!');
       } else {
         const errorData = await response.json();
         alert(`Помилка: ${errorData.error || 'Не вдалося створити папку'}`);
@@ -120,8 +118,6 @@ export default function FolderManager({
       if (response.ok) {
         onSaveChange(true);
         setShowFolderList(false);
-        // Показуємо повідомлення про успіх
-        alert('Питання додано до папки!');
       } else {
         const errorData = await response.json();
         alert(`Помилка: ${errorData.error || 'Не вдалося додати питання до папки'}`);
@@ -245,84 +241,62 @@ export default function FolderManager({
 
       {/* Модальне вікно створення папки */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
-          <Card className="w-96">
-            <CardHeader>
+        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-[10000]">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 relative">
+            {/* Заголовок */}
+            <div className="px-6 py-5">
               <div className="flex items-center justify-between">
-                <CardTitle>Створення нової папки</CardTitle>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Створення нової папки
+                </h2>
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label htmlFor="folder-name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Назва папки
-                </label>
-                <input
-                  id="folder-name"
-                  type="text"
-                  value={newFolder.name}
-                  onChange={(e) => setNewFolder(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Введіть назву папки"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="folder-description" className="block text-sm font-medium text-gray-700 mb-1">
-                  Опис (необов'язково)
-                </label>
-                <textarea
-                  id="folder-description"
-                  value={newFolder.description}
-                  onChange={(e) => setNewFolder(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Опис папки"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+            </div>
 
-              <div>
-                <label htmlFor="folder-color" className="block text-sm font-medium text-gray-700 mb-1">
-                  Колір
-                </label>
-                <div className="flex space-x-2">
-                  {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'].map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setNewFolder(prev => ({ ...prev, color }))}
-                      className={`w-8 h-8 rounded-full border-2 ${
-                        newFolder.color === color ? 'border-gray-800' : 'border-gray-300'
-                      }`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+            {/* Форма */}
+            <div className="px-6 pb-5">
+              <div className="space-y-4">
+                {/* Назва папки */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Назва папки
+                  </label>
+                  <input
+                    type="text"
+                    value={newFolder.name}
+                    onChange={(e) => setNewFolder(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    placeholder="Введіть назву папки"
+                    required
+                  />
                 </div>
               </div>
 
-              <div className="flex space-x-2 pt-4">
-                <Button
-                  onClick={createFolder}
-                  disabled={!newFolder.name.trim() || saving}
-                  className="flex-1"
-                >
-                  {saving ? 'Створення...' : 'Створити'}
-                </Button>
-                <Button
-                  variant="outline"
+              {/* Кнопки */}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1"
+                  className="text-gray-600 hover:text-gray-800 transition-colors font-medium"
                 >
                   Скасувати
-                </Button>
+                </button>
+                <button
+                  type="button"
+                  onClick={createFolder}
+                  disabled={saving || !newFolder.name.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  {saving ? 'Створення...' : 'Створити'}
+                </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
     </>

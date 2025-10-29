@@ -13,32 +13,6 @@ interface ProfileData {
   step: string
 }
 
-const universities = [
-  'Харківський національний університет імені В. Н. Каразіна',
-  '(КиМУ) Київський міжнародний університет',
-  'Черкаська медична академія',
-  'Волинський національний університет імені Лесі Українки',
-  'Київський національний університет імені Тараса Шевченка',
-  'Чорноморський національний університет імені Петра Могили',
-  'Харківський міжнародний медичний університет',
-  'Міжнародний Європейський Університет',
-  '(МАУП) Міжрегіональна Академія управління персоналом',
-  'Дніпровський інститут медицини та громадського здоров\'я',
-  'Київський міський медичний коледж',
-  'Херсонський державний університет',
-  'Медичний коледж «Монада»',
-  'Івано-Франківський медичний фаховий коледж',
-  'Житомирський медичний інститут',
-  'Запорізький медичний коледж',
-  'КЗВО «Волинський медичний інститут»',
-  'Дніпровський базовий медичний коледж',
-  'Шепетівський медичний фаховий коледж',
-  'Харківський інститут медицини та біомедичних наук',
-  '(ЖБФФК) Житомирський базовий фармацевтичний фаховий коледж',
-  'Кам\'янець-Подільський медичний фаховий коледж',
-  'Кам\'янський медичний коледж',
-  'Навчально-науковий інститут медсестринства'
-]
 
 export default function ProfileEditForm() {
   console.log('🚀 ProfileEditForm завантажується...')
@@ -60,11 +34,8 @@ export default function ProfileEditForm() {
   
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [universityDropdownOpen, setUniversityDropdownOpen] = useState(false)
   const [facultyDropdownOpen, setFacultyDropdownOpen] = useState(false)
   const [stepDropdownOpen, setStepDropdownOpen] = useState(false)
-  const [universitySearch, setUniversitySearch] = useState('')
-  const [filteredUniversities, setFilteredUniversities] = useState(universities)
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -108,7 +79,6 @@ export default function ProfileEditForm() {
         
         console.log('✅ Встановлюємо дані профілю:', newProfileData)
         setProfileData(newProfileData)
-        setUniversitySearch(data.profile.university || '')
       } else {
         console.log('⚠️ Профіль не знайдено, використовуємо базові дані')
       }
@@ -119,13 +89,6 @@ export default function ProfileEditForm() {
     }
   }
 
-  useEffect(() => {
-    // Фільтруємо університети за пошуковим запитом
-    const filtered = universities.filter(uni =>
-      uni.toLowerCase().includes(universitySearch.toLowerCase())
-    )
-    setFilteredUniversities(filtered)
-  }, [universitySearch])
 
   const handleSave = async () => {
     setSaving(true)
@@ -133,16 +96,16 @@ export default function ProfileEditForm() {
       // Debug: перевіряємо дані перед відправкою
       console.log('📤 Відправляємо дані профілю:', profileData)
       
-      // Перевіряємо тільки університет
-      if (!profileData.university) {
-        console.error('❌ Відсутній університет')
-        alert('Будь ласка, оберіть університет')
+      // Перевіряємо обов'язкові поля
+      if (!profileData.faculty) {
+        console.error('❌ Відсутній факультет')
+        alert('Будь ласка, оберіть факультет')
         return
       }
       
       console.log('🔍 Перевірка полів:', {
         profileData,
-        university: profileData.university
+        faculty: profileData.faculty
       })
 
       const response = await fetch('/api/user/profile', {
@@ -157,7 +120,6 @@ export default function ProfileEditForm() {
       console.log('📥 Відповідь від API:', data)
 
       if (response.ok && data.success) {
-        alert('Профіль успішно збережено в Supabase!')
         // Перезавантажуємо дані
         fetchProfileData()
       } else {
@@ -171,11 +133,6 @@ export default function ProfileEditForm() {
     }
   }
 
-  const handleUniversitySelect = (university: string) => {
-    setProfileData(prev => ({ ...prev, university }))
-    setUniversitySearch(university)
-    setUniversityDropdownOpen(false)
-  }
 
   const handleFacultySelect = (faculty: string) => {
     setProfileData(prev => ({ ...prev, faculty }))
@@ -220,67 +177,7 @@ export default function ProfileEditForm() {
       {/* Form */}
       <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-6">
         <div className="space-y-6">
-          {/* Тільки поле для університету */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Заклад освіти <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={universitySearch}
-                onChange={(e) => {
-                  setUniversitySearch(e.target.value)
-                  setUniversityDropdownOpen(true)
-                }}
-                onFocus={() => setUniversityDropdownOpen(true)}
-                className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                placeholder="Введіть назву університету"
-              />
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-                {universitySearch && (
-                  <button
-                    onClick={() => {
-                      setUniversitySearch('')
-                      setProfileData(prev => ({ ...prev, university: '' }))
-                    }}
-                    className="p-1 hover:bg-gray-200 rounded"
-                  >
-                    <X className="w-4 h-4 text-gray-400" />
-                  </button>
-                )}
-                <button
-                  onClick={() => setUniversityDropdownOpen(!universityDropdownOpen)}
-                  className="p-1 hover:bg-gray-200 rounded"
-                >
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </button>
-              </div>
-            </div>
-            
-            {universityDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                <div className="py-1">
-                  {filteredUniversities.map((university) => (
-                    <button
-                      key={university}
-                      onClick={() => handleUniversitySelect(university)}
-                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center justify-between ${
-                        profileData.university === university ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <span>{university}</span>
-                      {profileData.university === university && (
-                        <span className="text-blue-500">✓</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Інформація про користувача (тільки для перегляду) */}
+          {/* Інформація про користувача */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -300,12 +197,47 @@ export default function ProfileEditForm() {
               </div>
             </div>
 
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Факультет
               </label>
-              <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
-                {getFacultyLabel(profileData.faculty)}
+              <div className="relative">
+                <button
+                  onClick={() => setFacultyDropdownOpen(!facultyDropdownOpen)}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between"
+                >
+                  <span>{getFacultyLabel(profileData.faculty)}</span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+                
+                {facultyDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleFacultySelect('medical')}
+                        className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center justify-between ${
+                          profileData.faculty === 'medical' ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <span>Медицина</span>
+                        {profileData.faculty === 'medical' && (
+                          <span className="text-blue-500">✓</span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleFacultySelect('pharmaceutical')}
+                        className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center justify-between ${
+                          profileData.faculty === 'pharmaceutical' ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <span>Фармація</span>
+                        {profileData.faculty === 'pharmaceutical' && (
+                          <span className="text-blue-500">✓</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -328,7 +260,7 @@ export default function ProfileEditForm() {
             className="w-full bg-blue-500/80 backdrop-blur-sm hover:bg-blue-600/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md disabled:opacity-50"
           >
             <Save className="w-4 h-4 inline mr-2" />
-            {saving ? 'Збереження...' : 'Зберегти університет'}
+            {saving ? 'Збереження...' : 'Зберегти профіль'}
           </button>
         </div>
       </div>

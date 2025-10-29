@@ -142,6 +142,10 @@ export default function SavedQuestionsView() {
               // Для КРОК використовуємо оптимізований API з конкретними ID
               const idsParam = questionIds.join(',');
               questionsResponse = await fetch(`/api/krok/questions-by-ids?ids=${idsParam}`);
+            } else if (questionType === 'pharmaceutical') {
+              // Для фармації використовуємо pharmaceutical API
+              const idsParam = questionIds.join(',');
+              questionsResponse = await fetch(`/api/pharmaceutical/questions-by-ids?ids=${idsParam}&subject=analytical_chemistry`);
             } else {
               // Для інших предметів спочатку пробуємо оптимізований API
               const idsParam = questionIds.join(',');

@@ -147,6 +147,13 @@ export async function GET(request: NextRequest) {
           .eq('id', fq.question_id)
           .single();
         questionData = data;
+      } else if (fq.question_type === 'pharmaceutical') {
+        const { data } = await supabase
+          .from('pharmaceutical_questions')
+          .select('*')
+          .eq('id', fq.question_id)
+          .single();
+        questionData = data;
       } else if (fq.question_type === 'pharmacology') {
         const { data } = await supabase
           .from('pharmacology_questions')
@@ -253,6 +260,104 @@ export async function POST(request: NextRequest) {
 
     if (folderError || !folder) {
       return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
+    }
+
+    // Перевіряємо, чи існує питання в відповідній таблиці
+    let questionExists = false;
+    if (questionType === 'pharmaceutical') {
+      // Для фармацевтичних питань завжди використовуємо рядок (UUID)
+      const questionIdStr = String(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('pharmaceutical_questions')
+        .select('id')
+        .eq('id', questionIdStr)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'anatomy') {
+      // Для анатомічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('anatomy_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'histology') {
+      // Для гістологічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('histology_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'krok') {
+      // Для КРОК питань використовуємо рядок (UUID)
+      const questionIdStr = String(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('krok_questions_unified')
+        .select('id')
+        .eq('id', questionIdStr)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'physiology') {
+      // Для фізіологічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('physiology_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'biology') {
+      // Для біологічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('biology_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'microbiology') {
+      // Для мікробіологічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('microbiology_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'pathology') {
+      // Для патологічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('pathology_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'pathophysiology') {
+      // Для патофізіологічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('pathophysiology_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    } else if (questionType === 'pharmacology') {
+      // Для фармакологічних питань використовуємо числовий ID
+      const questionIdNum = Number(questionId);
+      const { data: question, error: questionError } = await supabase
+        .from('pharmacology_questions')
+        .select('id')
+        .eq('id', questionIdNum)
+        .single();
+      questionExists = !questionError && !!question;
+    }
+
+    if (!questionExists) {
+      return NextResponse.json({ error: 'Question not found' }, { status: 404 });
     }
 
     // Додаємо питання до папки

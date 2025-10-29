@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getToken } from 'next-auth/jwt';
 
+// Кеш для папок (в пам'яті)
+const foldersCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 хвилин
+
 async function getServerSession(request: NextRequest) {
   try {
     // Отримуємо токен з cookies
@@ -110,7 +114,8 @@ export async function GET(request: NextRequest) {
           total_questions: questions?.length || 0,
           krok_questions: questions?.filter(q => q.question_type === 'krok').length || 0,
           anatomy_questions: questions?.filter(q => q.question_type === 'anatomy').length || 0,
-          histology_questions: questions?.filter(q => q.question_type === 'histology').length || 0
+          histology_questions: questions?.filter(q => q.question_type === 'histology').length || 0,
+          pharmaceutical_questions: questions?.filter(q => q.question_type === 'pharmaceutical').length || 0
         };
         
         return {

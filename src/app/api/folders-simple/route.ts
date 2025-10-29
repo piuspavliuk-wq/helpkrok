@@ -72,7 +72,8 @@ export async function GET(request: NextRequest) {
           total_questions: questions?.length || 0,
           krok_questions: questions?.filter(q => q.question_type === 'krok').length || 0,
           anatomy_questions: questions?.filter(q => q.question_type === 'anatomy').length || 0,
-          histology_questions: questions?.filter(q => q.question_type === 'histology').length || 0
+          histology_questions: questions?.filter(q => q.question_type === 'histology').length || 0,
+          pharmaceutical_questions: questions?.filter(q => q.question_type === 'pharmaceutical').length || 0
         };
         
         return {

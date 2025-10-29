@@ -14,14 +14,14 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { firstName, lastName, faculty, university, email, step } = body
 
-    // Валідація тільки університету
-    if (!university) {
+    // Валідація тільки факультету
+    if (!faculty) {
       return NextResponse.json({ 
-        error: 'Missing required field: university' 
+        error: 'Missing required field: faculty' 
       }, { status: 400 })
     }
 
-    // Оновлюємо тільки університет в Supabase (якщо доступний)
+    // Оновлюємо факультет в Supabase (якщо доступний)
     let data = null
     let error = null
     
@@ -29,7 +29,7 @@ export async function PUT(request: NextRequest) {
       const result = await supabase
         .from('users')
         .update({
-          university: university,
+          faculty: faculty,
           updated_at: new Date().toISOString()
         })
         .eq('id', session.user.id)
@@ -54,7 +54,7 @@ export async function PUT(request: NextRequest) {
           .from('users')
           .insert({
             id: session.user.id,
-            university: university,
+            faculty: faculty,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest) {
         success: true,
         profile: {
           id: session.user.id,
-          university: university,
+          faculty: faculty,
           updatedAt: new Date().toISOString()
         },
         message: 'Profile created successfully'
@@ -86,10 +86,10 @@ export async function PUT(request: NextRequest) {
       success: true,
       profile: {
         id: session.user.id,
-        university: university,
+        faculty: faculty,
         updatedAt: new Date().toISOString()
       },
-      message: 'University updated successfully'
+      message: 'Faculty updated successfully'
     })
 
   } catch (error) {

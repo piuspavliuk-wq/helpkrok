@@ -1,114 +1,110 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/lib/supabase'
-import { Search, BookOpen, FileText, GraduationCap, Clock } from 'lucide-react'
-
-type Course = Database['public']['Tables']['courses']['Row']
-type Topic = Database['public']['Tables']['topics']['Row']
-type Question = Database['public']['Tables']['questions']['Row']
+import { Search, BookOpen, FileText, GraduationCap, Clock, TestTube, Microscope, Heart, Pill } from 'lucide-react'
+import SearchFilters from './SearchFilters'
 
 interface SearchResult {
   id: string
-  type: 'course' | 'topic' | 'question'
-  title: string
-  description?: string
-  faculty?: string
+  question_text: string
+  source_table: string
+  source_type: string
+  faculty: string
+  year?: number
+  category?: string
+  option_a?: string
+  option_b?: string
+  option_c?: string
+  option_d?: string
+  option_e?: string
+  correct_answer?: string
   difficulty?: string
-  course_title?: string
+}
+
+interface SearchFilters {
+  faculty?: string
+  year?: number
+  sourceType?: string
+  difficulty?: string
 }
 
 export default function SearchComponent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [filters, setFilters] = useState<SearchFilters>({})
+  const [sources, setSources] = useState<string[]>([])
 
-  const searchInDatabase = async (query: string) => {
+  const searchInDatabase = async (query: string, currentFilters: SearchFilters = {}) => {
     if (!query.trim()) {
       setSearchResults([])
+      setSources([])
+      return
+    }
+
+    // Перевіряємо мінімальну довжину запиту
+    if (query.trim().length < 2) {
+      console.warn('Пошуковий запит занадто короткий')
+      setSearchResults([])
+      setSources([])
       return
     }
 
     setIsLoading(true)
     try {
-      const searchTerm = `%${query.toLowerCase()}%`
-      const results: SearchResult[] = []
+      const params = new URLSearchParams({
+        q: query.trim(),
+        limit: '50'
+      })
 
-      if (!supabase) {
-        return results
+      // Додаємо фільтри до запиту
+      if (currentFilters.faculty) params.append('faculty', currentFilters.faculty)
+      if (currentFilters.year) params.append('year', currentFilters.year.toString())
+      if (currentFilters.sourceType) params.append('sourceType', currentFilters.sourceType)
+      if (currentFilters.difficulty) params.append('difficulty', currentFilters.difficulty)
+
+      console.log('Searching with params:', params.toString())
+
+      const response = await fetch(`/api/search?${params.toString()}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Search results:', data)
+        setSearchResults(data.results || [])
+        setSources(data.sources || [])
+        
+        // Скрол до першого результату після завантаження
+        if (data.results && data.results.length > 0) {
+          setTimeout(() => {
+            const firstResult = document.querySelector('[data-search-result="0"]')
+            if (firstResult) {
+              firstResult.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start',
+                inline: 'nearest'
+              })
+            } else {
+              // Альтернативний спосіб - скрол до секції результатів
+              const resultsSection = document.querySelector('[data-results-section]')
+              if (resultsSection) {
+                resultsSection.scrollIntoView({ 
+                  behavior: 'smooth', 
+                  block: 'start'
+                })
+              }
+            }
+          }, 100) // Невелика затримка для рендерингу
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Помилка API пошуку:', response.status, response.statusText, errorData)
+        setSearchResults([])
+        setSources([])
       }
-
-      // Пошук в курсах
-      const { data: courses, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .or(`title.ilike.${searchTerm},description.ilike.${searchTerm}`)
-        .eq('is_active', true)
-
-      if (!coursesError && courses) {
-        courses.forEach(course => {
-          results.push({
-            id: course.id,
-            type: 'course',
-            title: course.title,
-            description: course.description || undefined,
-            faculty: course.faculty
-          })
-        })
-      }
-
-      // Пошук в темах
-      const { data: topics, error: topicsError } = await supabase
-        .from('topics')
-        .select(`
-          *,
-          courses!inner(title, faculty)
-        `)
-        .or(`title.ilike.${searchTerm},description.ilike.${searchTerm},lecture_notes.ilike.${searchTerm}`)
-        .eq('is_active', true)
-
-      if (!topicsError && topics) {
-        topics.forEach(topic => {
-          results.push({
-            id: topic.id,
-            type: 'topic',
-            title: topic.title,
-            description: topic.description || undefined,
-            faculty: topic.courses.faculty,
-            course_title: topic.courses.title
-          })
-        })
-      }
-
-      // Пошук в питаннях
-      const { data: questions, error: questionsError } = await supabase
-        .from('questions')
-        .select(`
-          *,
-          topics!inner(title, courses!inner(title, faculty))
-        `)
-        .or(`question_text.ilike.${searchTerm},explanation.ilike.${searchTerm}`)
-        .eq('is_active', true)
-
-      if (!questionsError && questions) {
-        questions.forEach(question => {
-          results.push({
-            id: question.id,
-            type: 'question',
-            title: question.question_text,
-            description: question.explanation || undefined,
-            faculty: question.topics.courses.faculty,
-            course_title: question.topics.courses.title,
-            difficulty: question.difficulty
-          })
-        })
-      }
-
-      setSearchResults(results)
     } catch (error) {
       console.error('Помилка пошуку:', error)
       setSearchResults([])
+      setSources([])
     } finally {
       setIsLoading(false)
     }
@@ -116,36 +112,49 @@ export default function SearchComponent() {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      searchInDatabase(searchQuery)
+      searchInDatabase(searchQuery, filters)
     }, 300) // Затримка для оптимізації запитів
 
     return () => clearTimeout(timeoutId)
-  }, [searchQuery])
+  }, [searchQuery, filters])
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'course':
-        return <GraduationCap className="w-5 h-5 text-blue-600" />
-      case 'topic':
-        return <BookOpen className="w-5 h-5 text-green-600" />
-      case 'question':
-        return <FileText className="w-5 h-5 text-blue-600" />
-      default:
-        return <Search className="w-5 h-5 text-gray-600" />
+  const handleFiltersChange = (newFilters: SearchFilters) => {
+    setFilters(newFilters)
+    
+    // Скрол до результатів при зміні фільтрів
+    if (searchQuery.trim().length >= 2) {
+      setTimeout(() => {
+        const resultsSection = document.querySelector('[data-results-section]')
+        if (resultsSection) {
+          resultsSection.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start'
+          })
+        }
+      }, 200)
     }
   }
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'course':
-        return 'Курс'
-      case 'topic':
-        return 'Тема'
-      case 'question':
-        return 'Питання'
+  const getIcon = (sourceType: string) => {
+    switch (sourceType) {
+      case 'КРОК тести':
+        return <GraduationCap className="w-5 h-5 text-blue-600" />
+      case 'Анатомія':
+        return <Heart className="w-5 h-5 text-red-600" />
+      case 'Біологія':
+        return <Microscope className="w-5 h-5 text-green-600" />
+      case 'Біохімія':
+        return <TestTube className="w-5 h-5 text-yellow-600" />
+      case 'Фармакологія':
+      case 'Фармацевтичні тести':
+        return <Pill className="w-5 h-5 text-purple-600" />
       default:
-        return 'Невідомо'
+        return <FileText className="w-5 h-5 text-gray-600" />
     }
+  }
+
+  const getTypeLabel = (sourceType: string) => {
+    return sourceType
   }
 
   const getFacultyLabel = (faculty?: string) => {
@@ -189,10 +198,10 @@ export default function SearchComponent() {
           {/* Заголовок */}
           <div className="mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-              Знайди потрібні матеріали за секунди
+              Пошук тестів по словах
             </h1>
             <p className="text-xl md:text-2xl text-gray-700">
-              <span className="font-bold text-blue-600">Help Krok</span> — твій помічник у підготовці до КРОК
+              Знайди потрібні питання з усіх баз даних (КРОК, анатомія, біологія, фармакологія та інші)
             </p>
           </div>
 
@@ -202,7 +211,7 @@ export default function SearchComponent() {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-6 h-6" />
               <input
                 type="text"
-                placeholder="Введіть у пошук слова, які є в питаннях"
+                placeholder="Введіть ключові слова для пошуку тестів (наприклад: серце, кров, ліки, бактерії)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-6 py-4 text-lg bg-white/80 backdrop-blur-sm border border-blue-200/50 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 shadow-lg"
@@ -215,6 +224,14 @@ export default function SearchComponent() {
 
       {/* Результати пошуку */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 pb-8">
+        {/* Фільтри */}
+        {searchQuery && (
+          <SearchFilters
+            onFiltersChange={handleFiltersChange}
+            totalResults={searchResults.length}
+            sources={sources}
+          />
+        )}
         {isLoading && (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-200 border-t-blue-600"></div>
@@ -234,51 +251,92 @@ export default function SearchComponent() {
         )}
 
         {!isLoading && searchResults.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4" data-results-section>
             <div className="text-center mb-8">
               <h2 className="text-2xl font-semibold text-gray-800">
-                Знайдено {searchResults.length} результатів
+                Знайдено {searchResults.length} питань
               </h2>
             </div>
 
             <div className="grid gap-4">
-              {searchResults.map((result) => (
+              {searchResults.map((result, index) => (
                 <div
-                  key={`${result.type}-${result.id}`}
+                  key={`${result.source_table}-${result.id}`}
+                  data-search-result={index}
                   className="bg-white/80 backdrop-blur-sm rounded-2xl border border-blue-200/50 p-6 hover:shadow-lg hover:bg-white/90 transition-all duration-200"
                 >
                   <div className="flex items-start space-x-4">
                     <div className="flex-shrink-0 mt-1">
-                      {getIcon(result.type)}
+                      {getIcon(result.source_type)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3 mb-3">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                          {getTypeLabel(result.type)}
+                          {getTypeLabel(result.source_type)}
                         </span>
                         {result.faculty && (
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                             {getFacultyLabel(result.faculty)}
                           </span>
                         )}
-                        {result.difficulty && (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            {getDifficultyLabel(result.difficulty)}
+                        {result.year && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                            {result.year}
+                          </span>
+                        )}
+                        {result.category && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+                            {result.category}
                           </span>
                         )}
                       </div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        {result.title}
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        {result.question_text}
                       </h3>
-                      {result.description && (
-                        <p className="text-gray-600 mb-3 line-clamp-2">
-                          {result.description}
-                        </p>
+                      
+                      {/* Варіанти відповідей */}
+                      {(result.option_a || result.option_b || result.option_c || result.option_d || result.option_e) && (
+                        <div className="space-y-2 mb-4">
+                          <h4 className="text-sm font-medium text-gray-700">Варіанти відповідей:</h4>
+                          <div className="grid gap-2">
+                            {result.option_a && (
+                              <div className="flex items-center space-x-2">
+                                <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">A</span>
+                                <span className="text-sm text-gray-700">{result.option_a}</span>
+                              </div>
+                            )}
+                            {result.option_b && (
+                              <div className="flex items-center space-x-2">
+                                <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">B</span>
+                                <span className="text-sm text-gray-700">{result.option_b}</span>
+                              </div>
+                            )}
+                            {result.option_c && (
+                              <div className="flex items-center space-x-2">
+                                <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">C</span>
+                                <span className="text-sm text-gray-700">{result.option_c}</span>
+                              </div>
+                            )}
+                            {result.option_d && (
+                              <div className="flex items-center space-x-2">
+                                <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">D</span>
+                                <span className="text-sm text-gray-700">{result.option_d}</span>
+                              </div>
+                            )}
+                            {result.option_e && (
+                              <div className="flex items-center space-x-2">
+                                <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-xs font-medium">E</span>
+                                <span className="text-sm text-gray-700">{result.option_e}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
-                      {result.course_title && (
-                        <p className="text-sm text-gray-500">
-                          Курс: {result.course_title}
-                        </p>
+                      
+                      {result.correct_answer && (
+                        <div className="text-sm text-green-700 font-medium">
+                          Правильна відповідь: {result.correct_answer}
+                        </div>
                       )}
                     </div>
                   </div>

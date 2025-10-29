@@ -21,6 +21,8 @@ interface Question {
   faculty?: string;
   category?: string;
   difficulty?: string;
+  question_image?: string;
+  option_images?: { [key: string]: string };
   options?: Array<{
     letter: string;
     text: string;
@@ -55,6 +57,7 @@ export default function RandomizerTest() {
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [showAnswers, setShowAnswers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [totalQuestionsInDatabase, setTotalQuestionsInDatabase] = useState<number>(0);
 
   // Завантаження питань з бази даних
   useEffect(() => {
@@ -73,7 +76,8 @@ export default function RandomizerTest() {
   const loadQuestions = async () => {
     setIsLoading(true);
     try {
-      const url = '/api/krok/questions?random=true&limit=150';
+      // Отримуємо 150 випадкових питань з усіх медичних питань
+      const url = '/api/krok/questions?random=true&faculty=medical&limit=150';
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
@@ -82,8 +86,9 @@ export default function RandomizerTest() {
         // Фільтруємо тільки ті питання, що мають варіанти відповідей
         if (questions.length > 0) {
           const validQuestions = questions.filter((q: any) => q.options && q.options.length > 0);
-          console.log(`Завантажено ${validQuestions.length} КРОК питань з ${questions.length} загальних`);
+          console.log(`Завантажено ${validQuestions.length} випадкових КРОК питань з бази ${data.total || 'невідомо'} питань`);
           setQuestions(validQuestions);
+          setTotalQuestionsInDatabase(data.total || 0);
         } else {
           console.log('Немає питань для Randomizer PRO');
         }
@@ -201,7 +206,6 @@ export default function RandomizerTest() {
 
         if (response.ok) {
           // Відправляємо подію про оновлення рейтингу
-          window.dispatchEvent(new CustomEvent('ratingUpdated'));
         }
       } catch (error) {
         console.error('Помилка збереження відповіді:', error);
@@ -258,7 +262,7 @@ export default function RandomizerTest() {
         },
         body: JSON.stringify({
           topic_id: null,
-          attempt_type: 'krok',
+          attempt_type: 'krok_simulation',
           total_questions: totalQuestions,
           correct_answers: correctAnswers,
           score: score,
@@ -268,15 +272,8 @@ export default function RandomizerTest() {
       });
 
       // Оновлюємо рейтинг користувача
-      await fetch('/api/user/update-rating', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
       // Відправляємо подію про оновлення рейтингу
-      window.dispatchEvent(new CustomEvent('ratingUpdated'));
 
     } catch (error) {
       console.error('Error saving test result:', error);
@@ -473,7 +470,7 @@ export default function RandomizerTest() {
               <CardTitle className="text-2xl font-bold text-blue-800">
                 Randomizer PRO ({shuffledQuestions.length} питань)
                 <span className="text-sm font-normal text-gray-600 ml-2">
-                  з бази 2991 питань
+                  з бази {totalQuestionsInDatabase || questions.length} питань
                 </span>
               </CardTitle>
               <div className="flex items-center space-x-3">
@@ -508,6 +505,19 @@ export default function RandomizerTest() {
                   <CardTitle className="text-lg font-bold text-gray-800 flex-1">
                     <span className="text-blue-600 font-bold mr-3">{index + 1}.</span>
                     {question.question_text}
+                    {/* Відображення зображення питання */}
+                    {question.question_image && (
+                      <div className="mt-4 mb-4">
+                        <img 
+                          src={question.question_image.startsWith('data:') ? question.question_image : `data:image/png;base64,${question.question_image}`}
+                          alt="Зображення питання"
+                          className="max-w-full h-auto rounded-lg border border-gray-200"
+                          style={{ maxHeight: '400px' }}
+                          onLoad={() => console.log('🔍 Зображення питання завантажено:', question.id)}
+                          onError={(e) => console.error('🔍 Помилка завантаження зображення питання:', question.id, e)}
+                        />
+                      </div>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -525,7 +535,24 @@ export default function RandomizerTest() {
                       >
                         <div className="flex items-center w-full">
                           <span className="font-semibold mr-3">{option.displayKey}.</span>
-                          <span className="flex-1">{option.text}</span>
+                          <div className="flex-1">
+                            <span>{option.text}</span>
+                            {/* Відображення зображення варіанту відповіді */}
+                            {question.option_images && question.option_images[option.originalKey] && (
+                              <div className="mt-2">
+                                <img 
+                                  src={question.option_images[option.originalKey].startsWith('data:') 
+                                    ? question.option_images[option.originalKey] 
+                                    : `data:image/png;base64,${question.option_images[option.originalKey]}`}
+                                  alt={`Зображення варіанту ${option.displayKey}`}
+                                  className="max-w-full h-auto rounded border border-gray-200"
+                                  style={{ maxHeight: '200px' }}
+                                  onLoad={() => console.log('🔍 Зображення варіанту завантажено:', question.id, option.originalKey)}
+                                  onError={(e) => console.error('🔍 Помилка завантаження зображення варіанту:', question.id, option.originalKey, e)}
+                                />
+                              </div>
+                            )}
+                          </div>
                           {isAnswered && isCorrectAnswer && (
                             <Check className="w-5 h-5 text-green-600 ml-2" />
                           )}

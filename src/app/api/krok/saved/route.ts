@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClientForServer } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -19,7 +19,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClientForServer();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: 'Supabase configuration missing' },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
     console.log('Supabase client created');
 
     // Отримуємо збережені питання користувача (спрощена версія без JOIN)
@@ -91,7 +101,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClientForServer();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: 'Supabase configuration missing' },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Перевіряємо, чи існує питання в єдиній таблиці
     const { data: question, error: questionError } = await supabase
@@ -172,7 +192,17 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClientForServer();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: 'Supabase configuration missing' },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Видаляємо збережене питання
     const { error: deleteError } = await supabase

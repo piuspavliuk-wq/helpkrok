@@ -5,12 +5,19 @@ import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { firstName, lastName, email, password } = await request.json()
+    const { firstName, lastName, email, password, faculty } = await request.json()
 
     // Валідація даних
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !lastName || !email || !password || !faculty) {
       return NextResponse.json(
         { error: 'Всі поля обов\'язкові' },
+        { status: 400 }
+      )
+    }
+
+    if (!['medical', 'pharmaceutical'].includes(faculty)) {
+      return NextResponse.json(
+        { error: 'Невірний факультет' },
         { status: 400 }
       )
     }
@@ -44,6 +51,7 @@ export async function POST(request: NextRequest) {
         lastName,
         email,
         password: hashedPassword,
+        faculty,
       }
     })
 
@@ -65,6 +73,7 @@ export async function POST(request: NextRequest) {
             first_name: firstName,
             last_name: lastName,
             email: email,
+            faculty: faculty,
             password: hashedPassword
           })
           .select();

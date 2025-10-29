@@ -1,0 +1,33 @@
+{
+  "language_mapping": {
+    "2024": {
+      "medical": "english",
+      "pharmaceutical": "ukrainian"
+    },
+    "2025": {
+      "medical": "ukrainian",
+      "pharmaceutical": "ukrainian"
+    },
+    "2023": {
+      "medical": "ukrainian",
+      "pharmaceutical": "ukrainian"
+    },
+    "2022": {
+      "medical": "ukrainian",
+      "pharmaceutical": "ukrainian"
+    },
+    "2021": {
+      "medical": "ukrainian",
+      "pharmaceutical": "ukrainian"
+    },
+    "2020": {
+      "medical": "ukrainian",
+      "pharmaceutical": "ukrainian"
+    }
+  },
+  "test_identifier_mapping": {
+    "2024-microbiology-english": "english",
+    "2025-foreigners": "english",
+    "2024-day2": "ukrainian"
+  }
+}

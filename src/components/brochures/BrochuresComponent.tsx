@@ -8,7 +8,7 @@ interface Brochure {
   year: number
   faculty: string
   title: string
-  description: string
+  description?: string | null
   totalQuestions: number
   completedQuestions?: number
   hasProgress?: boolean
@@ -16,17 +16,54 @@ interface Brochure {
   is_active: boolean
   created_at: string
   updated_at: string
+  test_identifier?: string | null
 }
 
 interface BrochuresPageProps {
   faculty?: 'medical' | 'pharmaceutical'
 }
 
+// Кеш для буклетів на фронтенді
+const frontendCache = new Map<string, { data: Brochure[]; timestamp: number }>();
+const FRONTEND_CACHE_DURATION = 2 * 60 * 1000; // 2 хвилини
+
 export default function BrochuresComponent({ faculty = 'medical' }: BrochuresPageProps) {
   const [selectedFaculty, setSelectedFaculty] = useState<'medical' | 'pharmaceutical'>(faculty)
+  const [userFaculty, setUserFaculty] = useState<'medical' | 'pharmaceutical' | null>(null)
   const [brochures, setBrochures] = useState<Brochure[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [facultyLoaded, setFacultyLoaded] = useState(false)
+
+  // Отримуємо факультет користувача
+  useEffect(() => {
+    const fetchUserFaculty = async () => {
+      try {
+        console.log('🔍 Fetching user faculty for brochures')
+        const response = await fetch('/api/user/profile')
+        if (response.ok) {
+          const userData = await response.json()
+          console.log('📋 User data received for brochures:', userData)
+          if (userData.profile?.faculty) {
+            console.log('✅ Setting faculty to:', userData.profile.faculty)
+            setUserFaculty(userData.profile.faculty)
+            setSelectedFaculty(userData.profile.faculty)
+            setFacultyLoaded(true)
+          } else {
+            console.log('⚠️ No faculty found in user data for brochures, using default')
+            setFacultyLoaded(true)
+          }
+        } else {
+          console.log('❌ Failed to fetch user profile for brochures:', response.status)
+        }
+      } catch (error) {
+        console.error('❌ Error fetching user faculty for brochures:', error)
+        setFacultyLoaded(true)
+      }
+    }
+
+    fetchUserFaculty()
+  }, [])
 
   // Fallback mock data for medical brochures
   const medicalBrochures: Brochure[] = [
@@ -71,8 +108,26 @@ export default function BrochuresComponent({ faculty = 'medical' }: BrochuresPag
     setError(null)
     
     try {
+      // Перевіряємо фронтенд кеш
+      const cacheKey = `brochures_${selectedFaculty}`;
+      const cached = frontendCache.get(cacheKey);
+      
+      if (cached && (Date.now() - cached.timestamp) < FRONTEND_CACHE_DURATION) {
+        console.log('📦 Using cached brochures data from frontend');
+        setBrochures(cached.data);
+        setLoading(false);
+        return;
+      }
+
+      // Визначаємо правильний API endpoint в залежності від факультету
+      const apiEndpoint = selectedFaculty === 'pharmaceutical' 
+        ? `/api/brochures-pharmacy?faculty=pharmacy&t=${Date.now()}`
+        : `/api/brochures?faculty=${selectedFaculty}&t=${Date.now()}`;
+      
+      console.log('🔍 Fetching brochures from:', apiEndpoint);
+      
       // Спочатку завантажуємо базові дані буклетів
-      const brochuresResponse = await fetch(`/api/brochures?faculty=${selectedFaculty}&t=${Date.now()}`, {
+      const brochuresResponse = await fetch(apiEndpoint, {
         cache: 'no-cache',
         headers: {
           'Cache-Control': 'no-cache'
@@ -96,9 +151,19 @@ export default function BrochuresComponent({ faculty = 'medical' }: BrochuresPag
           if (progressData.success && progressData.progress) {
             // Оновлюємо буклети з реальним прогресом
             booklets = booklets.map((booklet: any) => {
-              const progress = progressData.progress.find((p: any) => 
-                p.year === booklet.year && p.faculty === booklet.faculty
-              )
+              // Шукаємо прогрес по year, faculty та test_identifier
+              const progress = progressData.progress.find((p: any) => {
+                const yearMatch = p.year === booklet.year
+                const facultyMatch = p.faculty === booklet.faculty
+                
+                // Якщо у буклета є test_identifier, шукаємо точний збіг
+                if (booklet.test_identifier) {
+                  return yearMatch && facultyMatch && p.test_identifier === booklet.test_identifier
+                }
+                
+                // Якщо у буклета немає test_identifier, шукаємо прогрес без test_identifier
+                return yearMatch && facultyMatch && !p.test_identifier
+              })
               
               if (progress) {
                 return {
@@ -119,6 +184,14 @@ export default function BrochuresComponent({ faculty = 'medical' }: BrochuresPag
       }
       
       setBrochures(booklets)
+      
+      // Зберігаємо в фронтенд кеш
+      frontendCache.set(cacheKey, {
+        data: booklets,
+        timestamp: Date.now()
+      });
+      
+      console.log('💾 Cached brochures data in frontend for key:', cacheKey);
       
     } catch (err) {
       console.error('Error fetching brochures:', err)
@@ -148,8 +221,10 @@ export default function BrochuresComponent({ faculty = 'medical' }: BrochuresPag
   }
 
   useEffect(() => {
-    fetchBrochures()
-  }, [selectedFaculty])
+    if (facultyLoaded) {
+      fetchBrochures()
+    }
+  }, [selectedFaculty, facultyLoaded])
 
 
   const handleOpenBrochure = (brochureId: string) => {
@@ -159,8 +234,14 @@ export default function BrochuresComponent({ faculty = 'medical' }: BrochuresPag
       // Використовуємо рік з об'єкта brochure
       const year = brochure.year.toString()
       
+      // Додаємо test_identifier до URL якщо він є
+      let url = `/test/krok/${year}/${brochure.faculty}`
+      if (brochure.test_identifier) {
+        url += `?test_identifier=${encodeURIComponent(brochure.test_identifier)}`
+      }
+      
       // Перенаправляємо на сторінку тесту
-      window.location.href = `/test/krok/${year}/${brochure.faculty}`
+      window.location.href = url
     }
   }
 
@@ -212,50 +293,19 @@ export default function BrochuresComponent({ faculty = 'medical' }: BrochuresPag
                 className="bg-white/30 backdrop-blur-sm rounded-lg shadow-sm border border-white/40 p-6 hover:shadow-md hover:bg-white/40 transition-all duration-300"
               >
                 {/* Brochure Title */}
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{brochure.title}</h3>
-                
-                {/* Description */}
-                <p className="text-sm text-gray-600 mb-3">{brochure.description}</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">{brochure.title}</h3>
 
-                {/* Progress Info */}
-                {brochure.hasProgress && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                      <div className="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock w-4 h-4" aria-hidden="true">
-                          <path d="M12 6v6l4 2"></path>
-                          <circle cx="12" cy="12" r="10"></circle>
-                        </svg>
-                        <span>{brochure.completedQuestions || 0}/{brochure.totalQuestions}</span>
-                      </div>
-                      <span className="font-medium text-blue-600">
-                        {brochure.totalQuestions > 0 ? Math.round(((brochure.completedQuestions || 0) / brochure.totalQuestions) * 100) : 0}%
-                      </span>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${brochure.totalQuestions > 0 ? ((brochure.completedQuestions || 0) / brochure.totalQuestions) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Question Count (if no progress) */}
-                {!brochure.hasProgress && (
-                  <div className="text-sm text-gray-500 mb-4">
-                    {brochure.totalQuestions} питань
-                  </div>
-                )}
+                {/* Question Count */}
+                <div className="text-sm text-gray-500 mb-4">
+                  {brochure.totalQuestions} питань
+                </div>
 
                 {/* Action Button */}
                 <button
                   onClick={() => handleOpenBrochure(brochure.id)}
                   className="w-full bg-blue-500/80 backdrop-blur-sm hover:bg-blue-600/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
                 >
-                  {brochure.hasProgress && (brochure.completedQuestions || 0) > 0 ? 'Продовжити' : 'Почати спробу'}
+                  Почати спробу
                 </button>
               </div>
             ))}

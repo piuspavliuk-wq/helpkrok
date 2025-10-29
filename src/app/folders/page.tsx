@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Folder, Plus, Trash2, Edit, Eye, BookOpen, Share2, GripVertical } from 'lucide-react';
 import Link from 'next/link';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
+import CreateFolderModal from '@/components/ui/CreateFolderModal';
 import {
   DndContext,
   closestCenter,
@@ -111,11 +112,6 @@ export default function FoldersPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newFolder, setNewFolder] = useState({
-    name: '',
-    description: '',
-    color: '#3B82F6'
-  });
   const [saving, setSaving] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -167,23 +163,21 @@ export default function FoldersPage() {
   };
 
   // Створення нової папки
-  const createFolder = async () => {
-    if (!newFolder.name.trim()) return;
+  const createFolder = async (folderData: { name: string }) => {
+    if (!folderData.name.trim()) return;
     
     setSaving(true);
     try {
       const response = await fetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newFolder)
+        body: JSON.stringify(folderData)
       });
 
       if (response.ok) {
         const data = await response.json();
         setFolders(prev => [data.folder, ...prev]);
-        setNewFolder({ name: '', description: '', color: '#3B82F6' });
         setShowCreateModal(false);
-        alert('Папку створено успішно!');
       } else {
         const errorData = await response.json();
         alert(`Помилка: ${errorData.error || 'Не вдалося створити папку'}`);
@@ -397,75 +391,12 @@ export default function FoldersPage() {
           )}
 
           {/* Модальне вікно створення папки */}
-          {showCreateModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Створити папку</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Назва папки
-                    </label>
-                    <input
-                      type="text"
-                      value={newFolder.name}
-                      onChange={(e) => setNewFolder(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Введіть назву папки"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Опис (необов'язково)
-                    </label>
-                    <textarea
-                      value={newFolder.description}
-                      onChange={(e) => setNewFolder(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                      placeholder="Введіть опис папки"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Колір
-                    </label>
-                    <div className="flex space-x-2">
-                      {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'].map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setNewFolder(prev => ({ ...prev, color }))}
-                          className={`w-8 h-8 rounded-full border-2 ${
-                            newFolder.color === color ? 'border-gray-400' : 'border-gray-200'
-                          }`}
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                  >
-                    Скасувати
-                  </button>
-                  <button
-                    onClick={createFolder}
-                    disabled={saving || !newFolder.name.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {saving ? 'Створення...' : 'Створити'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <CreateFolderModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onCreate={createFolder}
+            isLoading={saving}
+          />
         </div>
       </div>
 

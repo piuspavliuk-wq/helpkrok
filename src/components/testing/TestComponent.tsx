@@ -197,15 +197,8 @@ export function TestComponent({ topicId, userId, onTestComplete, onTestExit }: T
       })
 
       // Оновлюємо рейтинг користувача
-      await fetch('/api/user/update-rating', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
 
       // Відправляємо подію про оновлення рейтингу
-      window.dispatchEvent(new CustomEvent('ratingUpdated'))
 
     } catch (error) {
       console.error('Error saving test result:', error)

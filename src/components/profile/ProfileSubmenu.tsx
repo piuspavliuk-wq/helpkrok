@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Calendar, User, BarChart3, Trophy, LogOut } from 'lucide-react'
+import { Calendar, User, BarChart3, LogOut } from 'lucide-react'
 
 interface SubmenuItem {
   id: string
@@ -31,12 +31,6 @@ const submenuItems: SubmenuItem[] = [
     href: '/profile/statistics',
     icon: BarChart3
   },
-  {
-    id: 'rating',
-    label: 'Рейтинг',
-    href: '/profile/rating',
-    icon: Trophy
-  }
 ]
 
 export default function ProfileSubmenu() {
@@ -57,8 +51,7 @@ export default function ProfileSubmenu() {
               const isActive = pathname === item.href || 
                 (item.href === '/profile' && (pathname === '/profile' || pathname === '/profile/schedule')) ||
                 (item.href === '/profile/edit' && pathname === '/profile/edit') ||
-                (item.href === '/profile/statistics' && pathname === '/profile/statistics') ||
-                (item.href === '/profile/rating' && pathname === '/profile/rating')
+                (item.href === '/profile/statistics' && pathname === '/profile/statistics')
               
               return (
                 <Link
@@ -110,8 +103,7 @@ export default function ProfileSubmenu() {
                 const isActive = pathname === item.href || 
                   (item.href === '/profile' && (pathname === '/profile' || pathname === '/profile/schedule')) ||
                   (item.href === '/profile/edit' && pathname === '/profile/edit') ||
-                  (item.href === '/profile/statistics' && pathname === '/profile/statistics') ||
-                  (item.href === '/profile/rating' && pathname === '/profile/rating')
+                  (item.href === '/profile/statistics' && pathname === '/profile/statistics')
                 
                 return (
                   <Link

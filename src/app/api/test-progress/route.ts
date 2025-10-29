@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Перетворюємо в зручний формат для фронтенду
-    const progressMap: { [questionId: number]: string } = {};
+    const progressMap: { [questionId: string]: string } = {};
     progress?.forEach(item => {
       if (item.selected_answer) {
         progressMap[item.question_id] = item.selected_answer;
@@ -72,9 +72,13 @@ export async function GET(request: NextRequest) {
 // POST - зберегти відповідь користувача
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 API test-progress POST запит отримано');
+    
     const session = await getServerSession(authOptions);
+    console.log('👤 Сесія користувача:', session?.user?.id ? 'авторизований' : 'не авторизований');
     
     if (!session?.user?.id) {
+      console.log('❌ Користувач не авторизований');
       return NextResponse.json(
         { error: 'Необхідна авторизація' },
         { status: 401 }
@@ -82,20 +86,25 @@ export async function POST(request: NextRequest) {
     }
 
     const { testType, questionId, selectedAnswer, correctAnswer } = await request.json();
+    console.log('📝 Дані запиту:', { testType, questionId, selectedAnswer, correctAnswer });
 
     if (!testType || !questionId || !selectedAnswer) {
+      console.log('❌ Відсутні обов\'язкові поля');
       return NextResponse.json(
         { error: 'testType, questionId та selectedAnswer обов\'язкові' },
         { status: 400 }
       );
     }
 
+    console.log('🔗 Підключення до Supabase...');
     const supabase = createSupabaseClientForServer();
 
     // Визначаємо чи правильно відповів користувач
     const isCorrect = selectedAnswer === correctAnswer;
+    console.log('✅ Правильність відповіді:', isCorrect);
 
     // Зберігаємо або оновлюємо відповідь
+    console.log('💾 Збереження в базу даних...');
     const { data, error } = await supabase
       .from('user_test_progress')
       .upsert({
@@ -111,23 +120,41 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single();
+    
+    console.log('📊 Результат операції з БД:', { data, error });
 
     if (error) {
       console.error('Помилка збереження відповіді:', error);
+      console.error('Деталі помилки:', JSON.stringify(error, null, 2));
+      console.error('Дані запиту:', {
+        userId: session.user.id,
+        testType,
+        questionId,
+        selectedAnswer,
+        correctAnswer,
+        isCorrect
+      });
       return NextResponse.json(
-        { error: 'Помилка збереження відповіді' },
+        { 
+          error: 'Помилка збереження відповіді',
+          details: error.message || 'Unknown error',
+          code: error.code || 'UNKNOWN'
+        },
         { status: 500 }
       );
     }
 
-    // Оновлюємо статистику та рейтинг після збереження відповіді
+    // Оновлюємо статистику після збереження відповіді
+    console.log('📈 Оновлення статистики...');
     try {
-      await updateUserStatisticsAndRating(session.user.id, supabase);
+      await updateUserStatistics(session.user.id, supabase);
+      console.log('✅ Статистика оновлена');
     } catch (statsError) {
-      console.error('Error updating statistics and rating:', statsError);
+      console.error('❌ Помилка оновлення статистики:', statsError);
       // Не зупиняємо процес, якщо статистика не оновилася
     }
 
+    console.log('🎉 Відповідь успішно збережено');
     return NextResponse.json({
       success: true,
       message: 'Відповідь збережено',
@@ -135,9 +162,14 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Помилка API:', error);
+    console.error('❌ Загальна помилка API:', error);
+    console.error('📋 Деталі помилки:', JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { error: 'Внутрішня помилка сервера' },
+      { 
+        error: 'Внутрішня помилка сервера',
+        details: (error as Error).message || 'Unknown error',
+        stack: (error as Error).stack || 'No stack trace'
+      },
       { status: 500 }
     );
   }
@@ -196,8 +228,8 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// Функція для оновлення статистики та рейтингу користувача
-async function updateUserStatisticsAndRating(userId: string, supabase: any) {
+// Функція для оновлення статистики користувача
+async function updateUserStatistics(userId: string, supabase: any) {
   try {
     // Отримуємо статистику з user_test_progress
     const { data: progressData } = await supabase
@@ -238,24 +270,9 @@ async function updateUserStatisticsAndRating(userId: string, supabase: any) {
           onConflict: 'user_id'
         })
 
-      // Оновлюємо рейтинг
-      const totalPoints = correctAnswers + (completedTests * 10) + (averagePercentage * 5)
-      
-      await supabase
-        .from('user_ratings')
-        .upsert({
-          user_id: userId,
-          total_points: totalPoints,
-          tests_completed: completedTests,
-          average_score: averagePercentage,
-          last_updated: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        })
     }
   } catch (error) {
-    console.error('Error updating user statistics and rating:', error)
+    console.error('Error updating user statistics:', error)
     throw error
   }
 }

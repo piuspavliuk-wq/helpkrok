@@ -22,6 +22,11 @@ interface Question {
   option_d?: string;
   option_e?: string;
   correct_answer?: string;
+  title?: string;
+  test_identifier?: string;
+  description?: string;
+  question_image?: string;
+  option_images?: { [key: string]: string };
   options?: Array<{
     letter: string;
     text: string;
@@ -51,9 +56,10 @@ interface BrochureTestProps {
   year: string;
   faculty: string;
   testName: string;
+  test_identifier?: string | null;
 }
 
-export default function BrochureTest({ testId, year, faculty, testName }: BrochureTestProps) {
+export default function BrochureTest({ testId, year, faculty, testName, test_identifier }: BrochureTestProps) {
   const { data: session } = useSession();
   console.log('BrochureTest session:', session);
   console.log('BrochureTest user ID:', session?.user?.id);
@@ -165,8 +171,24 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
   const loadQuestions = async () => {
     setIsLoading(true);
     try {
-      // Завантажуємо КРОК питання з параметрами
-      const url = `/api/krok/questions?year=${year}&faculty=${faculty}`;
+      // Визначаємо правильний API endpoint в залежності від факультету
+      let url;
+      if (faculty === 'pharmacy' || faculty === 'pharmaceutical') {
+        url = `/api/krok/pharmacy?year=${year}&faculty=pharmacy`;
+        if (test_identifier) {
+          url += `&test_identifier=${encodeURIComponent(test_identifier)}`;
+        }
+      } else {
+        url = `/api/krok/unified?year=${year}&faculty=${faculty}`;
+        if (test_identifier) {
+          url += `&test_identifier=${encodeURIComponent(test_identifier)}`;
+        }
+      }
+      
+      console.log('🔍 Faculty from props:', faculty);
+      console.log('🔍 API URL:', url);
+      
+      console.log('🔍 Loading questions from:', url);
       
       const response = await fetch(url);
       if (response.ok) {
@@ -174,9 +196,30 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
         const questions = data.questions || data;
         
         // Фільтруємо питання, які мають варіанти відповідей
-        const validQuestions = questions.filter((q: any) => q.options && q.options.length > 0);
+        const validQuestions = questions.filter((q: any) => {
+          // Перевіряємо чи є options (може бути об'єктом або масивом)
+          if (q.options) {
+            if (Array.isArray(q.options)) {
+              return q.options.length > 0;
+            } else if (typeof q.options === 'object') {
+              return Object.keys(q.options).length > 0;
+            }
+          }
+          return false;
+        });
         
         console.log(`Завантажено ${validQuestions.length} КРОК питань з ${questions.length} загальних`);
+        console.log('🔍 Перше питання:', validQuestions[0]);
+        console.log('🔍 Options першого питання:', validQuestions[0]?.options);
+        console.log('🔍 Question image першого питання:', validQuestions[0]?.question_image ? 'Є зображення' : 'Немає зображення');
+        console.log('🔍 Option images першого питання:', validQuestions[0]?.option_images);
+        
+        // Знайдемо питання з зображеннями
+        const questionsWithImages = validQuestions.filter((q: any) => q.question_image || (q.option_images && Object.values(q.option_images).some((img: any) => img)));
+        console.log('🔍 Питань з зображеннями:', questionsWithImages.length);
+        if (questionsWithImages.length > 0) {
+          console.log('🔍 Перше питання з зображеннями:', questionsWithImages[0]);
+        }
         setQuestions(validQuestions);
       } else {
         console.error(`Помилка завантаження питань з ${testName}`);
@@ -482,7 +525,6 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
           updateUserProgress(answersCount);
         }, 100);
         // Відправляємо подію про оновлення рейтингу
-        window.dispatchEvent(new CustomEvent('ratingUpdated'));
       }
     } catch (error) {
       console.error('Помилка збереження відповіді:', error);
@@ -562,7 +604,7 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
         },
         body: JSON.stringify({
           topic_id: null,
-          attempt_type: 'krok',
+          attempt_type: 'year_booklet',
           total_questions: totalQuestions,
           correct_answers: correctAnswers,
           score: score,
@@ -572,15 +614,8 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
       });
 
       // Оновлюємо рейтинг користувача
-      await fetch('/api/user/update-rating', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
       // Відправляємо подію про оновлення рейтингу
-      window.dispatchEvent(new CustomEvent('ratingUpdated'));
 
     } catch (error) {
       console.error('Error saving test result:', error);
@@ -933,6 +968,20 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
           </CardHeader>
         </Card>
 
+        {/* Опис тесту */}
+        {shuffledQuestions.length > 0 && shuffledQuestions[0].description && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                <h3 className="text-lg font-semibold text-blue-800 mb-2">Опис тесту</h3>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                  {shuffledQuestions[0].description}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Всі питання */}
         <div className="space-y-6">
           {shuffledQuestions.map((question, index) => {
@@ -946,6 +995,19 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
                       <span className="text-blue-600 font-bold mr-3">{index + 1}.</span>
                       {question.question_text}
                     </CardTitle>
+                    {/* Відображення зображення питання */}
+                    {question.question_image && (
+                      <div className="mt-4 mb-4">
+                        <img 
+                          src={question.question_image.startsWith('data:') ? question.question_image : `data:image/png;base64,${question.question_image}`}
+                          alt="Зображення питання"
+                          className="max-w-full h-auto rounded-lg border border-gray-200"
+                          style={{ maxHeight: '400px' }}
+                          onLoad={() => console.log('🔍 Зображення питання завантажено:', question.id)}
+                          onError={(e) => console.error('🔍 Помилка завантаження зображення питання:', question.id, e)}
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2 ml-4">
                       <button
                         onClick={() => toggleSaveQuestion(question.id)}
@@ -993,15 +1055,30 @@ export default function BrochureTest({ testId, year, faculty, testName }: Brochu
                         className={`w-full justify-start text-left p-4 h-auto ${getAnswerButtonClass(option.displayKey, question, selectedAnswer)}`}
                         onClick={() => handleAnswerSelect(question.id, option.displayKey)}
                       >
-                        <div className="flex items-center w-full">
-                          <span className="font-semibold mr-3">{option.displayKey}.</span>
-                          <span className="flex-1">{option.text}</span>
-                          {isAnswered && isCorrectAnswer && (
-                            <Check className="w-5 h-5 text-green-600 ml-2" />
-                          )}
-                          {isAnswered && isSelected && !isCorrectAnswer && (
-                            <X className="w-5 h-5 text-red-600 ml-2" />
-                          )}
+                        <div className="flex items-start w-full">
+                          <span className="font-semibold mr-3 mt-1">{option.displayKey}.</span>
+                          <div className="flex-1">
+                            <span className="block">{option.text}</span>
+                            {/* Відображення зображення варіанта */}
+                            {question.option_images && question.option_images[option.displayKey] && (
+                              <div className="mt-2">
+                                <img 
+                                  src={question.option_images[option.displayKey].startsWith('data:') ? question.option_images[option.displayKey] : `data:image/png;base64,${question.option_images[option.displayKey]}`}
+                                  alt={`Зображення варіанта ${option.displayKey}`}
+                                  className="max-w-full h-auto rounded border border-gray-200"
+                                  style={{ maxHeight: '200px' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-2 mt-1">
+                            {isAnswered && isCorrectAnswer && (
+                              <Check className="w-5 h-5 text-green-600" />
+                            )}
+                            {isAnswered && isSelected && !isCorrectAnswer && (
+                              <X className="w-5 h-5 text-red-600" />
+                            )}
+                          </div>
                         </div>
                       </Button>
                     );

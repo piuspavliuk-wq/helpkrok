@@ -1,42 +1,49 @@
-// API endpoint для питань з фізіології
-// Файл: /api/physiology/questions/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { createSupabaseClientForServer } from '@/lib/supabase/server'
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// GET - отримати всі питання з фізіології
-export async function GET(req: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json({ error: 'Supabase configuration missing' }, { status: 500 });
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
+export async function GET(request: NextRequest) {
   try {
-    const { data: questions, error } = await supabase
+    console.log('API: Starting physiology questions request')
+    
+    const supabase = createSupabaseClientForServer()
+    console.log('API: Supabase client created')
+    
+    // Отримуємо параметри запиту
+    const { searchParams } = new URL(request.url)
+    const limit = searchParams.get('limit')
+    const system = searchParams.get('system')
+    const faculty = searchParams.get('faculty') || 'medical'
+    
+    console.log('API: Parameters:', { limit, system, faculty })
+    
+    // Будую запит
+    let query = supabase
       .from('physiology_questions')
       .select('*')
-      .order('id');
-
-    if (error) {
-      console.error('Error fetching physiology questions:', error);
-      return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 });
+      .eq('faculty', faculty)
+    
+    // Додаємо фільтри
+    if (system) {
+      query = query.eq('system', system)
     }
     
-    // Перевіряємо на дублікати за ID
-    if (questions) {
-      const uniqueQuestions = questions.filter((question, index, self) => 
-        index === self.findIndex(q => q.id === question.id)
-      );
-      
-      return NextResponse.json({ questions: uniqueQuestions });
+    // Додаємо ліміт тільки якщо він менший за загальну кількість
+    if (limit && parseInt(limit) < 100) {
+      query = query.limit(parseInt(limit))
     }
-
-    return NextResponse.json({ questions: [] });
+    
+    console.log('API: Executing query...')
+    const { data: questions, error } = await query
+    
+    if (error) {
+      console.error('API: Supabase error:', error)
+      return NextResponse.json({ error: 'Database error: ' + error.message }, { status: 500 })
+    }
+    
+    console.log('API: Success, questions count:', questions?.length || 0)
+    return NextResponse.json({ questions: questions || [] })
   } catch (error) {
-    console.error('Error in GET /api/physiology/questions:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('API: Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error: ' + error.message }, { status: 500 })
   }
 }
