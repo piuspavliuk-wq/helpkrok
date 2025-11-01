@@ -1,3 +1,5 @@
+import { SystemCard } from '@/components/systems/SystemCard'
+
 export default function SystemsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
@@ -11,10 +13,15 @@ export default function SystemsPage() {
         <div className="absolute top-1/3 right-1/4 w-36 h-36 border border-blue-200 rounded-full animate-pulse delay-3000"></div>
       </div>
       
-      <div className="p-8 relative z-10">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Системи</h1>
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-blue-200/50 p-6">
-          <p className="text-gray-600">Тут будуть налаштування системи та конфігурація платформи.</p>
+      <div className="px-8 pt-20 pb-8 relative z-10">
+        {/* Heading removed per request */}
+        <div className="mx-auto max-w-[1010px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-x-[50px] gap-y-[50px] justify-items-center">
+            <SystemCard title="Серцево-судинна" />
+            <SystemCard title="Дихальна" />
+            <SystemCard title="Травна" />
+            <SystemCard title="Сечова" />
+          </div>
         </div>
       </div>
     </div>

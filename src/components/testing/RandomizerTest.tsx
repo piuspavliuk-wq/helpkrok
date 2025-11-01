@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { Bookmark, BookmarkCheck, Brain, Check, X } from 'lucide-react';
 import AIExplanation from '@/components/ui/AIExplanation';
 
@@ -45,6 +46,7 @@ interface TestResult {
 
 export default function RandomizerTest() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: string}>({});
   const [testResults, setTestResults] = useState<TestResult[]>([]);
@@ -55,7 +57,7 @@ export default function RandomizerTest() {
   const [showAIExplanation, setShowAIExplanation] = useState(false);
   const [currentQuestionForAI, setCurrentQuestionForAI] = useState<any>(null);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
-  const [showAnswers, setShowAnswers] = useState(false);
+  const [showAnswers, setShowAnswers] = useState(searchParams.get('showAnswers') === 'true');
   const [showSettings, setShowSettings] = useState(false);
   const [totalQuestionsInDatabase, setTotalQuestionsInDatabase] = useState<number>(0);
 
@@ -64,13 +66,21 @@ export default function RandomizerTest() {
     loadQuestions();
   }, []);
 
-  // Показуємо налаштування після завантаження питань
+  // Автоматично починаємо тест після завантаження питань, якщо тест ще не початий
   useEffect(() => {
     if (questions.length > 0 && !isTestStarted && !isTestCompleted) {
-      setShowSettings(true);
+      // Не показуємо налаштування, одразу починаємо тест
+      const shuffled = questions.map(question => shuffleAnswers(question));
+      setShuffledQuestions(shuffled);
+      setSelectedAnswers({});
+      setTestResults([]);
+      setIsTestStarted(true);
+      setIsTestCompleted(false);
+      setShowSettings(false);
     } else if (questions.length === 0 && !isLoading) {
       console.log('Немає питань для тесту');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions.length, isTestStarted, isTestCompleted, isLoading]);
 
   const loadQuestions = async () => {

@@ -60,7 +60,7 @@ for (let i = 0; i < lines.length; i++) {
       const questionData = {
         number: questionNumber,
         system: columns[1] || 'Загальна фармація', // Блок
-        level: columns[2] || '', // Рівень
+        level: columns[2] || '', // Рівень (не використовуємо)
         situation: columns[3] || '', // Ситуація/Клінічний опис
         question: columns[4] || '', // Питання
         optionA: columns[5] || '', // Варіант A
@@ -91,14 +91,17 @@ allQuestions.sort((a, b) => a.number - b.number);
 console.log(`\n📊 Статистика:`);
 console.log(`   - Всього унікальних питань: ${allQuestions.length}`);
 
-// Генеруємо SQL INSERT statements
-let sqlContent = `-- Вставка питань з фармації
+// Генеруємо SQL INSERT statements у нову таблицю
+let sqlContent = `-- Вставка питань з фармації (окрема таблиця)
 -- Всього питань: ${allQuestions.length}
 
-INSERT INTO physiology_questions (
-  question_number, system, question_text, 
+-- Очищаємо таблицю перед вставкою
+DELETE FROM pharmacy_questions;
+
+INSERT INTO pharmacy_questions (
+  question_number, system, question_text, situation,
   option_a, option_b, option_c, option_d, 
-  correct_answer, topic, recommendation, faculty
+  correct_answer, topic, recommendation
 ) VALUES
 `;
 
@@ -106,32 +109,29 @@ INSERT INTO physiology_questions (
 allQuestions.forEach((q, index) => {
   const isLast = index === allQuestions.length - 1;
   
-  // Формуємо повне питання тільки з питання (без ситуації)
-  let fullQuestion = q.question;
-  
   sqlContent += `(
   ${q.number},
   '${q.system.replace(/'/g, "''")}',
-  '${fullQuestion.replace(/'/g, "''")}',
+  '${q.question.replace(/'/g, "''")}',
+  '${q.situation.replace(/'/g, "''")}',
   '${q.optionA.replace(/'/g, "''")}',
   '${q.optionB.replace(/'/g, "''")}',
   '${q.optionC.replace(/'/g, "''")}',
   '${q.optionD.replace(/'/g, "''")}',
   '${q.correct}',
   '${q.topic.replace(/'/g, "''")}',
-  '${q.recommendation.replace(/'/g, "''")}',
-  'pharmaceutical'
+  ''
 )${isLast ? ';' : ','}
 `;
 });
 
 sqlContent += `
--- Перевіряємо кількість питань
-SELECT COUNT(*) as total_questions FROM physiology_questions WHERE faculty = 'pharmaceutical';
+-- Перевіряємо кількість питань у новій таблиці
+SELECT COUNT(*) as total_questions FROM pharmacy_questions;
 `;
 
 // Зберігаємо SQL файл
-const outputPath = '/Users/bohdanpavliuk/Desktop/help-krok-platform/pharmaceutical_questions.sql';
+const outputPath = '/Users/bohdanpavliuk/Desktop/help-krok-platform/pharmacy_questions.sql';
 fs.writeFileSync(outputPath, sqlContent);
 
 console.log(`\n✅ SQL файл створено: ${outputPath}`);
@@ -155,6 +155,7 @@ Object.entries(systems).forEach(([system, count]) => {
 console.log(`\n🎯 Перші 5 питань:`);
 allQuestions.slice(0, 5).forEach((q, index) => {
   console.log(`${q.number}. ${q.system}`);
+  console.log(`   Ситуація: ${q.situation}`);
   console.log(`   Питання: ${q.question}`);
   console.log(`   Відповіді: A) ${q.optionA}, B) ${q.optionB}, C) ${q.optionC}, D) ${q.optionD}`);
   console.log(`   Правильна: ${q.correct}`);

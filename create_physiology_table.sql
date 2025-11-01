@@ -2,17 +2,17 @@
 CREATE TABLE IF NOT EXISTS physiology_questions (
   id SERIAL PRIMARY KEY,
   question_number INTEGER,
-  system VARCHAR(100),
-  question_text TEXT,
-  option_a TEXT,
-  option_b TEXT,
-  option_c TEXT,
-  option_d TEXT,
-  correct_answer VARCHAR(10),
-  topic VARCHAR(200),
-  recommendation TEXT,
-  faculty VARCHAR(50) DEFAULT 'medical',
-  created_at TIMESTAMP DEFAULT NOW()
+  system VARCHAR(100) NOT NULL,
+  question_text TEXT NOT NULL,
+  situation TEXT DEFAULT '', -- новий стовпець
+  option_a TEXT NOT NULL,
+  option_b TEXT NOT NULL,
+  option_c TEXT NOT NULL,
+  option_d TEXT NOT NULL,
+  correct_answer VARCHAR(50) NOT NULL,
+  topic TEXT DEFAULT '',
+  recommendation TEXT DEFAULT '',
+  faculty VARCHAR(30) DEFAULT 'medical'
 );
 
 -- Створення індексів для швидкого пошуку

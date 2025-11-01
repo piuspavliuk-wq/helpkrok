@@ -10,6 +10,7 @@ interface DiagnosticQuestion {
   question_number: number
   system: string
   question_text: string
+  situation?: string
   option_a: string
   option_b: string
   option_c: string
@@ -17,7 +18,7 @@ interface DiagnosticQuestion {
   correct_answer: string
   topic: string
   recommendation: string
-  faculty: string
+  faculty?: string
 }
 
 interface UniversalDiagnosticTestProps {
@@ -58,7 +59,11 @@ export default function UniversalDiagnosticTest({
       
       while (retries > 0) {
         try {
-          response = await fetch(`/api/physiology/questions?limit=${limit}&faculty=${testType}`)
+          const url =
+            testType === 'pharmaceutical'
+              ? `/api/pharmacy-knowledge/questions?limit=${limit}`
+              : `/api/physiology/questions?limit=${limit}&faculty=${testType}`
+          response = await fetch(url)
           if (response.ok) break
         } catch (err) {
           console.log('Retry attempt failed:', err)
@@ -87,7 +92,7 @@ export default function UniversalDiagnosticTest({
       }
     } catch (err) {
       console.error('Fetch error:', err)
-      setError('Помилка завантаження питань: ' + err.message)
+      setError('Помилка завантаження питань: ' + (err as any).message)
     } finally {
       setLoading(false)
     }
@@ -328,6 +333,11 @@ export default function UniversalDiagnosticTest({
                       {index + 1}.
                     </span>
                   </div>
+                  {
+                    testType === 'pharmaceutical' && (question as any).situation && (
+                      <div className="text-gray-500 mb-2 italic text-base">{(question as any).situation}</div>
+                    )
+                  }
                   <h2 className="text-xl font-medium text-gray-900 leading-relaxed mb-4">
                     {question.question_text}
                   </h2>

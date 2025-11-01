@@ -40,3 +40,7 @@ FOR UPDATE USING (auth.role() = 'authenticated');
 -- Політика для видалення (тільки аутентифіковані користувачі)
 CREATE POLICY "Allow delete for authenticated users" ON physiology_questions
 FOR DELETE USING (auth.role() = 'authenticated');
+
+-- Додає стовпець situation (TEXT) до physiology_questions якщо його ще нема
+ALTER TABLE physiology_questions 
+  ADD COLUMN IF NOT EXISTS situation TEXT DEFAULT '';

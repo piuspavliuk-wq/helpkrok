@@ -86,6 +86,13 @@ export async function GET(request: NextRequest) {
       created_at: q.created_at
     })) || [];
 
+    // Отримуємо загальну кількість питань в базі
+    const { count: totalCount, error: countError } = await supabase
+      .from('pharmaceutical_questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('faculty', 'pharmaceutical');
+
     // Якщо потрібно випадковий порядок, перемішуємо в JavaScript
     if (random && formattedQuestions.length > 0) {
       const shuffledQuestions = [...formattedQuestions];
@@ -93,10 +100,18 @@ export async function GET(request: NextRequest) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
       }
-      return NextResponse.json({ questions: shuffledQuestions });
+      return NextResponse.json({ 
+        questions: shuffledQuestions,
+        total: totalCount || formattedQuestions.length,
+        returned: shuffledQuestions.length
+      });
     }
 
-    return NextResponse.json({ questions: formattedQuestions });
+    return NextResponse.json({ 
+      questions: formattedQuestions,
+      total: totalCount || formattedQuestions.length,
+      returned: formattedQuestions.length
+    });
 
   } catch (error) {
     console.error('Error in GET /api/pharmaceutical/questions:', error);
