@@ -49,8 +49,8 @@ const menuItems: MenuItem[] = [
   },
   {
     id: 'systems',
-    label: 'Системи',
-    mobileLabel: 'Системи',
+    label: 'Курси',
+    mobileLabel: 'Курси',
     href: '/systems',
     icon: Settings
   },
