@@ -28,6 +28,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Перевірка чи налаштований Supabase клієнт
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Supabase не налаштовано' },
+        { status: 500 }
+      )
+    }
+
     // Перевірка чи існує користувач в Supabase
     const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')

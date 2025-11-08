@@ -326,7 +326,8 @@ export default function UniversalDiagnosticTest({
               
               <div className="space-y-3">
                 {['A', 'B', 'C', 'D'].map((option) => {
-                  const optionText = currentQuestion[`option_${option.toLowerCase()}` as keyof PhysiologyQuestion] as string
+                  const optionKey = `option_${option.toLowerCase()}` as keyof DiagnosticQuestion
+                  const optionText = (currentQuestion[optionKey] as string) || ''
                   return (
                     <label
                       key={option}

@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ questions: questions || [] })
   } catch (error) {
     console.error('API: Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error: ' + error.message }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: 'Internal server error: ' + errorMessage }, { status: 500 })
   }
 }

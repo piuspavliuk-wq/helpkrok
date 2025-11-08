@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get('q');
+
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50;
     const faculty = searchParams.get('faculty');
     const year = searchParams.get('year');
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',
-      query: query
+      query: query || null
     }, { status: 500 });
   }
 }

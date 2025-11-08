@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { Check, X } from 'lucide-react'
@@ -28,7 +28,7 @@ interface PharmaceuticalQuestion {
   }>
 }
 
-export default function PharmaceuticalRandomizer() {
+function PharmaceuticalRandomizerContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const [questions, setQuestions] = useState<PharmaceuticalQuestion[]>([])
@@ -341,5 +341,20 @@ export default function PharmaceuticalRandomizer() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PharmaceuticalRandomizer() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Завантаження...</p>
+        </div>
+      </div>
+    }>
+      <PharmaceuticalRandomizerContent />
+    </Suspense>
   )
 }
