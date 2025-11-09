@@ -9,6 +9,7 @@ import AIExplanation from '@/components/ui/AIExplanation';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
 import FolderManager from '@/components/ui/FolderManager';
 import TestBackButton from '@/components/testing/TestBackButton';
+import Image from 'next/image';
 
 interface Question {
   id: number;
@@ -56,6 +57,17 @@ interface SavedQuestionStatus {
   [key: string]: boolean; // Ключ: "questionType_questionId"
 }
 
+interface SavedQuestionEntry {
+  question_id: number | string;
+}
+
+interface AIQuestionDetails {
+  questionText: string;
+  selectedAnswer: string;
+  correctAnswer: string;
+  options: Array<{ key: string; text: string }>;
+}
+
 interface UniversalTestProps {
   testType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology' | 'pathomorphology' | 'pharmaceutical' | 'microbiology-pharmaceutical' | 'biochemistry-pharmaceutical' | 'pharmacology-pharmaceutical' | 'botany-pharmaceutical' | 'pathophysiology-pharmaceutical' | 'physical-chemistry-pharmaceutical' | 'organic-chemistry-pharmaceutical';
   testName: string;
@@ -75,7 +87,7 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
   const [loadingSavedStatus, setLoadingSavedStatus] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
   const [showAIExplanation, setShowAIExplanation] = useState(false);
-  const [currentQuestionForAI, setCurrentQuestionForAI] = useState<any>(null);
+  const [currentQuestionForAI, setCurrentQuestionForAI] = useState<AIQuestionDetails | null>(null);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number | string>>(new Set());
   const [showAnswers, setShowAnswers] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -241,20 +253,20 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        const questions = data.questions || data;
+        const questionsData: Question[] = (data.questions || data) as Question[];
         
         // Для КРОК питань фільтруємо тільки ті, що мають варіанти відповідей
-        if (testType === 'krok' && questions.length > 0) {
-          const validQuestions = questions.filter((q: any) => q.options && q.options.length > 0);
-          console.log(`Завантажено ${validQuestions.length} КРОК питань з ${questions.length} загальних`);
+        if (testType === 'krok' && questionsData.length > 0) {
+          const validQuestions = questionsData.filter((q) => q.options && q.options.length > 0);
+          console.log(`Завантажено ${validQuestions.length} КРОК питань з ${questionsData.length} загальних`);
           setQuestions(validQuestions);
           // Зберігаємо загальну кількість питань у базі для рандомізатора
-          if (isRandomizer && data.total) {
+          if (isRandomizer && typeof data.total === 'number') {
             setTotalQuestionsInDatabase(data.total);
           }
         } else {
-          console.log(`Завантажено ${questions.length} питань для ${testType}`);
-          setQuestions(questions);
+          console.log(`Завантажено ${questionsData.length} питань для ${testType}`);
+          setQuestions(questionsData);
         }
       } else {
         console.error(`Помилка завантаження питань з ${testName}`);
@@ -281,13 +293,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
+          const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+          const statusMap = buildSavedStatusMap(savedQuestions);
           console.log(`Завантажено ${savedQuestions.length} збережених питань для фармації`);
           console.log('Final status map:', statusMap);
           setSavedQuestionsStatus(statusMap);
@@ -311,13 +318,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Microbiology pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
+          const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+          const statusMap = buildSavedStatusMap(savedQuestions);
           console.log(`Завантажено ${savedQuestions.length} збережених питань для мікробіології фармації`);
           console.log('Final status map:', statusMap);
           setSavedQuestionsStatus(statusMap);
@@ -341,13 +343,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Biochemistry pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
+          const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+          const statusMap = buildSavedStatusMap(savedQuestions);
           console.log(`Завантажено ${savedQuestions.length} збережених питань для біохімії фармації`);
           console.log('Final status map:', statusMap);
           setSavedQuestionsStatus(statusMap);
@@ -371,13 +368,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Pharmacology pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
+          const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+          const statusMap = buildSavedStatusMap(savedQuestions);
           console.log(`Завантажено ${savedQuestions.length} збережених питань для фармакології фармації`);
           console.log('Final status map:', statusMap);
           setSavedQuestionsStatus(statusMap);
@@ -401,13 +393,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Botany pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
+          const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+          const statusMap = buildSavedStatusMap(savedQuestions);
           console.log(`Завантажено ${savedQuestions.length} збережених питань для ботаніки фармації`);
           console.log('Final status map:', statusMap);
           setSavedQuestionsStatus(statusMap);
@@ -431,13 +418,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Pathophysiology pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
+          const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+          const statusMap = buildSavedStatusMap(savedQuestions);
           console.log(`Завантажено ${savedQuestions.length} збережених питань для патофізіології фармації`);
           console.log('Final status map:', statusMap);
           setSavedQuestionsStatus(statusMap);
@@ -461,13 +443,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Physical chemistry pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
+          const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+          const statusMap = buildSavedStatusMap(savedQuestions);
           console.log(`Завантажено ${savedQuestions.length} збережених питань для фізичної та колоїдної хімії фармації`);
           console.log('Final status map:', statusMap);
           setSavedQuestionsStatus(statusMap);
@@ -491,16 +468,11 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
         if (response.ok) {
           const data = await response.json();
           console.log('Organic chemistry pharmaceutical API response data:', data);
-          const savedQuestions = data.savedQuestions || [];
-          const statusMap: SavedQuestionStatus = {};
-          savedQuestions.forEach((item: any) => {
-            const key = `${testType}_${item.question_id}`;
-            statusMap[key] = true;
-            console.log(`Added to status map: ${key}`);
-          });
-          console.log(`Завантажено ${savedQuestions.length} збережених питань для органічної хімії фармації`);
-          console.log('Final status map:', statusMap);
-          setSavedQuestionsStatus(statusMap);
+        const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+        const statusMap = buildSavedStatusMap(savedQuestions);
+        console.log(`Завантажено ${savedQuestions.length} збережених питань для органічної хімії фармації`);
+        console.log('Final status map:', statusMap);
+        setSavedQuestionsStatus(statusMap);
         } else {
           console.error(`Помилка відповіді API для ${testType}:`, response.status);
         }
@@ -521,14 +493,8 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
       if (response.ok) {
         const data = await response.json();
         console.log('API response data:', data);
-        const savedQuestions = data.savedQuestions || [];
-        const statusMap: SavedQuestionStatus = {};
-        savedQuestions.forEach((item: any) => {
-          // Використовуємо комбінацію question_type + question_id як ключ
-          const key = `${testType}_${item.question_id}`;
-          statusMap[key] = true;
-          console.log(`Added to status map: ${key}`);
-        });
+        const savedQuestions = (data.savedQuestions || []) as SavedQuestionEntry[];
+        const statusMap = buildSavedStatusMap(savedQuestions);
         console.log(`Завантажено ${savedQuestions.length} збережених питань для ${testType}`);
         console.log('Final status map:', statusMap);
         setSavedQuestionsStatus(statusMap);
@@ -974,7 +940,34 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
     return testResults.filter(result => result.isCorrect).length;
   };
 
-  const showAIExplanationForQuestion = (question: any) => {
+  const buildSavedStatusMap = (entries: SavedQuestionEntry[]) => {
+    const statusMap: SavedQuestionStatus = {};
+    entries.forEach((item) => {
+      const key = `${testType}_${item.question_id}`;
+      statusMap[key] = true;
+    });
+    return statusMap;
+  };
+
+  const getOptionImage = (question: Question, optionKey: string): string | undefined => {
+    const key = optionKey.toUpperCase();
+    switch (key) {
+      case 'A':
+        return question.option_a_image;
+      case 'B':
+        return question.option_b_image;
+      case 'C':
+        return question.option_c_image;
+      case 'D':
+        return question.option_d_image;
+      case 'E':
+        return question.option_e_image;
+      default:
+        return undefined;
+    }
+  };
+
+  const showAIExplanationForQuestion = (question: Question) => {
     let selectedAnswer = selectedAnswers[question.id];
     let correctAnswer = question.shuffledCorrectAnswer || question.correct_answer;
     
@@ -991,13 +984,13 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
     let options: Array<{key: string, text: string}>;
     if (question.shuffledOptions) {
       // Якщо є перемішані опції, використовуємо їх
-      options = question.shuffledOptions.map((option: any) => ({
+      options = question.shuffledOptions.map((option) => ({
         key: option.displayKey,
         text: option.text
       }));
     } else if (question.options && question.options.length > 0) {
       // Для КРОК питань використовуємо options
-      options = question.options.map((option: any) => ({
+      options = question.options.map((option) => ({
         key: option.letter,
         text: option.text
       }));
@@ -1021,14 +1014,14 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
     setShowAIExplanation(true);
   };
 
-  const getAnswerButtonClass = (answerKey: string, question: any, selectedAnswer?: string) => {
+  const getAnswerButtonClass = (answerKey: string, question: Question, selectedAnswer?: string) => {
     const isSelected = selectedAnswer === answerKey;
     const isAnswered = answeredQuestions.has(question.id) || revealAllAnswers;
     
     // Визначаємо правильну відповідь
     let correctAnswer;
     if (question.options && question.options.length > 0) {
-      const correctOption = question.options.find((opt: any) => opt.is_correct);
+      const correctOption = question.options.find((opt) => opt.is_correct);
       correctAnswer = correctOption?.letter || 'A';
     } else {
       correctAnswer = question.correct_answer || 'A';
@@ -1247,9 +1240,12 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                       {question.question_text}
                       {question.question_image && (
                         <div className="mt-3">
-                          <img 
+                          <Image 
                             src={question.question_image} 
                             alt="Question image" 
+                            width={600}
+                            height={300}
+                            unoptimized
                             className="max-w-full h-auto rounded-lg border border-gray-200"
                             style={{ maxHeight: '300px' }}
                           />
@@ -1276,8 +1272,7 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                         <div className="relative">
                           <FolderManager
                             questionId={question.id}
-                            questionType={testType as any}
-                            isSaved={savedQuestionsStatus[`${testType}_${question.id}`] || false}
+                            questionType={testType}
                             onSaveChange={(saved) => {
                               setSavedQuestionsStatus(prev => ({
                                 ...prev,
@@ -1291,7 +1286,7 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {question.shuffledOptions?.map((option, optionIndex) => {
+                  {question.shuffledOptions?.map((option) => {
                     const isAnswered = answeredQuestions.has(question.id) || revealAllAnswers;
                     const isSelected = selectedAnswer === option.displayKey;
                     const isCorrectAnswer = option.displayKey === (question.shuffledCorrectAnswer || question.correct_answer);
@@ -1307,11 +1302,14 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                           <span className="font-semibold mr-3">{option.displayKey}.</span>
                           <div className="flex-1">
                             <span>{option.text}</span>
-                            {(question as any)[`option_${option.originalKey.toLowerCase()}_image`] && (
+                            {getOptionImage(question, option.originalKey) && (
                               <div className="mt-2">
-                                <img 
-                                  src={(question as any)[`option_${option.originalKey.toLowerCase()}_image`]} 
+                                <Image 
+                                  src={getOptionImage(question, option.originalKey) as string} 
                                   alt={`Option ${option.displayKey} image`}
+                                  width={400}
+                                  height={200}
+                                  unoptimized
                                   className="max-w-full h-auto rounded border border-gray-200"
                                   style={{ maxHeight: '150px' }}
                                 />
@@ -1343,11 +1341,14 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                           <span className="font-semibold mr-3">{option}.</span>
                           <div className="flex-1">
                             <span>{getAnswerText(question, option)}</span>
-                            {(question as any)[`option_${option.toLowerCase()}_image`] && (
+                            {getOptionImage(question, option) && (
                               <div className="mt-2">
-                                <img 
-                                  src={(question as any)[`option_${option.toLowerCase()}_image`]} 
+                                <Image 
+                                  src={getOptionImage(question, option) as string} 
                                   alt={`Option ${option} image`}
+                                  width={400}
+                                  height={200}
+                                  unoptimized
                                   className="max-w-full h-auto rounded border border-gray-200"
                                   style={{ maxHeight: '150px' }}
                                 />

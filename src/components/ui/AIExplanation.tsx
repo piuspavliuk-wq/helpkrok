@@ -49,7 +49,7 @@ export default function AIExplanation({
       } else {
         setError(data.error || 'Помилка отримання пояснення');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Помилка з\'єднання з сервером');
     } finally {
       setIsLoading(false);

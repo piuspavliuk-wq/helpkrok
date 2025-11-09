@@ -25,7 +25,8 @@ interface Folder {
 
 interface FolderManagerProps {
   questionId: number | string;
-  questionType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology' | 'pharmaceutical' | 'microbiology-pharmaceutical' | 'biochemistry-pharmaceutical' | 'pharmacology-pharmaceutical' | 'botany-pharmaceutical' | 'pathophysiology-pharmaceutical' | 'physical-chemistry-pharmaceutical' | 'organic-chemistry-pharmaceutical';
+  questionType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology' | 'pathomorphology' | 'pharmaceutical' | 'microbiology-pharmaceutical' | 'biochemistry-pharmaceutical' | 'pharmacology-pharmaceutical' | 'botany-pharmaceutical' | 'pathophysiology-pharmaceutical' | 'physical-chemistry-pharmaceutical' | 'organic-chemistry-pharmaceutical';
+  isSaved?: boolean;
   onSaveChange: (saved: boolean) => void;
 }
 
