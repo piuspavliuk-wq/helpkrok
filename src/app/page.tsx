@@ -330,9 +330,12 @@ export default function Home() {
                   Перехід до лекцій
                 </li>
               </ul>
-              <button className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto">
+              <Link 
+                href="/randomizer/buy" 
+                className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto text-center"
+              >
                 Спробувати Randomizer
-              </button>
+              </Link>
             </div>
             </RevealOnScroll>
           </div>
