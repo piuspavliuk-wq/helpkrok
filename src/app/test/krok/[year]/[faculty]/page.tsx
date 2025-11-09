@@ -1,6 +1,7 @@
 'use client'
 
-import { useParams, useSearchParams, Suspense } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import BrochureTest from '@/components/testing/BrochureTest'
 import AuthGuard from '@/components/auth/AuthGuard'
 

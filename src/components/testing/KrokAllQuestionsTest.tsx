@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import TestBackButton from '@/components/testing/TestBackButton';
 import { useSession } from 'next-auth/react';
 
 interface Question {
@@ -308,7 +309,9 @@ export default function KrokAllQuestionsTest() {
 
   if (isTestCompleted) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
+      <div className="w-full max-w-4xl mx-auto">
+        <TestBackButton className="mb-4" fallbackHref="/" />
+        <Card className="w-full">
         <CardHeader>
           <CardTitle className="text-2xl text-center">
             🎯 Результати тесту
@@ -409,12 +412,14 @@ export default function KrokAllQuestionsTest() {
           </div>
         </CardContent>
       </Card>
+      </div>
     );
   }
 
   if (isTestStarted) {
     return (
       <div className="w-full max-w-6xl mx-auto">
+        <TestBackButton className="mb-4 md:mb-6" fallbackHref="/" />
         {/* Десктопна версія з контейнером */}
         <div className="hidden md:block">
           <Card className="w-full max-w-6xl mx-auto">
@@ -599,7 +604,9 @@ export default function KrokAllQuestionsTest() {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
+      <TestBackButton className="mb-4" fallbackHref="/" />
+      <Card className="w-full">
       <CardHeader>
         <CardTitle className="text-2xl text-center">
           🎲 KROK Тест
@@ -639,5 +646,6 @@ export default function KrokAllQuestionsTest() {
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }

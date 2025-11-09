@@ -8,6 +8,7 @@ import { Bookmark, BookmarkCheck, Brain, Check, X, MoreVertical, Eye, EyeOff, Tr
 import AIExplanation from '@/components/ui/AIExplanation';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
 import FolderManager from '@/components/ui/FolderManager';
+import TestBackButton from '@/components/testing/TestBackButton';
 
 interface Question {
   id: number;
@@ -814,7 +815,8 @@ export default function BrochureTest({ testId, year, faculty, testName, test_ide
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto pt-16 md:pt-20">
+          <TestBackButton className="mb-4 md:mb-6" fallbackHref="/brochures" />
           <Card className="mb-6">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
@@ -945,6 +947,7 @@ export default function BrochureTest({ testId, year, faculty, testName, test_ide
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
       <div className="max-w-4xl mx-auto pt-16 md:pt-20">
+        <TestBackButton className="mb-4 md:mb-6" fallbackHref="/brochures" />
         {/* Заголовок та перемикач */}
         <Card className="mb-6">
           <CardHeader>

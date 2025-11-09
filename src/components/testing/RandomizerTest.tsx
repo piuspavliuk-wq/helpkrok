@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Bookmark, BookmarkCheck, Brain, Check, X } from 'lucide-react';
 import AIExplanation from '@/components/ui/AIExplanation';
+import TestBackButton from '@/components/testing/TestBackButton';
 
 interface Question {
   id: number;
@@ -431,7 +432,8 @@ function RandomizerTestContent() {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto pt-16 md:pt-20">
+          <TestBackButton className="mb-4 md:mb-6" fallbackHref="/randomizer/settings" />
           <Card className="mb-6">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
@@ -473,6 +475,7 @@ function RandomizerTestContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
       <div className="max-w-4xl mx-auto pt-16 md:pt-20">
+        <TestBackButton className="mb-4 md:mb-6" fallbackHref="/randomizer/settings" />
         {/* Заголовок */}
         <Card className="mb-6">
           <CardHeader>

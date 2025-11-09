@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import TestBackButton from '@/components/testing/TestBackButton'
 
 interface DiagnosticQuestion {
   id: number
@@ -166,7 +167,8 @@ export default function UniversalDiagnosticTest({
     
     return (
       <div className="min-h-screen bg-blue-50 py-12">
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-6xl mx-auto px-4 pt-16 md:pt-20">
+          <TestBackButton className="mb-6" fallbackHref="/systems" />
           <Card className="w-full max-w-6xl mx-auto">
             <CardHeader>
               <CardTitle className="text-2xl text-center">
@@ -307,7 +309,8 @@ export default function UniversalDiagnosticTest({
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8 pb-20 md:pb-8 relative z-10">
+      <div className="max-w-6xl mx-auto px-6 py-8 pb-20 md:pb-8 pt-16 md:pt-20 relative z-10">
+        <TestBackButton className="mb-6" fallbackHref="/systems" />
 
         {/* All Questions */}
         <div className="space-y-6">

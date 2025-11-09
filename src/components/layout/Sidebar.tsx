@@ -94,20 +94,28 @@ const menuItems: MenuItem[] = [
 export default function Sidebar() {
   const pathname = usePathname()
   const [isMobileNavHidden, setIsMobileNavHidden] = useState(false)
+  const isTestRoute = pathname
+    ? pathname.startsWith('/test') ||
+      pathname === '/randomizer' ||
+      pathname === '/pharmaceutical/randomizer' ||
+      /-test($|\/)/.test(pathname)
+    : false
 
   // Слухаємо зміни класу body для приховування мобільної навігації під час тесту
   useEffect(() => {
+    if (isTestRoute) {
+      setIsMobileNavHidden(true)
+      return
+    }
+
     const checkBodyClass = () => {
       const hasHideClass = document.body.classList.contains('hide-mobile-nav')
-      // Приховуємо мобільну навігацію тільки на мобільних пристроях (ширина екрану < 768px)
       const isMobile = window.innerWidth < 768
       setIsMobileNavHidden(hasHideClass && isMobile)
     }
 
-    // Перевіряємо початковий стан
     checkBodyClass()
 
-    // Додаємо слухач зміни розміру екрану
     const handleResize = () => {
       const hasHideClass = document.body.classList.contains('hide-mobile-nav')
       const isMobile = window.innerWidth < 768
@@ -116,7 +124,6 @@ export default function Sidebar() {
 
     window.addEventListener('resize', handleResize)
 
-    // Створюємо MutationObserver для відстеження змін класів body
     const observer = new MutationObserver(checkBodyClass)
     observer.observe(document.body, {
       attributes: true,
@@ -127,7 +134,7 @@ export default function Sidebar() {
       observer.disconnect()
       window.removeEventListener('resize', handleResize)
     }
-  }, [])
+  }, [isTestRoute])
 
   return (
     <>
