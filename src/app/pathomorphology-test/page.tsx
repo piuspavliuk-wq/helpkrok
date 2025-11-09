@@ -1,12 +1,15 @@
 'use client'
 
 import UniversalTest from '@/components/testing/UniversalTest'
+import AuthGuard from '@/components/auth/AuthGuard'
 
 export default function PathomorphologyTestPage() {
   return (
-    <UniversalTest 
-      testType="pathomorphology" 
-      testName="Патоморфологія" 
-    />
+    <AuthGuard>
+      <UniversalTest 
+        testType="pathomorphology" 
+        testName="Патоморфологія" 
+      />
+    </AuthGuard>
   )
 }

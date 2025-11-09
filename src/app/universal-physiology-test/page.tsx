@@ -2,23 +2,22 @@
 
 import { useState } from 'react'
 import UniversalDiagnosticTest from '@/components/testing/UniversalDiagnosticTest'
+import AuthGuard from '@/components/auth/AuthGuard'
 
 export default function UniversalPhysiologyTestPage() {
   const [testType, setTestType] = useState<'medical' | 'pharmaceutical'>('medical')
   const [testStarted, setTestStarted] = useState(false)
 
-  if (testStarted) {
-    return (
-      <UniversalDiagnosticTest
-        testType={testType}
-        testName={testType === 'medical' ? 'Діагностичний тест - Медицина' : 'Діагностичний тест - Фармація'}
-        limit={10}
-      />
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <AuthGuard>
+      {testStarted ? (
+        <UniversalDiagnosticTest
+          testType={testType}
+          testName={testType === 'medical' ? 'Діагностичний тест - Медицина' : 'Діагностичний тест - Фармація'}
+          limit={10}
+        />
+      ) : (
+        <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
@@ -89,5 +88,7 @@ export default function UniversalPhysiologyTestPage() {
         </div>
       </div>
     </div>
+      )}
+    </AuthGuard>
   )
 }

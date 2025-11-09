@@ -7,6 +7,7 @@ import { ArrowLeft, BookOpen, Calendar, Trash2, Eye, MoreVertical, Play, EyeOff,
 import Link from 'next/link';
 import FolderTest from '@/components/testing/FolderTest';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
+import AuthGuard from '@/components/auth/AuthGuard';
 
 interface Question {
   id: number;
@@ -244,26 +245,10 @@ export default function FolderPage() {
     };
   }, [showMenu]);
 
-  if (!session?.user?.id) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Увійдіть в систему</h1>
-          <p className="text-gray-600 mb-6">Для доступу до папок потрібно увійти в систему</p>
-          <Link
-            href="/auth/signin"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Увійти
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
+  return (
+    <AuthGuard>
+      {loading ? (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
         <div className="p-6">
           <div className="max-w-4xl mx-auto">
             <div className="animate-pulse">
@@ -283,38 +268,26 @@ export default function FolderPage() {
           </div>
         </div>
       </div>
-    );
-  }
-
-  if (!folder) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Папка не знайдена</h1>
-          <p className="text-gray-600 mb-6">Ця папка не існує або була видалена</p>
-          <Link
-            href="/folders"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Повернутися до папок
-          </Link>
+      ) : !folder ? (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Папка не знайдена</h1>
+            <p className="text-gray-600 mb-6">Ця папка не існує або була видалена</p>
+            <Link
+              href="/folders"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Повернутися до папок
+            </Link>
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  // Якщо режим тестування, показуємо компонент тесту
-  if (testMode) {
-    return (
-      <FolderTest 
-        folderId={folderId} 
-        onBack={() => setTestMode(false)} 
-      />
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
+      ) : testMode ? (
+        <FolderTest 
+          folderId={folderId} 
+          onBack={() => setTestMode(false)} 
+        />
+      ) : (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
       <div className="p-4">
         <div className="max-w-7xl mx-auto">
           {/* Заголовок */}
@@ -546,6 +519,8 @@ export default function FolderPage() {
         cancelText="Скасувати"
         isLoading={removing !== null}
       />
-    </div>
+        </div>
+      )}
+    </AuthGuard>
   );
 }
