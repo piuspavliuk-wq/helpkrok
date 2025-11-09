@@ -71,11 +71,11 @@ export default function RandomizerBuyPage() {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('Помилка при створенні платежу')
-      }
-
       const data = await response.json()
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Помилка при створенні платежу')
+      }
       
       if (data.payment_url) {
         // Перенаправляємо на сторінку оплати

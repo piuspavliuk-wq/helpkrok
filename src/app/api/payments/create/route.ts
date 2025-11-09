@@ -18,7 +18,46 @@ export async function POST(request: NextRequest) {
 
     // Отримуємо користувача з сесії
     const session = await getServerSession(authOptions)
-    const userId = session?.user?.id || 'temp-user-id'
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Потрібно увійти в систему' },
+        { status: 401 }
+      )
+    }
+
+    if (plan_type === 'randomizer' && (!attempts_count || attempts_count <= 0)) {
+      return NextResponse.json(
+        { error: 'Для Randomizer PRO потрібно вказати кількість спроб' },
+        { status: 400 }
+      )
+    }
+
+    // Переконуємось, що користувач існує в Prisma (для зв'язків)
+    try {
+      await prisma.user.upsert({
+        where: { id: userId },
+        update: {
+          email: session.user?.email ?? undefined,
+          name: session.user?.name ?? undefined,
+        },
+        create: {
+          id: userId,
+          email: session.user?.email ?? null,
+          name: session.user?.name ?? null,
+          firstName: session.user?.name?.split(' ')[0] ?? null,
+          lastName: session.user?.name?.split(' ').slice(1).join(' ') || null,
+          role: 'student',
+        },
+      })
+    } catch (ensureUserError) {
+      console.error('Prisma user ensure error:', ensureUserError)
+      return NextResponse.json(
+        { error: 'Не вдалося підготувати дані користувача' },
+        { status: 500 }
+      )
+    }
 
     // Визначаємо дати підписки
     const startDate = new Date()
@@ -33,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     // Якщо це Randomizer PRO - створюємо запис спроб
     if (plan_type === 'randomizer' && attempts_count) {
-      const randomizerAttempt = await prisma.randomizerAttempt.create({
+      const randomizerAttempt = await (prisma as any).randomizerAttempt.create({
         data: {
           userId: userId,
           totalAttempts: attempts_count,
