@@ -1,18 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// Використовуємо прості HTML елементи замість UI компонентів
 import { 
   Folder, 
   FolderPlus, 
-  Edit, 
-  Trash2, 
   Plus,
-  X,
-  Bookmark,
-  BookmarkCheck
+  X
 } from 'lucide-react';
 
 interface Folder {
@@ -33,14 +26,12 @@ interface Folder {
 interface FolderManagerProps {
   questionId: number | string;
   questionType: 'anatomy' | 'histology' | 'krok' | 'biology' | 'microbiology' | 'pharmacology' | 'physiology' | 'pathophysiology' | 'pathology' | 'pharmaceutical' | 'microbiology-pharmaceutical' | 'biochemistry-pharmaceutical' | 'pharmacology-pharmaceutical' | 'botany-pharmaceutical' | 'pathophysiology-pharmaceutical' | 'physical-chemistry-pharmaceutical' | 'organic-chemistry-pharmaceutical';
-  isSaved: boolean;
   onSaveChange: (saved: boolean) => void;
 }
 
 export default function FolderManager({ 
   questionId, 
   questionType, 
-  isSaved, 
   onSaveChange 
 }: FolderManagerProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -125,25 +116,6 @@ export default function FolderManager({
     } catch (error) {
       console.error('Error adding to folder:', error);
       alert('Помилка при додаванні питання до папки');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Видалення питання з папки
-  const removeFromFolder = async (folderId: string) => {
-    setSaving(true);
-    try {
-      const response = await fetch(`/api/folders/questions?folderId=${folderId}&questionType=${questionType}&questionId=${questionId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        onSaveChange(false);
-        setShowFolderList(false);
-      }
-    } catch (error) {
-      console.error('Error removing from folder:', error);
     } finally {
       setSaving(false);
     }
