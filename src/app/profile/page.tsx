@@ -1,25 +1,16 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter, usePathname } from 'next/navigation'
-import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import ProfileSubmenu from '@/components/profile/ProfileSubmenu'
 import UserProfile from '@/components/auth/UserProfile'
 import ProfileEditForm from '@/components/profile/ProfileEditForm'
 import StatisticsTab from '@/components/profile/StatisticsTab'
 import ScheduleTab from '@/components/profile/ScheduleTab'
+import AuthGuard from '@/components/auth/AuthGuard'
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
   const pathname = usePathname()
-
-  useEffect(() => {
-    if (status === 'loading') return // Still loading
-    if (!session) {
-      router.push('/auth/signin')
-    }
-  }, [session, status, router])
 
   const renderTabContent = () => {
     // Для основної сторінки профілю за замовчуванням показуємо розклад
@@ -39,20 +30,9 @@ export default function ProfilePage() {
     }
   }
 
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return null // Will redirect
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
+    <AuthGuard>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
       {/* Фонові візерунки */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-20 left-20 w-32 h-32 border border-blue-200 rounded-full animate-pulse"></div>
@@ -74,5 +54,6 @@ export default function ProfilePage() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   )
 }

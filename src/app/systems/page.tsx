@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { CustomSelect } from '@/components/ui/CustomSelect'
 import { SystemCard } from '@/components/systems/SystemCard'
+import AuthGuard from '@/components/auth/AuthGuard'
 
 interface Course {
   id: string
@@ -103,7 +104,8 @@ export default function CoursesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
+    <AuthGuard>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
       {/* Фонові візерунки */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-20 left-20 w-32 h-32 border border-blue-200 rounded-full animate-pulse"></div>
@@ -178,5 +180,6 @@ export default function CoursesPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   )
 }

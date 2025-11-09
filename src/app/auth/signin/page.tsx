@@ -1,11 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import LoginForm from '@/components/auth/LoginForm'
 import RegisterForm from '@/components/auth/RegisterForm'
 
-export default function SignInPage() {
-  const [isLogin, setIsLogin] = useState(true)
+function SignInContent() {
+  const searchParams = useSearchParams()
+  const registerParam = searchParams.get('register')
+  const [isLogin, setIsLogin] = useState(registerParam !== 'true')
+
+  useEffect(() => {
+    if (registerParam === 'true') {
+      setIsLogin(false)
+    }
+  }, [registerParam])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -38,5 +47,19 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import AuthGuard from '@/components/auth/AuthGuard';
 import { Folder, Plus, Trash2, Edit, Eye, BookOpen, Share2, GripVertical } from 'lucide-react';
 import Link from 'next/link';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
@@ -284,25 +285,9 @@ export default function FoldersPage() {
     }
   }, []);
 
-  if (!session?.user?.id) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Увійдіть в систему</h1>
-          <p className="text-gray-600 mb-6">Для доступу до папок потрібно увійти в систему</p>
-          <Link
-            href="/auth/signin"
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Увійти
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
+    <AuthGuard>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
           {/* Заголовок */}
@@ -412,5 +397,6 @@ export default function FoldersPage() {
         isLoading={saving}
       />
     </div>
+    </AuthGuard>
   );
 }

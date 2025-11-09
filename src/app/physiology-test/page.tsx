@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import AuthGuard from '@/components/auth/AuthGuard'
 
 interface PhysiologyQuestion {
   id: number
@@ -248,7 +249,8 @@ export default function PhysiologyTest() {
   const selectedAnswer = selectedAnswers[currentQuestion.id]
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
         <Card className="w-full max-w-2xl mx-auto">
           <CardHeader>
@@ -316,5 +318,6 @@ export default function PhysiologyTest() {
         </Card>
       </div>
     </div>
+    </AuthGuard>
   )
 }
