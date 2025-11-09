@@ -20,14 +20,41 @@ CREATE TABLE users (
 CREATE TABLE user_subscriptions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    subscription_type VARCHAR(20) CHECK (subscription_type IN ('medical', 'pharmaceutical', 'premium')),
-    status VARCHAR(20) CHECK (status IN ('active', 'expired', 'cancelled')) DEFAULT 'active',
+    subscription_type VARCHAR(20) CHECK (subscription_type IN ('medical', 'pharmaceutical', 'premium', 'randomizer')),
+    status VARCHAR(20) CHECK (status IN ('pending', 'active', 'expired', 'cancelled')) DEFAULT 'pending',
     start_date TIMESTAMP WITH TIME ZONE NOT NULL,
     end_date TIMESTAMP WITH TIME ZONE NOT NULL,
     payment_provider VARCHAR(20) CHECK (payment_provider IN ('mono')),
     payment_id VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Randomizer attempts table (спроби Randomizer PRO)
+CREATE TABLE randomizer_attempts (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    total_attempts INTEGER NOT NULL DEFAULT 0,
+    used_attempts INTEGER NOT NULL DEFAULT 0,
+    remaining_attempts INTEGER GENERATED ALWAYS AS (total_attempts - used_attempts) STORED,
+    purchase_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    payment_id VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Randomizer test history (історія тестів)
+CREATE TABLE randomizer_test_history (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    faculty VARCHAR(20) CHECK (faculty IN ('medical', 'pharmaceutical')) NOT NULL,
+    questions_count INTEGER NOT NULL,
+    correct_answers INTEGER NOT NULL,
+    score_percentage DECIMAL(5,2) NOT NULL,
+    time_spent_seconds INTEGER,
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Courses table

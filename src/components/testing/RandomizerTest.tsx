@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Bookmark, BookmarkCheck, Brain, Check, X } from 'lucide-react';
 import AIExplanation from '@/components/ui/AIExplanation';
 import TestBackButton from '@/components/testing/TestBackButton';
@@ -48,6 +48,7 @@ interface TestResult {
 function RandomizerTestContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: string}>({});
   const [testResults, setTestResults] = useState<TestResult[]>([]);
@@ -61,15 +62,46 @@ function RandomizerTestContent() {
   const [showAnswers, setShowAnswers] = useState(searchParams.get('showAnswers') === 'true');
   const [showSettings, setShowSettings] = useState(false);
   const [totalQuestionsInDatabase, setTotalQuestionsInDatabase] = useState<number>(0);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+  const [isCheckingAttempts, setIsCheckingAttempts] = useState(true);
+  const [attemptUsed, setAttemptUsed] = useState(false);
+
+  // Перевірка залишку спроб при завантаженні
+  useEffect(() => {
+    checkAttempts();
+  }, []);
+
+  const checkAttempts = async () => {
+    setIsCheckingAttempts(true);
+    try {
+      const response = await fetch('/api/randomizer/attempts');
+      if (response.ok) {
+        const data = await response.json();
+        setRemainingAttempts(data.remainingAttempts);
+        
+        if (data.remainingAttempts <= 0) {
+          // Немає спроб - перенаправляємо на сторінку покупки
+          router.push('/randomizer/buy');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking attempts:', error);
+    } finally {
+      setIsCheckingAttempts(false);
+    }
+  };
 
   // Завантаження питань з бази даних
   useEffect(() => {
-    loadQuestions();
-  }, []);
+    if (!isCheckingAttempts && remainingAttempts !== null && remainingAttempts > 0) {
+      loadQuestions();
+    }
+  }, [isCheckingAttempts, remainingAttempts]);
 
   // Автоматично починаємо тест після завантаження питань, якщо тест ще не початий
   useEffect(() => {
-    if (questions.length > 0 && !isTestStarted && !isTestCompleted) {
+    if (questions.length > 0 && !isTestStarted && !isTestCompleted && remainingAttempts && remainingAttempts > 0) {
       // Не показуємо налаштування, одразу починаємо тест
       const shuffled = questions.map(question => shuffleAnswers(question));
       setShuffledQuestions(shuffled);
@@ -78,11 +110,14 @@ function RandomizerTestContent() {
       setIsTestStarted(true);
       setIsTestCompleted(false);
       setShowSettings(false);
+      
+      // Списуємо спробу при старті тесту
+      useAttempt();
     } else if (questions.length === 0 && !isLoading) {
       console.log('Немає питань для тесту');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questions.length, isTestStarted, isTestCompleted, isLoading]);
+  }, [questions.length, isTestStarted, isTestCompleted, isLoading, remainingAttempts]);
 
   const loadQuestions = async () => {
     setIsLoading(true);
@@ -167,6 +202,49 @@ function RandomizerTestContent() {
 
   const startTestWithSettings = () => {
     startTest();
+  };
+
+  const useAttempt = async () => {
+    if (attemptUsed) return; // Вже використали спробу
+    
+    try {
+      const response = await fetch('/api/randomizer/attempts', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRemainingAttempts(data.remainingAttempts);
+        setAttemptUsed(true);
+        console.log(`Спробу використано. Залишилось: ${data.remainingAttempts}`);
+      } else {
+        console.error('Помилка при використанні спроби');
+      }
+    } catch (error) {
+      console.error('Error using attempt:', error);
+    }
+  };
+
+  const saveTestHistory = async (correctAnswers: number, totalQuestions: number) => {
+    try {
+      const scorePercentage = (correctAnswers / totalQuestions) * 100;
+      
+      await fetch('/api/randomizer/history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          faculty: 'medical',
+          questionsCount: totalQuestions,
+          correctAnswers,
+          scorePercentage,
+          timeSpentSeconds: null // Можна додати таймер пізніше
+        }),
+      });
+    } catch (error) {
+      console.error('Error saving test history:', error);
+    }
   };
 
   const handleAnswerSelect = async (questionId: number, answer: string) => {
@@ -254,6 +332,10 @@ function RandomizerTestContent() {
 
     setTestResults(results);
     setIsTestCompleted(true);
+    
+    // Зберігаємо результат в історію
+    const correctCount = results.filter(r => r.isCorrect).length;
+    saveTestHistory(correctCount, results.length);
     
     // Зберігаємо результат тесту
     saveTestResult(results);
@@ -472,10 +554,45 @@ function RandomizerTestContent() {
     );
   }
 
+  // Екран завантаження при перевірці спроб
+  if (isCheckingAttempts) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Перевірка доступних спроб...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
       <div className="max-w-4xl mx-auto pt-16 md:pt-20">
         <TestBackButton className="mb-4 md:mb-6" fallbackHref="/randomizer/settings" />
+        
+        {/* Інформація про залишок спроб */}
+        {remainingAttempts !== null && (
+          <Card className="mb-6 bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Залишилось спроб:</p>
+                  <p className="text-2xl font-bold text-blue-600">{remainingAttempts}</p>
+                </div>
+                {remainingAttempts <= 3 && (
+                  <Button
+                    onClick={() => router.push('/randomizer/buy')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Купити ще спроби
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* Заголовок */}
         <Card className="mb-6">
           <CardHeader>
@@ -672,7 +789,7 @@ export default function RandomizerTest() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">Завантаження...</p>
+          <p className="text-xl text-gray-600">Завантаження Randomizer PRO...</p>
         </div>
       </div>
     }>
