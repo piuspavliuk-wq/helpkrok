@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, BookOpen, FileText, GraduationCap, Clock, TestTube, Microscope, Heart, Pill } from 'lucide-react'
+import { Search, FileText, GraduationCap, TestTube, Microscope, Heart, Pill } from 'lucide-react'
 import SearchFilters from './SearchFilters'
 
 interface SearchResult {
@@ -168,18 +168,18 @@ export default function SearchComponent() {
     }
   }
 
-  const getDifficultyLabel = (difficulty?: string) => {
-    switch (difficulty) {
-      case 'easy':
-        return 'Легкий'
-      case 'medium':
-        return 'Середній'
-      case 'hard':
-        return 'Важкий'
-      default:
-        return ''
-    }
-  }
+  // const getDifficultyLabel = (difficulty?: string) => {
+  //   switch (difficulty) {
+  //     case 'easy':
+  //       return 'Легкий'
+  //     case 'medium':
+  //       return 'Середній'
+  //     case 'hard':
+  //       return 'Важкий'
+  //     default:
+  //       return ''
+  //   }
+  // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 relative overflow-hidden">
@@ -245,7 +245,7 @@ export default function SearchComponent() {
               <Search className="w-10 h-10 text-gray-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-800 mb-2">Результатів не знайдено</h3>
-            <p className="text-gray-600 mb-2">За запитом "{searchQuery}" матеріалів не знайдено</p>
+            <p className="text-gray-600 mb-2">За запитом &quot;{searchQuery}&quot; матеріалів не знайдено</p>
             <p className="text-sm text-gray-500">Спробуй інші ключові слова або зміни фільтр пошуку</p>
           </div>
         )}

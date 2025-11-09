@@ -388,7 +388,7 @@ export default function ScheduleTab() {
                 <Clock className="w-16 h-16 mx-auto" />
               </div>
               <p className="text-gray-500">Немає запланованих уроків</p>
-              <p className="text-sm text-gray-400 mt-1">Заплановані уроки з'являться тут</p>
+              <p className="text-sm text-gray-400 mt-1">Заплановані уроки з&apos;являться тут</p>
             </div>
           ) : (
             <div className="space-y-4">
