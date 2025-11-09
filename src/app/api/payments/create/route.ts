@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,25 +37,53 @@ export async function POST(request: NextRequest) {
 
     // Переконуємось, що користувач існує в Prisma (для зв'язків)
     try {
-      await prisma.user.upsert({
+      let prismaUser = await prisma.user.findUnique({
         where: { id: userId },
-        update: {
-          email: session.user?.email ?? undefined,
-          name: session.user?.name ?? undefined,
-        },
-        create: {
-          id: userId,
-          email: session.user?.email ?? null,
-          name: session.user?.name ?? null,
-          firstName: session.user?.name?.split(' ')[0] ?? null,
-          lastName: session.user?.name?.split(' ').slice(1).join(' ') || null,
-          role: 'student',
-        },
       })
+
+      if (!prismaUser) {
+        const [firstName, ...restName] = (session.user?.name ?? '').trim().split(' ')
+        const lastName = restName.length ? restName.join(' ') : null
+
+        const baseData = {
+          id: userId,
+          name: session.user?.name ?? null,
+          firstName: firstName || null,
+          lastName: lastName,
+          role: 'student' as const,
+        }
+
+        try {
+          prismaUser = await prisma.user.create({
+            data: {
+              ...baseData,
+              email: session.user?.email ?? undefined,
+            },
+          })
+        } catch (createError) {
+          if (
+            createError instanceof Prisma.PrismaClientKnownRequestError &&
+            createError.code === 'P2002'
+          ) {
+            prismaUser = await prisma.user.create({
+              data: {
+                ...baseData,
+                email: null,
+              },
+            })
+          } else {
+            throw createError
+          }
+        }
+      }
     } catch (ensureUserError) {
       console.error('Prisma user ensure error:', ensureUserError)
+      const message =
+        ensureUserError instanceof Error
+          ? ensureUserError.message
+          : 'Не вдалося підготувати дані користувача'
       return NextResponse.json(
-        { error: 'Не вдалося підготувати дані користувача' },
+        { error: message },
         { status: 500 }
       )
     }
