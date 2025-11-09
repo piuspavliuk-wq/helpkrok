@@ -113,7 +113,7 @@ function RandomizerTestContent() {
       
       // Списуємо спробу при старті тесту (викликаємо асинхронну функцію)
       if (!attemptUsed) {
-        useAttemptAsync();
+        consumeAttempt();
       }
     } else if (questions.length === 0 && !isLoading) {
       console.log('Немає питань для тесту');
@@ -206,7 +206,7 @@ function RandomizerTestContent() {
     startTest();
   };
 
-  const useAttemptAsync = async () => {
+  const consumeAttempt = async () => {
     if (attemptUsed) return; // Вже використали спробу
     
     try {
