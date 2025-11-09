@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Bookmark, BookmarkCheck, Brain, Check, X } from 'lucide-react';
+import { Brain, Check, X } from 'lucide-react';
 import AIExplanation from '@/components/ui/AIExplanation';
 import TestBackButton from '@/components/testing/TestBackButton';
 
@@ -111,8 +111,10 @@ function RandomizerTestContent() {
       setIsTestCompleted(false);
       setShowSettings(false);
       
-      // Списуємо спробу при старті тесту
-      useAttempt();
+      // Списуємо спробу при старті тесту (викликаємо асинхронну функцію)
+      if (!attemptUsed) {
+        useAttemptAsync();
+      }
     } else if (questions.length === 0 && !isLoading) {
       console.log('Немає питань для тесту');
     }
@@ -204,7 +206,7 @@ function RandomizerTestContent() {
     startTest();
   };
 
-  const useAttempt = async () => {
+  const useAttemptAsync = async () => {
     if (attemptUsed) return; // Вже використали спробу
     
     try {
