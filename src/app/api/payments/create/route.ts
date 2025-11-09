@@ -26,6 +26,10 @@ export async function POST(request: NextRequest) {
     endDate.setFullYear(endDate.getFullYear() + 1) // 1 рік підписки
 
     let subscriptionId: string
+    let subscriptionRecord: {
+      id: string
+      paymentId: string
+    } | null = null
 
     // Якщо це Randomizer PRO - створюємо запис спроб
     if (plan_type === 'randomizer' && attempts_count) {
@@ -53,6 +57,10 @@ export async function POST(request: NextRequest) {
         }
       })
       subscriptionId = subscription.id
+      subscriptionRecord = {
+        id: subscription.id,
+        paymentId: subscription.paymentId ?? ''
+      }
     }
 
     // Синхронізація з Supabase
@@ -60,20 +68,22 @@ export async function POST(request: NextRequest) {
       if (!supabase) {
         console.warn('Supabase not available, skipping sync')
       } else {
-        await supabase
-        .from('user_subscriptions')
-        .insert({
-          id: subscription.id,
-          user_id: userId,
-          subscription_type: plan_type,
-          status: 'pending',
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          payment_provider: payment_provider,
-          payment_id: subscription.paymentId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        if (subscriptionRecord) {
+          await supabase
+            .from('user_subscriptions')
+            .insert({
+              id: subscriptionRecord.id,
+              user_id: userId,
+              subscription_type: plan_type,
+              status: 'pending',
+              start_date: startDate.toISOString(),
+              end_date: endDate.toISOString(),
+              payment_provider: payment_provider,
+              payment_id: subscriptionRecord.paymentId,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+        }
       }
     } catch (supabaseError) {
       console.error('Supabase sync error:', supabaseError)
