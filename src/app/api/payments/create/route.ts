@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { prisma } from '@/lib/prisma'
-import Stripe from 'stripe'
-
-// Ініціалізуємо Stripe
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-08-27.basil',
-}) : null
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,13 +11,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Необхідні поля відсутні' },
         { status: 400 }
-      )
-    }
-
-    if (!stripe) {
-      return NextResponse.json(
-        { error: 'Stripe не налаштований' },
-        { status: 500 }
       )
     }
 
@@ -73,26 +60,13 @@ export async function POST(request: NextRequest) {
       // Продовжуємо роботу з локальною базою
     }
 
-    // Генеруємо URL для оплати залежно від провайдера
-    let paymentUrl = ''
-
-    switch (payment_provider) {
-      case 'stripe':
-        paymentUrl = await createStripePayment(amount, currency, subscription.id)
-        break
-      case 'liqpay':
-        paymentUrl = await createLiqPayPayment(amount, currency, subscription.id)
-        break
-      case 'fondy':
-        paymentUrl = await createFondyPayment(amount, currency, subscription.id)
-        break
-      default:
-        throw new Error('Невідомий провайдер платежів')
+    if (payment_provider !== 'mono') {
+      throw new Error('Підтримується лише Plata by mono')
     }
 
     return NextResponse.json({
       success: true,
-      payment_url: paymentUrl,
+      payment_url: await createMonoPayment(amount, currency, subscription.id),
       subscription_id: subscription.id,
     })
   } catch (error) {
@@ -104,51 +78,70 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function createStripePayment(amount: number, currency: string, subscriptionId: string): Promise<string> {
-  try {
-    if (!stripe) {
-      throw new Error('Stripe не налаштований')
-    }
-
-    // Створюємо Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: currency.toLowerCase(),
-            product_data: {
-              name: 'Help Krok Platform Subscription',
-              description: 'Підписка на платформу підготовки до КРОК',
-            },
-            unit_amount: amount * 100, // Stripe працює з копійками
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/cancel`,
-      metadata: {
-        subscription_id: subscriptionId,
-      },
-    })
-
-    return session.url || ''
-  } catch (error) {
-    console.error('Stripe payment creation error:', error)
-    throw new Error('Помилка при створенні Stripe платежу')
+async function createMonoPayment(amount: number, currency: string, subscriptionId: string): Promise<string> {
+  const token = process.env.MONOBANK_API_TOKEN
+  if (!token) {
+    throw new Error('Plata by mono токен не налаштований')
   }
-}
 
-async function createLiqPayPayment(amount: number, currency: string, subscriptionId: string): Promise<string> {
-  // Тут має бути інтеграція з LiqPay
-  // Для демонстрації повертаємо заглушку
-  return `https://www.liqpay.ua/api/3/checkout?data=${subscriptionId}`
-}
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    throw new Error('NEXT_PUBLIC_APP_URL не налаштований')
+  }
 
-async function createFondyPayment(amount: number, currency: string, subscriptionId: string): Promise<string> {
-  // Тут має бути інтеграція з Fondy
-  // Для демонстрації повертаємо заглушку
-  return `https://pay.fondy.eu/api/checkout?order_id=${subscriptionId}`
+  const currencyToCcy: Record<string, number> = {
+    UAH: 980,
+    USD: 840,
+    EUR: 978,
+  }
+
+  const normalizedCurrency = currency.toUpperCase()
+  const ccy = currencyToCcy[normalizedCurrency]
+
+  if (!ccy) {
+    throw new Error(`Непідтримувана валюта для Plata by mono: ${currency}`)
+  }
+
+  const payload: Record<string, unknown> = {
+    amount: Math.round(amount * 100),
+    ccy,
+    merchantPaymInfo: {
+      reference: subscriptionId,
+      destination: 'Підписка Randomizer PRO',
+    },
+    redirectUrl: `${appUrl}/payment/success?provider=mono&subscription_id=${subscriptionId}`,
+    validity: 15 * 60,
+    paymentType: 'debit',
+  }
+
+  if (process.env.MONOBANK_WEBHOOK_URL) {
+    payload.webHookUrl = process.env.MONOBANK_WEBHOOK_URL
+  }
+
+  const response = await fetch(
+    process.env.MONOBANK_API_URL ?? 'https://api.monobank.ua/api/merchant/invoice/create',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Token': token,
+      },
+      body: JSON.stringify(payload),
+    }
+  )
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('Plata by mono payment creation error:', errorText)
+    throw new Error('Помилка при створенні платежу через Plata by mono')
+  }
+
+  const data = await response.json()
+
+  if (!data?.pageUrl) {
+    console.error('Plata by mono response без pageUrl:', data)
+    throw new Error('Не отримано посилання на оплату від Plata by mono')
+  }
+
+  return data.pageUrl
 }

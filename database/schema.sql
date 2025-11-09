@@ -24,7 +24,7 @@ CREATE TABLE user_subscriptions (
     status VARCHAR(20) CHECK (status IN ('active', 'expired', 'cancelled')) DEFAULT 'active',
     start_date TIMESTAMP WITH TIME ZONE NOT NULL,
     end_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    payment_provider VARCHAR(20) CHECK (payment_provider IN ('stripe', 'liqpay', 'fondy')),
+    payment_provider VARCHAR(20) CHECK (payment_provider IN ('mono')),
     payment_id VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

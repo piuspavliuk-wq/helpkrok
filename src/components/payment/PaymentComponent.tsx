@@ -12,6 +12,8 @@ import {
   Star
 } from 'lucide-react'
 
+type PaymentProvider = 'mono'
+
 interface PaymentPlan {
   id: string
   name: string
@@ -31,7 +33,7 @@ interface PaymentComponentProps {
 }
 
 export function PaymentComponent({ selectedPlan, onPaymentSuccess, onPaymentCancel }: PaymentComponentProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'liqpay' | 'fondy'>('stripe')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentProvider>('mono')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,24 +76,10 @@ export function PaymentComponent({ selectedPlan, onPaymentSuccess, onPaymentCanc
 
   const paymentProviders = [
     {
-      id: 'stripe',
-      name: 'Stripe',
-      description: 'Міжнародні картки (Visa, Mastercard)',
-      icon: '💳',
-      available: true
-    },
-    {
-      id: 'liqpay',
-      name: 'LiqPay',
-      description: 'Українські картки (Приватбанк)',
-      icon: '🏦',
-      available: true
-    },
-    {
-      id: 'fondy',
-      name: 'Fondy',
-      description: 'Альтернативний український провайдер',
-      icon: '💼',
+      id: 'mono' as PaymentProvider,
+      name: 'Plata by mono',
+      description: 'Українські картки monobank та інших банків',
+      icon: '💜',
       available: true
     }
   ]

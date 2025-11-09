@@ -73,7 +73,7 @@ model UserSubscription {
   status            String    // 'pending' | 'active' | 'expired' | 'cancelled'
   startDate         DateTime
   endDate           DateTime
-  paymentProvider   String    // 'stripe' | 'liqpay' | 'fondy'
+  paymentProvider   String    // 'mono'
   paymentId         String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

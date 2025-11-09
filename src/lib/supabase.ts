@@ -75,7 +75,7 @@ export interface Database {
           status: 'active' | 'expired' | 'cancelled'
           start_date: string
           end_date: string
-          payment_provider: 'stripe' | 'liqpay' | 'fondy'
+          payment_provider: 'mono'
           payment_id: string | null
           created_at: string
           updated_at: string
@@ -87,7 +87,7 @@ export interface Database {
           status?: 'active' | 'expired' | 'cancelled'
           start_date: string
           end_date: string
-          payment_provider: 'stripe' | 'liqpay' | 'fondy'
+          payment_provider: 'mono'
           payment_id?: string | null
           created_at?: string
           updated_at?: string
@@ -99,7 +99,7 @@ export interface Database {
           status?: 'active' | 'expired' | 'cancelled'
           start_date?: string
           end_date?: string
-          payment_provider?: 'stripe' | 'liqpay' | 'fondy'
+          payment_provider?: 'mono'
           payment_id?: string | null
           created_at?: string
           updated_at?: string
