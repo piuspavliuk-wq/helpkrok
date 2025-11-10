@@ -74,20 +74,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Знаходимо першу доступну спробу
-    const attempt = await prisma.randomizerAttempt.findFirst({
-      where: {
-        userId: session.user.id,
-        usedAttempts: { lt: prisma.randomizerAttempt.fields.totalAttempts },
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gte: new Date() } }
-        ]
-      },
-      orderBy: {
-        purchaseDate: 'asc' // Використовуємо найстаріші спочатку
-      }
-    })
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      )
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Знаходимо першу доступну спробу (де used_attempts < total_attempts)
+    const { data: attempts, error: fetchError } = await supabase
+      .from('randomizer_attempts')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .or('expires_at.is.null,expires_at.gte.' + new Date().toISOString())
+      .order('purchase_date', { ascending: true })
+
+    if (fetchError) {
+      console.error('Error fetching attempts:', fetchError)
+      return NextResponse.json(
+        { error: 'Failed to fetch attempts' },
+        { status: 500 }
+      )
+    }
+
+    // Знаходимо першу спробу з доступними слотами
+    const attempt = attempts?.find(a => a.used_attempts < a.total_attempts)
 
     if (!attempt) {
       return NextResponse.json(
@@ -97,16 +113,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Збільшуємо лічильник використаних спроб
-    const updated = await prisma.randomizerAttempt.update({
-      where: { id: attempt.id },
-      data: {
-        usedAttempts: attempt.usedAttempts + 1
-      }
-    })
+    const { data: updated, error: updateError } = await supabase
+      .from('randomizer_attempts')
+      .update({ 
+        used_attempts: attempt.used_attempts + 1 
+      })
+      .eq('id', attempt.id)
+      .select()
+      .single()
+
+    if (updateError || !updated) {
+      console.error('Error updating attempt:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update attempt' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
-      remainingAttempts: updated.totalAttempts - updated.usedAttempts
+      remainingAttempts: updated.total_attempts - updated.used_attempts
     })
   } catch (error) {
     console.error('Error using randomizer attempt:', error)
