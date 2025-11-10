@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle, ArrowLeft, Zap } from 'lucide-react'
+import { CheckCircle, ArrowLeft, Zap, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import AuthGuard from '@/components/auth/AuthGuard'
 import PaymentModal from '@/components/payment/PaymentModal'
 
@@ -19,8 +20,24 @@ interface RandomizerPackage {
 }
 
 export default function RandomizerBuyPage() {
+  const router = useRouter()
   const [selectedPackage, setSelectedPackage] = useState<RandomizerPackage | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [attemptsData, setAttemptsData] = useState<{ remainingAttempts: number } | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Перевіряємо чи є у користувача спроби
+    fetch('/api/randomizer/attempts')
+      .then(res => res.json())
+      .then(data => {
+        if (data.remainingAttempts > 0) {
+          setAttemptsData(data)
+        }
+      })
+      .catch(err => console.error('Error fetching attempts:', err))
+      .finally(() => setIsLoading(false))
+  }, [])
 
   const handleBuyPackage = (pkg: RandomizerPackage) => {
     setSelectedPackage(pkg)
@@ -54,6 +71,76 @@ export default function RandomizerBuyPage() {
     }
   ]
 
+  // Якщо завантажується
+  if (isLoading) {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+        </div>
+      </AuthGuard>
+    )
+  }
+
+  // Якщо є спроби - показуємо їх
+  if (attemptsData && attemptsData.remainingAttempts > 0) {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 py-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <Link href="/randomizer/settings">
+              <Button variant="outline" className="mb-4">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Назад
+              </Button>
+            </Link>
+
+            <Card className="border-green-200 bg-green-50">
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 bg-green-100 rounded-full p-4 w-20 h-20 flex items-center justify-center">
+                  <Zap className="w-10 h-10 text-green-600" />
+                </div>
+                <CardTitle className="text-3xl text-green-600">
+                  У вас є {attemptsData.remainingAttempts} {attemptsData.remainingAttempts === 1 ? 'спроба' : 'спроб'}!
+                </CardTitle>
+                <CardDescription className="text-lg">
+                  Ви можете розпочати повну імітацію КРОК-тесту
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center space-y-4">
+                  <p className="text-gray-700">
+                    Готові пройти тест? Натисніть кнопку нижче, щоб розпочати.
+                  </p>
+                  <Link href="/randomizer/settings">
+                    <Button className="bg-green-600 hover:bg-green-700 text-white text-lg px-8 py-6">
+                      Розпочати тест
+                      <ArrowLeft className="w-5 h-5 ml-2 rotate-180" />
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="border-t border-green-200 pt-4 mt-4">
+                  <p className="text-center text-sm text-gray-600 mb-3">
+                    Хочете придбати більше спроб?
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setAttemptsData(null)}
+                  >
+                    Переглянути пакети
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </AuthGuard>
+    )
+  }
+
+  // Якщо немає спроб - показуємо сторінку покупки
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 py-12 px-4">
