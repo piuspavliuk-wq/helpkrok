@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Account {
@@ -38,24 +39,24 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  password      String?
-  emailVerified DateTime?
-  image         String?
-  firstName     String?
-  lastName      String?
-  faculty       String?   // 'medical' | 'pharmaceutical'
-  university    String?   // Назва університету
-  yearOfStudy   Int?      // Рік навчання (1-6)
-  phone         String?   // Телефон
-  dateOfBirth   DateTime? // Дата народження
-  bio           String?   // Біографія
-  preferences   String?   // Налаштування користувача (JSON string)
-  role          String    @default("student") // 'student' | 'admin' | 'teacher'
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id            String    @id @default(uuid()) @map("id") @db.Uuid
+  name          String?   @map("name")
+  email         String?   @unique @map("email")
+  password      String?   @map("password")
+  emailVerified DateTime? @map("email_verified") @db.Timestamptz()
+  image         String?   @map("image")
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  faculty       String?   @map("faculty")   // 'medical' | 'pharmaceutical'
+  university    String?   @map("university")   // Назва університету
+  yearOfStudy   Int?      @map("year_of_study")      // Рік навчання (1-6)
+  phone         String?   @map("phone")   // Телефон
+  dateOfBirth   DateTime? @map("date_of_birth") @db.Date   // Дата народження
+  bio           String?   @map("bio")   // Біографія
+  preferences   String?   @map("preferences")   // Налаштування користувача (JSON string)
+  role          String    @default("student") @map("role") // 'student' | 'admin' | 'teacher'
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
   accounts      Account[]
   sessions      Session[]
   subscriptions UserSubscription[]
@@ -66,83 +67,111 @@ model User {
   lessonAttendance LessonAttendance[]
   randomizerAttempts RandomizerAttempt[]
   randomizerHistory RandomizerTestHistory[]
+  payments      Payment[]
+
+  @@map("users")
 }
 
 model UserSubscription {
-  id                String    @id @default(cuid())
-  userId            String
-  subscriptionType  String    // 'medical' | 'pharmaceutical' | 'premium' | 'randomizer'
-  status            String    // 'pending' | 'active' | 'expired' | 'cancelled'
-  startDate         DateTime
-  endDate           DateTime
-  paymentProvider   String    // 'mono'
-  paymentId         String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                String    @id @default(cuid()) @map("id")
+  userId            String    @map("user_id")
+  subscriptionType  String    @map("subscription_type") // 'medical' | 'pharmaceutical' | 'premium' | 'randomizer'
+  status            String    @map("status") // 'pending' | 'active' | 'expired' | 'cancelled'
+  startDate         DateTime  @map("start_date") @db.Timestamptz()
+  endDate           DateTime  @map("end_date") @db.Timestamptz()
+  paymentProvider   String    @map("payment_provider") // 'mono'
+  paymentId         String?   @map("payment_id")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_subscriptions")
 }
 
 // Randomizer attempts (спроби Randomizer PRO)
 model RandomizerAttempt {
-  id                 String    @id @default(cuid())
-  userId             String
-  totalAttempts      Int       @default(0)
-  usedAttempts       Int       @default(0)
-  purchaseDate       DateTime  @default(now())
-  expiresAt          DateTime?
-  paymentId          String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                 String    @id @default(uuid()) @map("id") @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  totalAttempts      Int       @default(0) @map("total_attempts")
+  usedAttempts       Int       @default(0) @map("used_attempts")
+  remainingAttempts  Int?      @map("remaining_attempts")
+  purchaseDate       DateTime  @default(now()) @map("purchase_date") @db.Timestamptz()
+  expiresAt          DateTime? @map("expires_at") @db.Timestamptz()
+  paymentId          String?   @map("payment_id")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("randomizer_attempts")
 }
 
 // Randomizer test history (історія тестів)
 model RandomizerTestHistory {
-  id                 String    @id @default(cuid())
-  userId             String
-  faculty            String    // 'medical' | 'pharmaceutical'
-  questionsCount     Int
-  correctAnswers     Int
-  scorePercentage    Float
-  timeSpentSeconds   Int?
-  completedAt        DateTime  @default(now())
-  createdAt          DateTime  @default(now())
+  id                 String    @id @default(uuid()) @map("id") @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  faculty            String    @map("faculty") // 'medical' | 'pharmaceutical'
+  questionsCount     Int       @map("questions_count")
+  correctAnswers     Int       @map("correct_answers")
+  scorePercentage    Float     @map("score_percentage")
+  timeSpentSeconds   Int?      @map("time_spent_seconds")
+  completedAt        DateTime  @default(now()) @map("completed_at") @db.Timestamptz()
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz()
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("randomizer_test_history")
+}
+
+// Payments (платежі)
+model Payment {
+  id                 String    @id @default(uuid()) @map("id") @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  invoiceId          String    @unique @map("invoice_id") // ID інвойсу від Mono
+  amount             Int       @map("amount") // Сума в копійках
+  status             String    @default("pending") @map("status") // 'pending' | 'success' | 'failure' | 'expired' | 'processing'
+  paymentType        String    @map("payment_type") // 'randomizer'
+  packageId          String    @map("package_id") // ID пакету (single, pack-5, pack-10)
+  attemptsCount      Int       @map("attempts_count") // Кількість спроб
+  pageUrl            String?   @map("page_url") // URL для оплати
+  qrCodeData         String?   @map("qr_code_data") // QR код
+  metadata           String?   @map("metadata") // Додаткові дані (JSON)
+  failureReason      String?   @map("failure_reason") // Причина помилки
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([invoiceId])
+  @@map("payments")
 }
 
 // Тестові спроби користувача
 model TestAttempt {
-  id              String    @id @default(cuid())
-  userId          String
-  testId          String    // ID тесту з бази
-  testName        String    // Назва тесту
-  step            String    // 'krok1' | 'krok2' | 'krok3'
-  faculty         String    // 'medical' | 'pharmaceutical'
-  yearRange       String    // '2001-2015' | '2015-2025'
-  score           Float     // Результат у відсотках
-  totalQuestions  Int       // Загальна кількість питань
-  correctAnswers  Int       // Правильні відповіді
-  timeSpent       Int       // Час у секундах
-  completedAt     DateTime? // Коли завершено
-  isCompleted     Boolean   @default(false)
-  answers         String?   // Збережені відповіді (JSON string)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id              String    @id @default(uuid()) @map("id") @db.Uuid
+  userId          String    @map("user_id")
+  topicId         String?   @map("topic_id") @db.Uuid
+  attemptType     String    @map("attempt_type") // тип спроби
+  totalQuestions  Int       @map("total_questions")
+  correctAnswers  Int       @map("correct_answers")
+  score           Float     @map("score") // Результат у відсотках
+  timeSpent       Int       @map("time_spent") // Час у секундах
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz()
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("test_attempts")
 }
 
 // Збережені елементи (тести, курси, питання)
 model SavedItem {
-  id          String    @id @default(cuid())
-  userId      String
-  itemType    String    // 'test' | 'course' | 'question' | 'video'
-  itemId      String    // ID елемента
-  itemTitle   String    // Назва елемента
-  itemData    String?   // Додаткові дані (JSON string)
-  createdAt   DateTime  @default(now())
+  id          Int       @id @default(autoincrement()) @map("id")
+  userId      String    @map("user_id")
+  notes       String?   @map("notes")
+  savedAt     DateTime? @map("saved_at") @db.Timestamp(6)
+  questionType String?  @map("question_type")
+  questionId  String?   @map("question_id")
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  @@unique([userId, itemType, itemId])
+  @@map("user_saved_questions")
 }
 
 // Досягнення користувача

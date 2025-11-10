@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle, Loader2, ArrowLeft, Zap } from 'lucide-react'
+import { CheckCircle, ArrowLeft, Zap } from 'lucide-react'
 import Link from 'next/link'
 import AuthGuard from '@/components/auth/AuthGuard'
+import PaymentModal from '@/components/payment/PaymentModal'
 
 interface RandomizerPackage {
   id: string
@@ -19,10 +19,13 @@ interface RandomizerPackage {
 }
 
 export default function RandomizerBuyPage() {
-  const router = useRouter()
   const [selectedPackage, setSelectedPackage] = useState<RandomizerPackage | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+
+  const handleBuyPackage = (pkg: RandomizerPackage) => {
+    setSelectedPackage(pkg)
+    setIsPaymentModalOpen(true)
+  }
 
   const packages: RandomizerPackage[] = [
     {
@@ -50,44 +53,6 @@ export default function RandomizerBuyPage() {
       savings: 'Економія 350 ₴'
     }
   ]
-
-  const handlePurchase = async (pkg: RandomizerPackage) => {
-    setIsProcessing(true)
-    setError(null)
-    setSelectedPackage(pkg)
-
-    try {
-      const response = await fetch('/api/payments/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          plan_type: 'randomizer',
-          payment_provider: 'mono',
-          amount: pkg.price,
-          currency: 'UAH',
-          attempts_count: pkg.attempts
-        }),
-      })
-
-      const data = await response.json()
-      
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Помилка при створенні платежу')
-      }
-      
-      if (data.payment_url) {
-        // Перенаправляємо на сторінку оплати
-        window.location.href = data.payment_url
-      } else {
-        throw new Error('Не отримано URL для оплати')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Сталася невідома помилка')
-      setIsProcessing(false)
-    }
-  }
 
   return (
     <AuthGuard>
@@ -177,32 +142,15 @@ export default function RandomizerBuyPage() {
 
                   {/* Buy Button */}
                   <Button
-                    onClick={() => handlePurchase(pkg)}
-                    disabled={isProcessing}
-                    className={`w-full ${pkg.popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    onClick={() => handleBuyPackage(pkg)}
+                    className={`w-full ${pkg.popular ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
                   >
-                    {isProcessing && selectedPackage?.id === pkg.id ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Обробка...
-                      </>
-                    ) : (
-                      `Купити за ${pkg.price} ₴`
-                    )}
+                    Купити зараз
                   </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <Card className="border-red-200 bg-red-50 mb-8">
-              <CardContent className="p-4">
-                <p className="text-red-700">{error}</p>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Info Section */}
           <Card className="bg-blue-50 border-blue-200">
@@ -230,15 +178,22 @@ export default function RandomizerBuyPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Security Notice */}
-          <div className="text-center text-sm text-gray-500 mt-6">
-            <p>
-              Всі платежі захищені SSL-шифруванням через Plata by mono.
-              Ми не зберігаємо дані ваших карток.
-            </p>
-          </div>
         </div>
+
+        {/* Payment Modal */}
+        {selectedPackage && (
+          <PaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={() => {
+              setIsPaymentModalOpen(false)
+              setSelectedPackage(null)
+            }}
+            packageId={selectedPackage.id}
+            packageName={selectedPackage.name}
+            packagePrice={selectedPackage.price}
+            packageAttempts={selectedPackage.attempts}
+          />
+        )}
       </div>
     </AuthGuard>
   )

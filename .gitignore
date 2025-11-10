@@ -16,6 +16,7 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.vercel
 
 # Database
 *.db
@@ -212,11 +213,16 @@ playwright/.cache/
 # Scripts directory (keep only essential ones)
 scripts/
 !scripts/README.md
+!scripts/setup-payments-table.js
 
 # Documentation files (keep only essential)
 *.md
 !README.md
 !DEPLOYMENT.md
 !QUICK_DEPLOY.md
+!PAYMENT_INSTRUCTIONS.md
+!QUICKSTART_PAYMENT.md
+!PAYMENT_SUMMARY.md
+!MONO_PAYMENT_SETUP.md
 !package.json
 !package-lock.json
