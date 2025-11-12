@@ -306,7 +306,7 @@ export default function Home() {
               <h3 className="text-xl font-bold text-gray-900 mb-3">🎯 Randomizer PRO</h3>
               <div className="text-2xl font-bold text-gray-900 mb-4">
                 <div>180 ₴ за спробу</div>
-                <div className="text-sm text-gray-600">5 спроб: 650 ₴ | 10 спроб: 1 450 ₴</div>
+                <div className="text-sm text-gray-600">5 спроб: 3 ₴ | 10 спроб: 1 450 ₴</div>
               </div>
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-start">

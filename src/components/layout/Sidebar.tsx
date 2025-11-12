@@ -10,7 +10,7 @@ import {
   Database, 
   Sparkles, 
   User,
-  Settings,
+  GraduationCap,
   FileText,
   Bookmark,
   Heart,
@@ -52,7 +52,7 @@ const menuItems: MenuItem[] = [
     label: 'Курси',
     mobileLabel: 'Курси',
     href: '/systems',
-    icon: Settings
+    icon: GraduationCap
   },
   {
     id: 'brochures',
