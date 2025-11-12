@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
-
-const prisma = new PrismaClient();
 
 // Функція для верифікації підпису webhook від Monobank
 function verifyWebhookSignature(body: string, signature: string, publicKey: string): boolean {
@@ -25,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Отримано webhook від Monobank:', webhookData);
 
-    const { invoiceId, status, amount, reference, failureReason } = webhookData;
+    const { invoiceId, status, failureReason } = webhookData;
 
     if (!invoiceId) {
       console.error('invoiceId відсутній у webhook');
@@ -35,14 +33,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Знаходимо платіж в базі даних
-    const payment = await prisma.payment.findUnique({
-      where: { invoiceId },
-      include: { user: true }
-    });
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!payment) {
-      console.error('Платіж не знайдено:', invoiceId);
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase credentials not configured for webhook');
+      return NextResponse.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Знаходимо платіж в базі даних
+    const { data: payment, error: paymentFetchError } = await supabase
+      .from('payments')
+      .select('*, user:users(id, email)')
+      .eq('invoice_id', invoiceId)
+      .single();
+
+    if (paymentFetchError || !payment) {
+      console.error('Платіж не знайдено:', invoiceId, paymentFetchError);
       return NextResponse.json(
         { error: 'Платіж не знайдено' },
         { status: 404 }
@@ -53,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // Оновлюємо статус платежу
     let paymentStatus = 'pending';
-    
+
     if (status === 'success') {
       paymentStatus = 'success';
     } else if (status === 'failure') {
@@ -64,72 +76,83 @@ export async function POST(request: NextRequest) {
       paymentStatus = 'expired';
     }
 
-    // Оновлюємо платіж
-    const updatedPayment = await prisma.payment.update({
-      where: { invoiceId },
-      data: {
+    const { data: updatedPayment, error: updatePaymentError } = await supabase
+      .from('payments')
+      .update({
         status: paymentStatus,
-        failureReason: failureReason || null
-      }
-    });
+        failure_reason: failureReason || null
+      })
+      .eq('invoice_id', invoiceId)
+      .select()
+      .single();
+
+    if (updatePaymentError || !updatedPayment) {
+      console.error('Помилка оновлення платежу:', updatePaymentError);
+      return NextResponse.json(
+        { error: 'Не вдалося оновити платіж' },
+        { status: 500 }
+      );
+    }
 
     console.log('Оновлено платіж:', updatedPayment.id, 'Новий статус:', paymentStatus);
 
     // Якщо платіж успішний, додаємо спроби користувачу
     if (paymentStatus === 'success') {
       try {
-        // Шукаємо існуючий запис спроб користувача
-        let userAttempts = await prisma.randomizerAttempt.findFirst({
-          where: { userId: payment.userId }
-        });
+        const { data: userAttempts, error: attemptsFetchError } = await supabase
+          .from('randomizer_attempts')
+          .select('*')
+          .eq('user_id', payment.user_id)
+          .maybeSingle();
 
-        if (userAttempts) {
-          // Оновлюємо існуючий запис
-          userAttempts = await prisma.randomizerAttempt.update({
-            where: { id: userAttempts.id },
-            data: {
-              totalAttempts: {
-                increment: payment.attemptsCount
-              },
-              remainingAttempts: {
-                increment: payment.attemptsCount
-              }
-            }
-          });
-          console.log('Оновлено спроби користувача:', userAttempts);
-        } else {
-          // Створюємо новий запис
-          userAttempts = await prisma.randomizerAttempt.create({
-            data: {
-              userId: payment.userId,
-              totalAttempts: payment.attemptsCount,
-              usedAttempts: 0,
-              remainingAttempts: payment.attemptsCount,
-              paymentId: payment.id
-            }
-          });
-          console.log('Створено новий запис спроб:', userAttempts);
+        if (attemptsFetchError) {
+          console.error('Помилка отримання спроб користувача:', attemptsFetchError);
         }
 
-        // Логування успішного платежу
-        console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав ${payment.attemptsCount} спроб`);
+        if (userAttempts) {
+          const { error: attemptsUpdateError } = await supabase
+            .from('randomizer_attempts')
+            .update({
+              total_attempts: userAttempts.total_attempts + payment.attempts_count,
+              used_attempts: userAttempts.used_attempts
+            })
+            .eq('id', userAttempts.id);
 
+          if (attemptsUpdateError) {
+            console.error('Помилка оновлення спроб користувача:', attemptsUpdateError);
+          } else {
+            console.log('Оновлено спроби користувача:', userAttempts.id);
+          }
+        } else {
+          const { error: attemptsInsertError } = await supabase
+            .from('randomizer_attempts')
+            .insert({
+              user_id: payment.user_id,
+              total_attempts: payment.attempts_count,
+              used_attempts: 0,
+              payment_id: payment.id
+            });
+
+          if (attemptsInsertError) {
+            console.error('Помилка створення запису спроб:', attemptsInsertError);
+          } else {
+            console.log('Створено новий запис спроб для користувача:', payment.user_id);
+          }
+        }
+
+        console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав ${payment.attempts_count} спроб`);
       } catch (error) {
         console.error('Помилка додавання спроб:', error);
-        // Не повертаємо помилку, щоб Monobank не надсилав webhook повторно
       }
     }
 
     return NextResponse.json({ success: true });
-
   } catch (error) {
     console.error('Помилка обробки webhook:', error);
     return NextResponse.json(
       { error: 'Внутрішня помилка сервера', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
