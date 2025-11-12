@@ -40,71 +40,17 @@ function PharmaceuticalRandomizerContent() {
   const [showAnswers, setShowAnswers] = useState(searchParams.get('showAnswers') === 'true')
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set())
   const [totalQuestionsInDatabase, setTotalQuestionsInDatabase] = useState(0)
-  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
-  const [isCheckingAttempts, setIsCheckingAttempts] = useState(true)
-  const [attemptUsed, setAttemptUsed] = useState(false)
 
   useEffect(() => {
-    checkAttempts()
+    fetchQuestions()
   }, [])
-
-  const checkAttempts = async () => {
-    setIsCheckingAttempts(true)
-    try {
-      const response = await fetch('/api/randomizer/attempts')
-      if (response.ok) {
-        const data = await response.json()
-        setRemainingAttempts(data.remainingAttempts)
-        
-        if (data.remainingAttempts <= 0) {
-          // Немає спроб - перенаправляємо на сторінку покупки
-          window.location.href = '/randomizer/buy'
-          return
-        }
-      }
-    } catch (error) {
-      console.error('Error checking attempts:', error)
-    } finally {
-      setIsCheckingAttempts(false)
-    }
-  }
-
-  const consumeAttempt = async () => {
-    try {
-      const response = await fetch('/api/randomizer/attempts', {
-        method: 'POST'
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setRemainingAttempts(data.remainingAttempts)
-        setAttemptUsed(true)
-        console.log(`Спробу використано. Залишилось: ${data.remainingAttempts}`)
-      } else {
-        console.error('Помилка при використанні спроби')
-      }
-    } catch (error) {
-      console.error('Error using attempt:', error)
-    }
-  }
-
-  useEffect(() => {
-    if (!isCheckingAttempts && remainingAttempts !== null && remainingAttempts > 0) {
-      fetchQuestions()
-    }
-  }, [isCheckingAttempts, remainingAttempts])
 
   // Автоматично починаємо тест після завантаження питань
   useEffect(() => {
-    if (questions.length > 0 && !testStarted && remainingAttempts && remainingAttempts > 0) {
+    if (questions.length > 0 && !testStarted) {
       setTestStarted(true)
-      
-      // Списуємо спробу при старті тесту
-      if (!attemptUsed) {
-        consumeAttempt()
-      }
     }
-  }, [questions.length, testStarted, remainingAttempts, attemptUsed])
+  }, [questions.length])
 
   const fetchQuestions = async () => {
     try {
@@ -216,14 +162,12 @@ function PharmaceuticalRandomizerContent() {
     }
   }
 
-  if (isCheckingAttempts || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">
-            {isCheckingAttempts ? 'Перевірка спроб...' : 'Завантаження питань Randomizer PRO...'}
-          </p>
+          <p className="text-xl text-gray-600">Завантаження питань Randomizer PRO...</p>
         </div>
       </div>
     )
