@@ -56,9 +56,9 @@ export default function RandomizerBuyPage() {
       id: 'pack-5',
       name: 'Пакет 5 спроб',
       attempts: 5,
-      price: 3,
-      pricePerAttempt: 0.6,
-      savings: 'Тестова ціна',
+      price: 650,
+      pricePerAttempt: 130,
+      savings: 'Економія 250 ₴',
       popular: true
     },
     {

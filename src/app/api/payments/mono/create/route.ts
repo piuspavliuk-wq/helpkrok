@@ -21,7 +21,7 @@ const PACKAGES: Record<string, PackageInfo> = {
     id: 'pack-5',
     name: 'Пакет 5 спроб',
     attempts: 5,
-    price: 3
+    price: 650
   },
   'pack-10': {
     id: 'pack-10',
