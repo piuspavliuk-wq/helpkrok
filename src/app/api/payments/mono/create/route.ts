@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { createClient } from '@supabase/supabase-js';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 interface PackageInfo {
   id: string;
@@ -55,29 +57,12 @@ export async function POST(request: NextRequest) {
 
     const packageInfo = PACKAGES[packageId];
 
-    // Ініціалізація Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase credentials not configured');
-      return NextResponse.json(
-        { error: 'Помилка конфігурації бази даних' },
-        { status: 500 }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // Отримання користувача з бази даних
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, email, name')
-      .eq('email', session.user.email)
-      .single();
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
 
-    if (userError || !user) {
-      console.error('User not found:', userError);
+    if (!user) {
       return NextResponse.json(
         { error: 'Користувача не знайдено' },
         { status: 404 }
@@ -130,34 +115,24 @@ export async function POST(request: NextRequest) {
     const monoData = await monoResponse.json();
 
     // Збереження платежу в базу даних
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .insert({
-        user_id: user.id,
-        invoice_id: monoData.invoiceId,
+    const payment = await prisma.payment.create({
+      data: {
+        userId: user.id,
+        invoiceId: monoData.invoiceId,
         amount: packageInfo.price * 100,
         status: 'pending',
-        payment_type: 'randomizer',
-        package_id: packageInfo.id,
-        attempts_count: packageInfo.attempts,
-        page_url: monoData.pageUrl,
-        qr_code_data: monoData.qrId || null,
+        paymentType: 'randomizer',
+        packageId: packageInfo.id,
+        attemptsCount: packageInfo.attempts,
+        pageUrl: monoData.pageUrl,
+        qrCodeData: monoData.qrId || null,
         metadata: JSON.stringify({
           packageName: packageInfo.name,
           userEmail: user.email,
           userName: user.name
         })
-      })
-      .select()
-      .single();
-
-    if (paymentError || !payment) {
-      console.error('Error creating payment:', paymentError);
-      return NextResponse.json(
-        { error: 'Помилка збереження платежу' },
-        { status: 500 }
-      );
-    }
+      }
+    });
 
     console.log('Створено платіж:', payment.id, 'для користувача:', user.email);
 
@@ -175,6 +150,8 @@ export async function POST(request: NextRequest) {
       { error: 'Внутрішня помилка сервера', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
