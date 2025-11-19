@@ -258,19 +258,20 @@ export default function SectionContent({ section }: SectionContentProps) {
                       className="bg-white/70 rounded-2xl shadow-md border border-blue-100 p-3 md:p-6"
                     >
                       <div 
-                        className="w-full h-[600px] md:h-[720px] relative overflow-hidden rounded-xl border border-blue-100 bg-white"
+                        className="w-full h-[600px] md:h-[720px] relative overflow-auto rounded-xl border border-blue-100 bg-white"
                         onContextMenu={(e) => e.preventDefault()}
                         onDragStart={(e) => e.preventDefault()}
                         style={{ userSelect: 'none' }}
                       >
                         <embed
-                          src={`${note.file}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                          src={`${note.file}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
                           type="application/pdf"
                           className="w-full h-full"
                           style={{ 
                             pointerEvents: 'auto',
                             border: 'none',
-                            outline: 'none'
+                            outline: 'none',
+                            minHeight: '100%'
                           }}
                           onContextMenu={(e) => e.preventDefault()}
                         />
