@@ -3,6 +3,7 @@
 import { GraduationCap, BookOpen, Users, Award, CheckCircle, Star } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
 import RevealOnScroll from '@/components/ui/RevealOnScroll'
 import TestSelectionModal from '@/components/ui/TestSelectionModal'
@@ -16,7 +17,21 @@ export default function Home() {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
+          {/* Logo */}
           <RevealOnScroll direction="up">
+            <div className="mb-8 flex flex-col items-center">
+              <Image 
+                src="/logo-original.png" 
+                alt="Help Krok Logo" 
+                width={120} 
+                height={120}
+                className="w-30 h-30 mb-4"
+              />
+              <h2 className="text-3xl font-bold mb-2" style={{color: '#4C1D95'}}>HelpKrok</h2>
+              <p className="text-lg" style={{color: '#8B5CF6'}}>by j.helpNMU</p>
+            </div>
+          </RevealOnScroll>
+          <RevealOnScroll direction="up" delayMs={50}>
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
               Підготовка до <span className="text-gradient">КРОК</span>
             </h1>

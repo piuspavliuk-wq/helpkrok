@@ -573,28 +573,6 @@ function RandomizerTestContent() {
       <div className="max-w-4xl mx-auto pt-16 md:pt-20">
         <TestBackButton className="mb-4 md:mb-6" fallbackHref="/randomizer/settings" />
         
-        {/* Інформація про залишок спроб */}
-        {remainingAttempts !== null && (
-          <Card className="mb-6 bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Залишилось спроб:</p>
-                  <p className="text-2xl font-bold text-blue-600">{remainingAttempts}</p>
-                </div>
-                {remainingAttempts <= 3 && (
-                  <Button
-                    onClick={() => router.push('/randomizer/buy')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Купити ще спроби
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
         {/* Заголовок */}
         <Card className="mb-6">
           <CardHeader>

@@ -226,3 +226,11 @@ scripts/
 !MONO_PAYMENT_SETUP.md
 !package.json
 !package-lock.json
+
+# Large PDF files (over GitHub's 100MB limit)
+public/pdfs/section-1-presentation.pdf
+public/pdfs/section-12-conspect.pdf
+public/pdfs/section-6-conspect.pdf
+
+# Exclude all PDFs from src/pdfs/ (too large for GitHub)
+src/pdfs/
