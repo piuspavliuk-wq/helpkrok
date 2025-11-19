@@ -258,22 +258,20 @@ export default function SectionContent({ section }: SectionContentProps) {
                       className="bg-white/70 rounded-2xl shadow-md border border-blue-100 p-3 md:p-6"
                     >
                       <div 
-                        className="w-full h-[600px] md:h-[720px] relative overflow-auto rounded-xl border border-blue-100 bg-white"
+                        className="w-full h-[600px] md:h-[720px] relative rounded-xl border border-blue-100 bg-white overflow-hidden"
                         onContextMenu={(e) => e.preventDefault()}
                         onDragStart={(e) => e.preventDefault()}
                         style={{ userSelect: 'none' }}
                       >
-                        <embed
-                          src={`${note.file}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                          type="application/pdf"
-                          className="w-full h-full"
+                        <iframe
+                          src={`${note.file}#toolbar=0&navpanes=0&scrollbar=1`}
+                          className="w-full h-full border-0"
                           style={{ 
-                            pointerEvents: 'auto',
-                            border: 'none',
-                            outline: 'none',
-                            minHeight: '100%'
+                            WebkitOverflowScrolling: 'touch',
+                            overflow: 'auto'
                           }}
                           onContextMenu={(e) => e.preventDefault()}
+                          title={note.title || 'PDF конспект'}
                         />
                       </div>
                     </div>
