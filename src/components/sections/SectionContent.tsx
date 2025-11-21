@@ -24,8 +24,10 @@ interface SectionContentProps {
 export default function SectionContent({ section }: SectionContentProps) {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState<'video' | 'notes' | 'tests'>('video')
+  const [activeTestTab, setActiveTestTab] = useState<'test1' | 'test2'>('test1')
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingTopic, setLoadingTopic] = useState(false)
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({})
   const [showAnswers, setShowAnswers] = useState(false)
   const [topicId, setTopicId] = useState<string | null>(null)
@@ -33,12 +35,19 @@ export default function SectionContent({ section }: SectionContentProps) {
   const [testScore, setTestScore] = useState<number | null>(null)
   const [savingResults, setSavingResults] = useState(false)
 
-  // Отримуємо topic_id для section-1
+  // Отримуємо topic_id для поточного розділу та тесту
   useEffect(() => {
-    if (section.slug === 'section-1' && activeTab === 'tests') {
+    if (activeTab === 'tests') {
+      // Скидаємо попередній topicId при зміні розділу або тесту
+      setTopicId(null)
+      setQuestions([])
+      setSelectedAnswers({})
+      setShowAnswers(false)
+      setTestCompleted(false)
+      setTestScore(null)
       fetchTopicId()
     }
-  }, [section.slug, activeTab])
+  }, [section.slug, section.title, activeTab, activeTestTab])
 
   // Завантажуємо питання коли є topic_id
   useEffect(() => {
@@ -48,6 +57,7 @@ export default function SectionContent({ section }: SectionContentProps) {
   }, [topicId, activeTab])
 
   async function fetchTopicId() {
+    setLoadingTopic(true)
     try {
       const response = await fetch('/api/courses?faculty=medical')
       const data = await response.json()
@@ -58,16 +68,30 @@ export default function SectionContent({ section }: SectionContentProps) {
         )
 
         if (course) {
-          const topicsResponse = await fetch(`/api/topics?course_id=${course.id}&title=Молекулярні механізми реалізації генетичної інформації`)
+          // Для розділу 2 використовуємо різні назви для тестів
+          let topicTitle = section.title
+          if (section.slug === 'section-2') {
+            topicTitle = activeTestTab === 'test1' 
+              ? `${section.title} - Тест 1`
+              : `${section.title} - Тест 2`
+          }
+          
+          const topicsResponse = await fetch(`/api/topics?course_id=${course.id}&title=${encodeURIComponent(topicTitle)}`)
           const topicsData = await topicsResponse.json()
 
           if (topicsData.success && topicsData.topics && topicsData.topics.length > 0) {
             setTopicId(topicsData.topics[0].id)
+          } else {
+            // Якщо topic не знайдено, скидаємо topicId
+            setTopicId(null)
           }
         }
       }
     } catch (error) {
       console.error('Помилка отримання topic_id:', error)
+      setTopicId(null)
+    } finally {
+      setLoadingTopic(false)
     }
   }
 
@@ -287,7 +311,33 @@ export default function SectionContent({ section }: SectionContentProps) {
           )}
           {activeTab === 'tests' && (
             <div className="px-[3px] md:px-8">
-              {loading ? (
+              {/* Вкладки для тестів (тільки для розділу 2) */}
+              {section.slug === 'section-2' && (
+                <div className="flex gap-2 mb-6 border-b border-blue-200 overflow-x-auto">
+                  <button
+                    onClick={() => setActiveTestTab('test1')}
+                    className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+                      activeTestTab === 'test1'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Тест 1
+                  </button>
+                  <button
+                    onClick={() => setActiveTestTab('test2')}
+                    className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${
+                      activeTestTab === 'test2'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Тест 2
+                  </button>
+                </div>
+              )}
+              
+              {loadingTopic || loading ? (
                 <div className="text-center text-gray-600 py-20">
                   <p className="text-lg mb-2">Завантаження тестів...</p>
                 </div>
