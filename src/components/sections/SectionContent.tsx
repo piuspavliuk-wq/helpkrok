@@ -68,9 +68,9 @@ export default function SectionContent({ section }: SectionContentProps) {
         )
 
         if (course) {
-          // Для розділу 2 використовуємо різні назви для тестів
+          // Для розділу 3 використовуємо різні назви для тестів
           let topicTitle = section.title
-          if (section.slug === 'section-2') {
+          if (section.slug === 'section-3') {
             topicTitle = activeTestTab === 'test1' 
               ? `${section.title} - Тест 1`
               : `${section.title} - Тест 2`
@@ -311,8 +311,8 @@ export default function SectionContent({ section }: SectionContentProps) {
           )}
           {activeTab === 'tests' && (
             <div className="px-[3px] md:px-8">
-              {/* Вкладки для тестів (тільки для розділу 2) */}
-              {section.slug === 'section-2' && (
+              {/* Вкладки для тестів (тільки для розділу 3) */}
+              {section.slug === 'section-3' && (
                 <div className="flex gap-2 mb-6 border-b border-blue-200 overflow-x-auto">
                   <button
                     onClick={() => setActiveTestTab('test1')}
