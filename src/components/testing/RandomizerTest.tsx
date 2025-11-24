@@ -551,6 +551,169 @@ function RandomizerTestContent() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Детальні результати по кожному питанню */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-blue-800">
+                Детальні результати
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {shuffledQuestions.map((question, index) => {
+                  const result = testResults.find(r => r.questionId === question.id);
+                  const selectedAnswer = result?.selectedAnswer || '';
+                  const correctAnswer = result?.correctAnswer || question.shuffledCorrectAnswer || question.correct_answer || 'A';
+                  const isCorrect = result?.isCorrect || false;
+
+                  return (
+                    <Card 
+                      key={question.id} 
+                      className={`border-2 ${
+                        isCorrect ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'
+                      }`}
+                    >
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg font-bold text-gray-800 flex-1">
+                            <span className={`font-bold mr-3 ${
+                              isCorrect ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {index + 1}.
+                            </span>
+                            {question.question_text}
+                            {question.question_image && (
+                              <div className="mt-4 mb-4">
+                                <img 
+                                  src={question.question_image.startsWith('data:') ? question.question_image : `data:image/png;base64,${question.question_image}`}
+                                  alt="Зображення питання"
+                                  className="max-w-full h-auto rounded-lg border border-gray-200"
+                                  style={{ maxHeight: '400px' }}
+                                />
+                              </div>
+                            )}
+                          </CardTitle>
+                          <div className="ml-4">
+                            {isCorrect ? (
+                              <div className="flex items-center text-green-600 font-semibold">
+                                <Check className="w-6 h-6 mr-1" />
+                                <span>Правильно</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center text-red-600 font-semibold">
+                                <X className="w-6 h-6 mr-1" />
+                                <span>Неправильно</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {question.shuffledOptions?.map((option) => {
+                          const isSelected = selectedAnswer === option.displayKey;
+                          const isCorrectOption = option.displayKey === correctAnswer;
+
+                          return (
+                            <div
+                              key={option.originalKey}
+                              className={`p-3 rounded-lg border-2 ${
+                                isCorrectOption
+                                  ? 'bg-green-100 border-green-500 text-green-800'
+                                  : isSelected && !isCorrectOption
+                                  ? 'bg-red-100 border-red-500 text-red-800'
+                                  : 'bg-gray-50 border-gray-300 text-gray-600'
+                              }`}
+                            >
+                              <div className="flex items-center">
+                                <span className="font-semibold mr-3">{option.displayKey}.</span>
+                                <span className="flex-1">{option.text}</span>
+                                {isCorrectOption && (
+                                  <Check className="w-5 h-5 text-green-600 ml-2" />
+                                )}
+                                {isSelected && !isCorrectOption && (
+                                  <X className="w-5 h-5 text-red-600 ml-2" />
+                                )}
+                              </div>
+                              {question.option_images && question.option_images[option.originalKey] && (
+                                <div className="mt-2">
+                                  <img 
+                                    src={question.option_images[option.originalKey].startsWith('data:') 
+                                      ? question.option_images[option.originalKey] 
+                                      : `data:image/png;base64,${question.option_images[option.originalKey]}`}
+                                    alt={`Зображення варіанту ${option.displayKey}`}
+                                    className="max-w-full h-auto rounded border border-gray-200"
+                                    style={{ maxHeight: '200px' }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }) || ['A', 'B', 'C', 'D', 'E'].map(option => {
+                          const isSelected = selectedAnswer === option;
+                          const isCorrectOption = option === correctAnswer;
+                          const optionText = getAnswerText(question, option);
+
+                          if (!optionText) return null;
+
+                          return (
+                            <div
+                              key={option}
+                              className={`p-3 rounded-lg border-2 ${
+                                isCorrectOption
+                                  ? 'bg-green-100 border-green-500 text-green-800'
+                                  : isSelected && !isCorrectOption
+                                  ? 'bg-red-100 border-red-500 text-red-800'
+                                  : 'bg-gray-50 border-gray-300 text-gray-600'
+                              }`}
+                            >
+                              <div className="flex items-center">
+                                <span className="font-semibold mr-3">{option}.</span>
+                                <span className="flex-1">{optionText}</span>
+                                {isCorrectOption && (
+                                  <Check className="w-5 h-5 text-green-600 ml-2" />
+                                )}
+                                {isSelected && !isCorrectOption && (
+                                  <X className="w-5 h-5 text-red-600 ml-2" />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {/* Показуємо яку відповідь обрав користувач */}
+                        {selectedAnswer && (
+                          <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <p className="text-sm text-blue-800">
+                              <strong>Ваша відповідь:</strong> {selectedAnswer}
+                              {!isCorrect && (
+                                <span className="ml-2">
+                                  <strong>Правильна відповідь:</strong> {correctAnswer}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Кнопка AI Пояснення */}
+                        <div className="mt-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => showAIExplanationForQuestion(question)}
+                            className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                          >
+                            <Brain className="w-4 h-4 mr-2" />
+                            🤖 Отримати AI Пояснення
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
