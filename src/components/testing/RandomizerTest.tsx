@@ -727,6 +727,19 @@ function RandomizerTestContent() {
               </div>
             </CardContent>
           </Card>
+
+          {showAIExplanation && currentQuestionForAI && (
+            <AIExplanation
+              questionText={currentQuestionForAI.questionText}
+              selectedAnswer={currentQuestionForAI.selectedAnswer}
+              correctAnswer={currentQuestionForAI.correctAnswer}
+              options={currentQuestionForAI.options}
+              onClose={() => {
+                setShowAIExplanation(false);
+                setCurrentQuestionForAI(null);
+              }}
+            />
+          )}
         </div>
       </div>
     );
