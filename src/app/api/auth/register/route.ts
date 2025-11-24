@@ -89,6 +89,42 @@ export async function POST(request: NextRequest) {
           // Не блокуємо реєстрацію, якщо Supabase недоступний
         } else {
           console.log('✅ Supabase sync successful:', supabaseData);
+          
+          // Надаємо одну безкоштовну спробу для нового користувача
+          // Перевіряємо, чи вже не існує спроби (на випадок, якщо тригер вже створив)
+          if (supabaseData && supabaseData[0]?.id) {
+            try {
+              const { data: existingAttempt } = await supabaseAdmin
+                .from('randomizer_attempts')
+                .select('id')
+                .eq('user_id', supabaseData[0].id)
+                .single()
+
+              if (!existingAttempt) {
+                const { error: attemptError } = await supabaseAdmin
+                  .from('randomizer_attempts')
+                  .insert({
+                    user_id: supabaseData[0].id,
+                    total_attempts: 1,
+                    used_attempts: 0,
+                    purchase_date: new Date().toISOString(),
+                    expires_at: null // Безкоштовна спроба не має терміну дії
+                  })
+
+                if (attemptError) {
+                  console.error('❌ Error creating free attempt:', attemptError)
+                  // Не блокуємо реєстрацію, якщо не вдалося створити спробу
+                } else {
+                  console.log('✅ Free randomizer attempt created for new user')
+                }
+              } else {
+                console.log('✅ Free randomizer attempt already exists (created by trigger)')
+              }
+            } catch (attemptErr) {
+              console.error('❌ Error in free attempt creation:', attemptErr)
+              // Продовжуємо реєстрацію навіть якщо не вдалося створити спробу
+            }
+          }
         }
       } else {
         console.log('⚠️ Supabase Admin not configured, skipping sync');
