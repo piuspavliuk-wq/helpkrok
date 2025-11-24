@@ -436,12 +436,12 @@ function RandomizerTestContent() {
   const showAIExplanationForQuestion = (question: Question) => {
     const selectedAnswer = selectedAnswers[question.id];
     const options = question.shuffledOptions?.map(opt => ({
-      letter: opt.displayKey,
+      key: opt.displayKey,
       text: opt.text
     })) || ['A', 'B', 'C', 'D', 'E'].map(letter => ({
-      letter,
+      key: letter,
       text: getAnswerText(question, letter)
-    }));
+    })).filter(option => option.text);
 
     setCurrentQuestionForAI({
       questionText: question.question_text,
