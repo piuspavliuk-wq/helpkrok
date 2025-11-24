@@ -47,7 +47,20 @@ export default function AIExplanation({
       if (data.success) {
         setExplanation(data.explanation);
       } else {
-        setError(data.error || 'Помилка отримання пояснення');
+        // Спеціальна обробка помилки 429 (Quota exceeded)
+        if (response.status === 429 || data.errorCode === 429) {
+          setError(
+            `⚠️ Досягнуто ліміт безкоштовного тарифу Google Gemini API.\n\n` +
+            `Квоти відновлюються щодня або щомісяця (залежить від типу квоти).\n\n` +
+            `Що можна зробити:\n` +
+            `• Зачекати до наступного дня/місяця\n` +
+            `• Перевірити статус квот: https://ai.dev/usage\n` +
+            `• Перейти на платний план Gemini API\n\n` +
+            `${data.suggestion || ''}`
+          );
+        } else {
+          setError(data.error || 'Помилка отримання пояснення');
+        }
       }
     } catch (error) {
       setError('Помилка з\'єднання з сервером');

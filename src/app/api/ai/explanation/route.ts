@@ -205,6 +205,29 @@ ${selectedAnswer ? `ОБРАНА ВІДПОВІДЬ: ${selectedAnswer}` : ''}
       const errorData = await response.text();
       console.error('❌ Gemini API error:', response.status, errorData);
       
+      // Спеціальна обробка помилки 429 (Quota exceeded)
+      if (response.status === 429) {
+        let errorMessage = 'Досягнуто ліміт безкоштовного тарифу Google Gemini API.';
+        try {
+          const errorJson = JSON.parse(errorData);
+          if (errorJson.error?.message) {
+            errorMessage = `Досягнуто ліміт безкоштовного тарифу:\n\n${errorJson.error.message}`;
+          }
+        } catch (e) {
+          // Якщо не вдалося розпарсити JSON, використовуємо стандартне повідомлення
+        }
+        
+        return NextResponse.json(
+          { 
+            error: errorMessage,
+            errorCode: 429,
+            errorType: 'QUOTA_EXCEEDED',
+            suggestion: 'Квоти відновлюються щодня або щомісяця. Перевірте статус на https://ai.dev/usage або перейдіть на платний план.'
+          },
+          { status: 429 }
+        );
+      }
+      
       // Якщо помилка 404, спробуємо іншу модель
       if (response.status === 404) {
         console.log('🔄 Спробуємо іншу модель через fallback...');
