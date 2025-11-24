@@ -459,6 +459,19 @@ function RandomizerTestContent() {
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-600">Завантаження питань з Randomizer PRO...</p>
         </div>
+
+        {showAIExplanation && currentQuestionForAI && (
+          <AIExplanation
+            questionText={currentQuestionForAI.questionText}
+            selectedAnswer={currentQuestionForAI.selectedAnswer}
+            correctAnswer={currentQuestionForAI.correctAnswer}
+            options={currentQuestionForAI.options}
+            onClose={() => {
+              setShowAIExplanation(false);
+              setCurrentQuestionForAI(null);
+            }}
+          />
+        )}
       </div>
     );
   }
