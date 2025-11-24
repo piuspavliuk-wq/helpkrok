@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const year = searchParams.get('year');
-    const subject = searchParams.get('subject') || 'analytical_chemistry';
+    const subject = searchParams.get('subject'); // Не встановлюємо значення за замовчуванням для randomizer
     const category = searchParams.get('category');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 1000;
     const random = searchParams.get('random') === 'true';

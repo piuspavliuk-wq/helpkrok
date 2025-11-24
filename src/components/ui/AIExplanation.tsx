@@ -55,7 +55,10 @@ export default function AIExplanation({
             `Що можна зробити:\n` +
             `• Зачекати до наступного дня/місяця\n` +
             `• Перевірити статус квот: https://ai.dev/usage\n` +
-            `• Перейти на платний план Gemini API\n\n` +
+            `• Перейти на платний план:\n` +
+            `  → https://console.cloud.google.com/billing\n` +
+            `  → Підключити білінг до проекту\n` +
+            `  → Або створити новий проект з білінгом\n\n` +
             `${data.suggestion || ''}`
           );
         } else {

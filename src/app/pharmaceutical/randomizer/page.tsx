@@ -147,9 +147,9 @@ function PharmaceuticalRandomizerContent() {
     
     if (!isAnswered) {
       if (isSelected) {
-        return 'bg-blue-100 border-blue-500 text-gray-700 hover:bg-blue-200'
+        return 'bg-blue-100 border-blue-500 text-gray-700 hover:bg-blue-200 hover:text-gray-700'
       }
-      return 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50'
+      return 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-gray-700'
     }
     
     const isCorrectAnswer = question.correct_answer === answerKey
@@ -200,36 +200,8 @@ function PharmaceuticalRandomizerContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
-      {/* Закріплений прогрес-бар зверху */}
-      <div className="fixed top-0 left-0 md:left-64 right-0 bg-white border-b border-gray-200 z-50 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Зліва: Прогрес */}
-          <div className="flex items-center space-x-4 flex-1">
-            <div className="text-sm text-gray-700 whitespace-nowrap">
-              Відповідей: {answeredCount} з {questions.length} Прогрес: {progressPercentage}%
-            </div>
-            <div className="w-full max-w-md bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
-            </div>
-          </div>
-          
-          {/* Справа: Кнопка завершення */}
-          <div className="ml-4">
-            <Button
-              onClick={finishTest}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
-            >
-              ✨ Завершити тест
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {/* Контент з відступом для закріпленого бару */}
-      <div className="p-4 pt-20">
+      <div className="p-4 pt-4 pb-24 md:pt-20 md:pb-4">
         <div className="max-w-4xl mx-auto">
         {/* Заголовок */}
         <Card className="mb-6">
@@ -339,6 +311,33 @@ function PharmaceuticalRandomizerContent() {
             )
           })}
         </div>
+        </div>
+      </div>
+
+      {/* Прогрес-бар і кнопка завершення */}
+      <div className="test-progress-bar fixed bottom-0 left-0 right-0 md:fixed md:top-0 md:left-64 md:right-0 md:w-auto md:h-[50px] bg-white md:bg-blue-50 md:backdrop-blur-sm border-t md:border-b border-gray-200 md:border-gray-200 shadow-lg md:shadow-sm p-3 md:px-6 md:py-2 md:pb-3 z-[200] relative">
+        <div className="text-center md:flex md:items-center md:justify-between md:max-w-4xl md:mx-auto md:w-full">
+          <div className="mb-4 md:mb-0 md:flex md:items-center md:space-x-4">
+            <p className="text-gray-600 mb-2 md:mb-0 text-sm">
+              Відповідей: {answeredCount} з {questions.length}
+            </p>
+            <p className="text-gray-500 text-xs mb-2 md:mb-0">
+              Прогрес: {progressPercentage}%
+            </p>
+            <div className="w-full sm:w-48 md:w-64 lg:w-80 xl:w-96 progress-bar">
+              <div 
+                className="progress-fill"
+                style={{ width: `${progressPercentage}%` }}
+              ></div>
+            </div>
+          </div>
+          
+          <Button
+            onClick={finishTest}
+            className="bg-blue-600 hover:bg-blue-700 text-base md:text-base px-8 md:px-6 py-3 md:py-2 w-full md:w-auto rounded-xl"
+          >
+            🏁 Завершити тест
+          </Button>
         </div>
       </div>
     </div>
