@@ -18,6 +18,7 @@ export interface SectionPresentation {
 export interface Section {
   title: string
   slug: string
+  description?: string
   topics: Topic[]
   videos?: string[]
   notes?: SectionNote[]

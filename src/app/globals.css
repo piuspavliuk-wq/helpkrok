@@ -217,3 +217,8 @@ aside * {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Safari and Chrome */
 }
+
+/* Ensure AI Explanation modal is always on top of navigation */
+.ai-explanation-modal {
+  z-index: 250 !important;
+}

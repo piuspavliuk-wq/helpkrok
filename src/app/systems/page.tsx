@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import AuthGuard from '@/components/auth/AuthGuard'
 import { sections as fundamentalSections } from './fundamental-medico-biological-knowledge/data'
+import { sections as organicCompoundsSections } from './organic-compounds-basics/data'
 import { CustomSelect } from '@/components/ui/CustomSelect'
 
 const courses = [
@@ -30,6 +31,18 @@ const courses = [
     topicsCount: 0,
     faculty: 'medical' as const,
     emoji: '🛡️'
+  },
+  {
+    id: 'organic-compounds-basics',
+    title: 'Основи знань про органічні сполуки',
+    description:
+      'Комплексний курс з органічної хімії: будова, номенклатура, ізомерія, хімічні властивості та ідентифікація органічних сполук для майбутніх фармацевтів.',
+    slug: '/systems/organic-compounds-basics',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: organicCompoundsSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '⚗️'
   }
 ]
 

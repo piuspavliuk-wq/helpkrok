@@ -206,7 +206,12 @@ export default function SectionContent({ section }: SectionContentProps) {
   return (
     <>
       <div className="px-[3px] py-8 md:px-6 sm:px-8 md:px-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8 px-3 md:px-0">{section.title}</h1>
+        <div className="mb-8 px-3 md:px-0">
+          <h1 className="text-3xl font-bold text-gray-900 mb-0">{section.title}</h1>
+          {section.description && (
+            <p className="text-lg text-gray-600 font-normal mt-0">{section.description}</p>
+          )}
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-blue-200 px-3 md:px-0 overflow-x-auto">

@@ -714,7 +714,7 @@ function RandomizerTestContent() {
                             variant="outline"
                             size="sm"
                             onClick={() => showAIExplanationForQuestion(question)}
-                            className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                            className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100 hover:text-purple-800 hover:border-purple-400"
                           >
                             <Brain className="w-4 h-4 mr-2" />
                             🤖 Отримати AI Пояснення
@@ -894,7 +894,7 @@ function RandomizerTestContent() {
                         variant="outline"
                         size="sm"
                         onClick={() => showAIExplanationForQuestion(question)}
-                        className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                        className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100 hover:text-purple-800 hover:border-purple-400"
                       >
                         <Brain className="w-4 h-4 mr-2" />
                         🤖 Отримати AI Пояснення

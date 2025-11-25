@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Brain, Lightbulb } from 'lucide-react';
@@ -23,6 +24,12 @@ export default function AIExplanation({
   const [explanation, setExplanation] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const generateExplanation = async () => {
     setIsLoading(true);
@@ -72,8 +79,8 @@ export default function AIExplanation({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+  const modalContent = (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[250] ai-explanation-modal">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
           <div className="flex items-center justify-between">
@@ -175,4 +182,8 @@ export default function AIExplanation({
       </Card>
     </div>
   );
+
+  if (!mounted) return null;
+
+  return createPortal(modalContent, document.body);
 }

@@ -1160,7 +1160,7 @@ export default function UniversalTest({ testType, testName, isRandomizer = false
                             variant="outline"
                             size="sm"
                             onClick={() => showAIExplanationForQuestion(question)}
-                            className="bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                            className="bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100 hover:text-purple-800 hover:border-purple-400"
                           >
                             <Brain className="w-4 h-4 mr-2" />
                             🤖 AI Пояснення

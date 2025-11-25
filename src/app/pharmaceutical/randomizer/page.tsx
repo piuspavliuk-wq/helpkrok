@@ -3,10 +3,11 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { Check, X } from 'lucide-react'
+import { Check, X, Brain } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import AuthGuard from '@/components/auth/AuthGuard'
+import AIExplanation from '@/components/ui/AIExplanation'
 
 interface PharmaceuticalQuestion {
   id: number
@@ -40,6 +41,9 @@ function PharmaceuticalRandomizerContent() {
   const [showAnswers, setShowAnswers] = useState(searchParams.get('showAnswers') === 'true')
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set())
   const [totalQuestionsInDatabase, setTotalQuestionsInDatabase] = useState(0)
+  const [isTestCompleted, setIsTestCompleted] = useState(false)
+  const [showAIExplanation, setShowAIExplanation] = useState(false)
+  const [currentQuestionForAI, setCurrentQuestionForAI] = useState<any>(null)
 
   useEffect(() => {
     fetchQuestions()
@@ -128,7 +132,35 @@ function PharmaceuticalRandomizerContent() {
   const finishTest = () => {
     const correctAnswers = getCorrectAnswersCount()
     const totalQuestions = questions.length
-    alert(`Тест завершено!\nПравильних відповідей: ${correctAnswers} з ${totalQuestions}\nОцінка: ${Math.round((correctAnswers / totalQuestions) * 100)}%`)
+    setIsTestCompleted(true)
+  }
+
+  const resetTest = () => {
+    setSelectedAnswers({})
+    setAnsweredQuestions(new Set())
+    setIsTestCompleted(false)
+  }
+
+  const showAIExplanationForQuestion = (question: PharmaceuticalQuestion) => {
+    const selectedAnswer = selectedAnswers[question.id]
+    const options = question.options?.map(opt => ({
+      key: opt.letter,
+      text: opt.text
+    })) || ['A', 'B', 'C', 'D', 'E'].map(letter => {
+      const optionText = question[`option_${letter.toLowerCase()}` as keyof PharmaceuticalQuestion] as string
+      return {
+        key: letter,
+        text: optionText || ''
+      }
+    }).filter(option => option.text)
+
+    setCurrentQuestionForAI({
+      questionText: question.question_text,
+      selectedAnswer: selectedAnswer || '',
+      correctAnswer: question.correct_answer || 'A',
+      options: options
+    })
+    setShowAIExplanation(true)
   }
 
   const getCorrectAnswersCount = () => {
@@ -197,6 +229,212 @@ function PharmaceuticalRandomizerContent() {
 
   const answeredCount = Object.keys(selectedAnswers).length
   const progressPercentage = Math.round((answeredCount / questions.length) * 100)
+
+  // Екран результатів після завершення тесту
+  if (isTestCompleted) {
+    const correctAnswers = getCorrectAnswersCount()
+    const totalQuestions = questions.length
+    const percentage = Math.round((correctAnswers / totalQuestions) * 100)
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 p-4">
+        <div className="max-w-4xl mx-auto pt-16 md:pt-20">
+          <Card className="mb-6">
+            <CardHeader className="text-center">
+              <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
+                Результати Randomizer PRO
+              </CardTitle>
+              <div className="text-2xl text-gray-700">
+                Правильних відповідей: <span className="font-bold text-green-600">{correctAnswers}</span> з {totalQuestions}
+              </div>
+              <div className={`text-4xl font-bold mt-2 ${
+                percentage >= 80 ? 'text-green-600' : 
+                percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {percentage}%
+              </div>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="space-y-4">
+                <Button
+                  onClick={resetTest}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg rounded-xl mr-4"
+                >
+                  🔄 Пройти ще раз
+                </Button>
+                <Button
+                  onClick={() => window.location.href = '/'}
+                  variant="outline"
+                  className="px-8 py-3 text-lg rounded-xl"
+                >
+                  🏠 На головну
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Детальні результати по кожному питанню */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-blue-800">
+                Детальні результати
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {questions.map((question, index) => {
+                  const selectedAnswer = selectedAnswers[question.id]
+                  const correctAnswer = question.correct_answer
+                  const isCorrect = selectedAnswer === correctAnswer
+
+                  return (
+                    <Card 
+                      key={question.id} 
+                      className={`border-2 ${
+                        isCorrect ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'
+                      }`}
+                    >
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg font-bold text-gray-800 flex-1">
+                            <span className={`font-bold mr-3 ${
+                              isCorrect ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {index + 1}.
+                            </span>
+                            {question.question_text}
+                          </CardTitle>
+                          <div className="ml-4">
+                            {isCorrect ? (
+                              <div className="flex items-center text-green-600 font-semibold">
+                                <Check className="w-6 h-6 mr-1" />
+                                <span>Правильно</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center text-red-600 font-semibold">
+                                <X className="w-6 h-6 mr-1" />
+                                <span>Неправильно</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {question.options ? (
+                          question.options.map((opt) => {
+                            const isSelected = selectedAnswer === opt.letter
+                            const isCorrectOption = opt.letter === correctAnswer
+
+                            return (
+                              <div
+                                key={opt.letter}
+                                className={`p-3 rounded-lg border-2 ${
+                                  isCorrectOption
+                                    ? 'bg-green-100 border-green-500 text-green-800'
+                                    : isSelected && !isCorrectOption
+                                    ? 'bg-red-100 border-red-500 text-red-800'
+                                    : 'bg-gray-50 border-gray-300 text-gray-600'
+                                }`}
+                              >
+                                <div className="flex items-center">
+                                  <span className="font-semibold mr-3">{opt.letter}.</span>
+                                  <span className="flex-1">{opt.text}</span>
+                                  {isCorrectOption && (
+                                    <Check className="w-5 h-5 text-green-600 ml-2" />
+                                  )}
+                                  {isSelected && !isCorrectOption && (
+                                    <X className="w-5 h-5 text-red-600 ml-2" />
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })
+                        ) : (
+                          ['A', 'B', 'C', 'D', 'E'].filter(option => {
+                            const optionText = question[`option_${option.toLowerCase()}` as keyof PharmaceuticalQuestion] as string
+                            return optionText && optionText.trim() !== ''
+                          }).map((option) => {
+                            const optionText = question[`option_${option.toLowerCase()}` as keyof PharmaceuticalQuestion] as string
+                            const isSelected = selectedAnswer === option
+                            const isCorrectOption = option === correctAnswer
+
+                            return (
+                              <div
+                                key={option}
+                                className={`p-3 rounded-lg border-2 ${
+                                  isCorrectOption
+                                    ? 'bg-green-100 border-green-500 text-green-800'
+                                    : isSelected && !isCorrectOption
+                                    ? 'bg-red-100 border-red-500 text-red-800'
+                                    : 'bg-gray-50 border-gray-300 text-gray-600'
+                                }`}
+                              >
+                                <div className="flex items-center">
+                                  <span className="font-semibold mr-3">{option}.</span>
+                                  <span className="flex-1">{optionText}</span>
+                                  {isCorrectOption && (
+                                    <Check className="w-5 h-5 text-green-600 ml-2" />
+                                  )}
+                                  {isSelected && !isCorrectOption && (
+                                    <X className="w-5 h-5 text-red-600 ml-2" />
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
+                        
+                        {/* Показуємо яку відповідь обрав користувач */}
+                        {selectedAnswer && (
+                          <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <p className="text-sm text-blue-800">
+                              <strong>Ваша відповідь:</strong> {selectedAnswer}
+                              {!isCorrect && (
+                                <span className="ml-2">
+                                  <strong>Правильна відповідь:</strong> {correctAnswer}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Кнопка AI Пояснення */}
+                        <div className="mt-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => showAIExplanationForQuestion(question)}
+                            className="w-full bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100 hover:text-purple-800 hover:border-purple-400"
+                          >
+                            <Brain className="w-4 h-4 mr-2" />
+                            🤖 Отримати AI Пояснення
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Пояснення */}
+          {showAIExplanation && currentQuestionForAI && (
+            <AIExplanation
+              questionText={currentQuestionForAI.questionText}
+              selectedAnswer={currentQuestionForAI.selectedAnswer}
+              correctAnswer={currentQuestionForAI.correctAnswer}
+              options={currentQuestionForAI.options}
+              onClose={() => {
+                setShowAIExplanation(false)
+                setCurrentQuestionForAI(null)
+              }}
+            />
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100">
@@ -313,6 +551,20 @@ function PharmaceuticalRandomizerContent() {
         </div>
         </div>
       </div>
+
+      {/* AI Пояснення */}
+      {showAIExplanation && currentQuestionForAI && (
+        <AIExplanation
+          questionText={currentQuestionForAI.questionText}
+          selectedAnswer={currentQuestionForAI.selectedAnswer}
+          correctAnswer={currentQuestionForAI.correctAnswer}
+          options={currentQuestionForAI.options}
+          onClose={() => {
+            setShowAIExplanation(false)
+            setCurrentQuestionForAI(null)
+          }}
+        />
+      )}
 
       {/* Прогрес-бар і кнопка завершення */}
       <div className="test-progress-bar fixed bottom-0 left-0 right-0 md:fixed md:top-0 md:left-64 md:right-0 md:w-auto md:h-[50px] bg-white md:bg-blue-50 md:backdrop-blur-sm border-t md:border-b border-gray-200 md:border-gray-200 shadow-lg md:shadow-sm p-3 md:px-6 md:py-2 md:pb-3 z-[200] relative">
