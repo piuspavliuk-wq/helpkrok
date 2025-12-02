@@ -66,11 +66,17 @@ export const sections: Section[] = [
     title: 'Біологія клітин',
     slug: 'section-3',
     topics: [],
+    videos: ['1142516421'],
     notes: [
       {
         title: 'Біологія клітин: конспект',
         description: 'Конспект від HelpKrok',
         file: '/pdfs/section-3-conspect.pdf'
+      },
+      {
+        title: 'Біологія клітин: конспект 2',
+        description: 'Конспект біології клітин',
+        file: '/pdfs/section-3-conspect-2.pdf'
       }
     ]
   },

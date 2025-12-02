@@ -95,19 +95,23 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
   }
 
   function canAccessSection(sectionIndex: number): boolean {
-    // Тимчасово відкриваємо всі розділи для тестування
-    return true
+    // Перевіряємо чи користувач є адміном
+    const isAdmin = session?.user?.email === 'admin@helpkrok.com'
+    
+    // Адмін має доступ до всіх розділів
+    if (isAdmin) return true
     
     // Перший розділ завжди доступний
-    // if (sectionIndex === 0) return true
+    if (sectionIndex === 0) return true
 
     // Перевіряємо попередній розділ
-    // const previousSection = sections[sectionIndex - 1]
-    // const previousProgress = sectionProgress[previousSection.slug]
+    const previousSection = sections[sectionIndex - 1]
+    const previousProgress = sectionProgress[previousSection.slug]
 
-    // if (!previousProgress) return false
+    if (!previousProgress) return false
 
-    // return previousProgress.completed && (previousProgress.score || 0) >= 80
+    // Розділ відкривається автоматично, якщо попередній пройдено на 80% і більше
+    return previousProgress.completed && (previousProgress.score || 0) >= 80
   }
 
   return (
