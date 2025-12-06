@@ -42,9 +42,30 @@ export async function GET(request: NextRequest) {
       return true // Тимчасово, потім додамо перевірку через payments
     })
 
-    // Якщо є активна підписка, перевіряємо через payments
-    let isUnlimited = false
-    if (subscriptions && subscriptions.length > 0) {
+    // Спочатку отримуємо спроби з бази
+    const { data: attempts, error } = await supabase
+      .from('randomizer_attempts')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .or('expires_at.is.null,expires_at.gte.' + new Date().toISOString())
+      .order('purchase_date', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching randomizer attempts:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch attempts' },
+        { status: 500 }
+      )
+    }
+
+    const totalAttempts = attempts?.reduce((sum, a) => sum + (a.total_attempts ?? 0), 0) ?? 0
+    const usedAttempts = attempts?.reduce((sum, a) => sum + (a.used_attempts ?? 0), 0) ?? 0
+    
+    // Якщо totalAttempts >= 999999, це означає необмежені спроби
+    let isUnlimited = totalAttempts >= 999999
+    
+    // Також перевіряємо через активні підписки
+    if (subscriptions && subscriptions.length > 0 && !isUnlimited) {
       for (const sub of subscriptions) {
         if (sub.payment_id) {
           const { data: payment } = await supabase
@@ -68,42 +89,21 @@ export async function GET(request: NextRequest) {
             }
           }
         }
-        
-        // Також перевіряємо через randomizer_attempts - якщо є запис з 999999 спробами
-        // це означає що користувач має необмежені спроби
-        const { data: unlimitedAttempts } = await supabase
-          .from('randomizer_attempts')
-          .select('total_attempts')
-          .eq('user_id', session.user.id)
-          .gte('total_attempts', 999999)
-          .limit(1)
-          .maybeSingle()
-        
-        if (unlimitedAttempts && unlimitedAttempts.total_attempts >= 999999) {
-          isUnlimited = true
-          break
-        }
       }
     }
+    
+    const calculatedRemainingAttempts = totalAttempts - usedAttempts
+    
+    const remainingAttempts = isUnlimited ? 999999 : calculatedRemainingAttempts
 
-    const { data: attempts, error } = await supabase
-      .from('randomizer_attempts')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .or('expires_at.is.null,expires_at.gte.' + new Date().toISOString())
-      .order('purchase_date', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching randomizer attempts:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch attempts' },
-        { status: 500 }
-      )
-    }
-
-    const totalAttempts = attempts?.reduce((sum, a) => sum + (a.total_attempts ?? 0), 0) ?? 0
-    const usedAttempts = attempts?.reduce((sum, a) => sum + (a.used_attempts ?? 0), 0) ?? 0
-    const remainingAttempts = isUnlimited ? 999999 : (totalAttempts - usedAttempts)
+    console.log('Randomizer attempts check:', {
+      userId: session.user.id,
+      totalAttempts,
+      usedAttempts,
+      calculatedRemainingAttempts,
+      isUnlimited,
+      remainingAttempts
+    })
 
     return NextResponse.json({
       totalAttempts: isUnlimited ? 999999 : totalAttempts,

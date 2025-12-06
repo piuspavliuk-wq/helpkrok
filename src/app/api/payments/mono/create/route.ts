@@ -27,50 +27,50 @@ const SUBSCRIPTIONS: Record<string, SubscriptionInfo> = {
   'subscription-vip-premium-medical': {
     id: 'vip-premium',
     name: 'VIP Premium - Медицина',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 14500,
+    pharmaceuticalPrice: 11500
   },
   'subscription-vip-premium-pharmaceutical': {
     id: 'vip-premium',
     name: 'VIP Premium - Фармація',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 14500,
+    pharmaceuticalPrice: 11500
   },
   'subscription-premium-standard-medical': {
     id: 'premium-standard',
     name: 'Premium Standard - Медицина',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 10000,
+    pharmaceuticalPrice: 9000
   },
   'subscription-premium-standard-pharmaceutical': {
     id: 'premium-standard',
     name: 'Premium Standard - Фармація',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 10000,
+    pharmaceuticalPrice: 9000
   },
   'subscription-standard-medical': {
     id: 'standard',
     name: 'Standard - Медицина',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 8500,
+    pharmaceuticalPrice: 7500
   },
   'subscription-standard-pharmaceutical': {
     id: 'standard',
     name: 'Standard - Фармація',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 8500,
+    pharmaceuticalPrice: 7500
   },
   'subscription-basic-medical': {
     id: 'basic',
     name: 'Базове самоопрацювання - Медицина',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 6500,
+    pharmaceuticalPrice: 5500
   },
   'subscription-basic-pharmaceutical': {
     id: 'basic',
     name: 'Базове самоопрацювання - Фармація',
-    medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 1 // Тимчасово для тестування
+    medicalPrice: 6500,
+    pharmaceuticalPrice: 5500
   }
 };
 

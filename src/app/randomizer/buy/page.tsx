@@ -23,7 +23,7 @@ export default function RandomizerBuyPage() {
   const router = useRouter()
   const [selectedPackage, setSelectedPackage] = useState<RandomizerPackage | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
-  const [attemptsData, setAttemptsData] = useState<{ remainingAttempts: number } | null>(null)
+  const [attemptsData, setAttemptsData] = useState<{ remainingAttempts: number; isUnlimited?: boolean } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function RandomizerBuyPage() {
     fetch('/api/randomizer/attempts')
       .then(res => res.json())
       .then(data => {
-        if (data.remainingAttempts > 0) {
+        if (data.remainingAttempts > 0 || data.isUnlimited) {
           setAttemptsData(data)
         }
       })
@@ -83,7 +83,7 @@ export default function RandomizerBuyPage() {
   }
 
   // Якщо є спроби - показуємо їх
-  if (attemptsData && attemptsData.remainingAttempts > 0) {
+  if (attemptsData && (attemptsData.remainingAttempts > 0 || attemptsData.isUnlimited)) {
     return (
       <AuthGuard>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 py-12 px-4">
@@ -104,7 +104,11 @@ export default function RandomizerBuyPage() {
                   <Zap className="w-10 h-10 text-blue-500" />
                 </div>
                 <CardTitle className="text-3xl font-semibold text-blue-700">
-                  У вас є {attemptsData.remainingAttempts} {attemptsData.remainingAttempts === 1 ? 'спроба' : 'спроб'}!
+                  {(attemptsData.isUnlimited || attemptsData.remainingAttempts >= 999999) ? (
+                    'У вас необмежена кількість спроб!'
+                  ) : (
+                    `У вас є ${attemptsData.remainingAttempts} ${attemptsData.remainingAttempts === 1 ? 'спроба' : 'спроб'}!`
+                  )}
                 </CardTitle>
                 <CardDescription className="text-lg text-gray-600">
                   Ви можете розпочати повну імітацію КРОК-тесту
