@@ -345,7 +345,7 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-4 w-4 text-success-500 mr-2 mt-0.5 flex-shrink-0" />
-                  Randomizer PRO (до 3 спроб/день)
+                  Randomizer PRO
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-4 w-4 text-success-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -380,7 +380,7 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-4 w-4 text-success-500 mr-2 mt-0.5 flex-shrink-0" />
-                  Randomizer PRO (до 2 спроб/день)
+                  Randomizer PRO
                 </li>
               </ul>
               <button 
