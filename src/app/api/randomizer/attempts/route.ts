@@ -46,25 +46,42 @@ export async function GET(request: NextRequest) {
     let isUnlimited = false
     if (subscriptions && subscriptions.length > 0) {
       for (const sub of subscriptions) {
-        const { data: payment } = await supabase
-          .from('payments')
-          .select('metadata')
-          .eq('id', sub.payment_id)
-          .eq('payment_type', 'subscription')
-          .eq('status', 'success')
-          .maybeSingle()
+        if (sub.payment_id) {
+          const { data: payment } = await supabase
+            .from('payments')
+            .select('metadata')
+            .eq('id', sub.payment_id)
+            .eq('payment_type', 'subscription')
+            .eq('status', 'success')
+            .maybeSingle()
 
-        if (payment?.metadata) {
-          try {
-            const metadata = JSON.parse(payment.metadata)
-            const subscriptionId = metadata.subscriptionId
-            if (subscriptionId === 'vip-premium' || subscriptionId === 'premium-standard') {
-              isUnlimited = true
-              break
+          if (payment?.metadata) {
+            try {
+              const metadata = JSON.parse(payment.metadata)
+              const subscriptionId = metadata.subscriptionId
+              if (subscriptionId === 'vip-premium' || subscriptionId === 'premium-standard') {
+                isUnlimited = true
+                break
+              }
+            } catch (e) {
+              // Ігноруємо помилки парсингу
             }
-          } catch (e) {
-            // Ігноруємо помилки парсингу
           }
+        }
+        
+        // Також перевіряємо через randomizer_attempts - якщо є запис з 999999 спробами
+        // це означає що користувач має необмежені спроби
+        const { data: unlimitedAttempts } = await supabase
+          .from('randomizer_attempts')
+          .select('total_attempts')
+          .eq('user_id', session.user.id)
+          .gte('total_attempts', 999999)
+          .limit(1)
+          .maybeSingle()
+        
+        if (unlimitedAttempts && unlimitedAttempts.total_attempts >= 999999) {
+          isUnlimited = true
+          break
         }
       }
     }
