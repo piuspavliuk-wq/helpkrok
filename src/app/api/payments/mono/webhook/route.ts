@@ -247,6 +247,61 @@ export async function POST(request: NextRequest) {
 
             console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав підписку ${subscriptionType}`);
             
+            // Додаємо спроби для Randomizer PRO залежно від типу підписки
+            let attemptsToAdd = 0;
+            if (subscriptionId === 'standard') {
+              attemptsToAdd = 515;
+            } else if (subscriptionId === 'basic') {
+              attemptsToAdd = 345;
+            }
+
+            if (attemptsToAdd > 0) {
+              try {
+                const { data: userAttempts, error: attemptsFetchError } = await supabase
+                  .from('randomizer_attempts')
+                  .select('*')
+                  .eq('user_id', payment.user_id)
+                  .maybeSingle();
+
+                if (attemptsFetchError && attemptsFetchError.code !== 'PGRST116') {
+                  console.error('Помилка отримання спроб користувача:', attemptsFetchError);
+                } else if (userAttempts) {
+                  // Оновлюємо існуючі спроби
+                  const { error: attemptsUpdateError } = await supabase
+                    .from('randomizer_attempts')
+                    .update({
+                      total_attempts: userAttempts.total_attempts + attemptsToAdd,
+                      used_attempts: userAttempts.used_attempts
+                    })
+                    .eq('id', userAttempts.id);
+
+                  if (attemptsUpdateError) {
+                    console.error('Помилка оновлення спроб користувача:', attemptsUpdateError);
+                  } else {
+                    console.log(`✅ Додано ${attemptsToAdd} спроб для користувача ${payment.user_id} (підписка ${subscriptionId})`);
+                  }
+                } else {
+                  // Створюємо новий запис спроб
+                  const { error: attemptsInsertError } = await supabase
+                    .from('randomizer_attempts')
+                    .insert({
+                      user_id: payment.user_id,
+                      total_attempts: attemptsToAdd,
+                      used_attempts: 0,
+                      payment_id: payment.id
+                    });
+
+                  if (attemptsInsertError) {
+                    console.error('Помилка створення запису спроб:', attemptsInsertError);
+                  } else {
+                    console.log(`✅ Створено новий запис з ${attemptsToAdd} спробами для користувача ${payment.user_id} (підписка ${subscriptionId})`);
+                  }
+                }
+              } catch (error) {
+                console.error('Помилка додавання спроб для підписки:', error);
+              }
+            }
+            
             // Автоматично надаємо доступ до всіх курсів медичного факультету при оплаті підписки
             if (subscriptionType === 'medical' || subscriptionType === 'premium') {
               const courses = ['fundamental-medico-biological-knowledge', 'organic-compounds-basics', 'blood-system-and-immunity'];
