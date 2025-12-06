@@ -141,8 +141,14 @@ export async function POST(request: NextRequest) {
       comment = 'Повний доступ до курсу';
     } else if (subscriptionId && subscriptionType) {
       // Оплата підписки
-      const subscriptionKey = `${subscriptionId}-${subscriptionType}`;
+      // Якщо subscriptionId вже містить повний ключ (subscription-vip-premium-medical), використовуємо його напряму
+      // Інакше формуємо ключ як subscription-{subscriptionId}-{subscriptionType}
+      let subscriptionKey = subscriptionId;
+      if (!subscriptionId.startsWith('subscription-')) {
+        subscriptionKey = `subscription-${subscriptionId}-${subscriptionType}`;
+      }
       if (!SUBSCRIPTIONS[subscriptionKey]) {
+        console.error('Невірна підписка:', subscriptionKey, 'Доступні ключі:', Object.keys(SUBSCRIPTIONS));
         return NextResponse.json(
           { error: 'Невірна підписка' },
           { status: 400 }
