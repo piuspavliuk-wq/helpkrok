@@ -28,6 +28,47 @@ export async function GET(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    // Перевіряємо чи є активна підписка з необмеженими спробами
+    const { data: subscriptions } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('status', 'active')
+      .gte('end_date', new Date().toISOString())
+
+    const hasUnlimitedSubscription = subscriptions?.some(sub => {
+      // Перевіряємо через payment_id, чи це VIP Premium або Premium Standard
+      // Потрібно перевірити через payments таблицю
+      return true // Тимчасово, потім додамо перевірку через payments
+    })
+
+    // Якщо є активна підписка, перевіряємо через payments
+    let isUnlimited = false
+    if (subscriptions && subscriptions.length > 0) {
+      for (const sub of subscriptions) {
+        const { data: payment } = await supabase
+          .from('payments')
+          .select('metadata')
+          .eq('id', sub.payment_id)
+          .eq('payment_type', 'subscription')
+          .eq('status', 'success')
+          .maybeSingle()
+
+        if (payment?.metadata) {
+          try {
+            const metadata = JSON.parse(payment.metadata)
+            const subscriptionId = metadata.subscriptionId
+            if (subscriptionId === 'vip-premium' || subscriptionId === 'premium-standard') {
+              isUnlimited = true
+              break
+            }
+          } catch (e) {
+            // Ігноруємо помилки парсингу
+          }
+        }
+      }
+    }
+
     const { data: attempts, error } = await supabase
       .from('randomizer_attempts')
       .select('*')
@@ -45,12 +86,13 @@ export async function GET(request: NextRequest) {
 
     const totalAttempts = attempts?.reduce((sum, a) => sum + (a.total_attempts ?? 0), 0) ?? 0
     const usedAttempts = attempts?.reduce((sum, a) => sum + (a.used_attempts ?? 0), 0) ?? 0
-    const remainingAttempts = totalAttempts - usedAttempts
+    const remainingAttempts = isUnlimited ? 999999 : (totalAttempts - usedAttempts)
 
     return NextResponse.json({
-      totalAttempts,
+      totalAttempts: isUnlimited ? 999999 : totalAttempts,
       usedAttempts,
       remainingAttempts,
+      isUnlimited,
       attempts: attempts ?? []
     })
   } catch (error) {
@@ -86,6 +128,49 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Перевіряємо чи є активна підписка з необмеженими спробами
+    const { data: subscriptions } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('status', 'active')
+      .gte('end_date', new Date().toISOString())
+
+    let isUnlimited = false
+    if (subscriptions && subscriptions.length > 0) {
+      for (const sub of subscriptions) {
+        const { data: payment } = await supabase
+          .from('payments')
+          .select('metadata')
+          .eq('id', sub.payment_id)
+          .eq('payment_type', 'subscription')
+          .eq('status', 'success')
+          .maybeSingle()
+
+        if (payment?.metadata) {
+          try {
+            const metadata = JSON.parse(payment.metadata)
+            const subscriptionId = metadata.subscriptionId
+            if (subscriptionId === 'vip-premium' || subscriptionId === 'premium-standard') {
+              isUnlimited = true
+              break
+            }
+          } catch (e) {
+            // Ігноруємо помилки парсингу
+          }
+        }
+      }
+    }
+
+    // Якщо є необмежена підписка, не віднімаємо спроби
+    if (isUnlimited) {
+      return NextResponse.json({
+        success: true,
+        remainingAttempts: 999999,
+        isUnlimited: true
+      })
+    }
 
     const { data: attempts, error: fetchError } = await supabase
       .from('randomizer_attempts')

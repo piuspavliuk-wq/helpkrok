@@ -249,7 +249,12 @@ export async function POST(request: NextRequest) {
             
             // Додаємо спроби для Randomizer PRO залежно від типу підписки
             let attemptsToAdd = 0;
-            if (subscriptionId === 'standard') {
+            let isUnlimited = false;
+            if (subscriptionId === 'vip-premium' || subscriptionId === 'premium-standard') {
+              // Необмежені спроби для VIP Premium та Premium Standard
+              attemptsToAdd = 999999; // Дуже велике число для необмежених спроб
+              isUnlimited = true;
+            } else if (subscriptionId === 'standard') {
               attemptsToAdd = 515;
             } else if (subscriptionId === 'basic') {
               attemptsToAdd = 345;
