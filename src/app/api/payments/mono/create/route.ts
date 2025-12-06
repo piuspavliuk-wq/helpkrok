@@ -28,49 +28,49 @@ const SUBSCRIPTIONS: Record<string, SubscriptionInfo> = {
     id: 'vip-premium',
     name: 'VIP Premium - Медицина',
     medicalPrice: 1, // Тимчасово для тестування
-    pharmaceuticalPrice: 11500
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   },
   'subscription-vip-premium-pharmaceutical': {
     id: 'vip-premium',
     name: 'VIP Premium - Фармація',
-    medicalPrice: 14500,
-    pharmaceuticalPrice: 11500
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   },
   'subscription-premium-standard-medical': {
     id: 'premium-standard',
     name: 'Premium Standard - Медицина',
-    medicalPrice: 10000,
-    pharmaceuticalPrice: 9000
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   },
   'subscription-premium-standard-pharmaceutical': {
     id: 'premium-standard',
     name: 'Premium Standard - Фармація',
-    medicalPrice: 10000,
-    pharmaceuticalPrice: 9000
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   },
   'subscription-standard-medical': {
     id: 'standard',
     name: 'Standard - Медицина',
-    medicalPrice: 8500,
-    pharmaceuticalPrice: 7500
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   },
   'subscription-standard-pharmaceutical': {
     id: 'standard',
     name: 'Standard - Фармація',
-    medicalPrice: 8500,
-    pharmaceuticalPrice: 7500
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   },
   'subscription-basic-medical': {
     id: 'basic',
     name: 'Базове самоопрацювання - Медицина',
-    medicalPrice: 6500,
-    pharmaceuticalPrice: 5500
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   },
   'subscription-basic-pharmaceutical': {
     id: 'basic',
     name: 'Базове самоопрацювання - Фармація',
-    medicalPrice: 6500,
-    pharmaceuticalPrice: 5500
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 1 // Тимчасово для тестування
   }
 };
 

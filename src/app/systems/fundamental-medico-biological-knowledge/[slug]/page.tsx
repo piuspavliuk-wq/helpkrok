@@ -236,9 +236,9 @@ export default function SectionOrTopicPage({ params }: PageProps) {
                     </h2>
                     {!hasCourseAccess ? (
                       <div>
-                        <p className="text-gray-600 mb-4">
+                    <p className="text-gray-600 mb-4">
                           Для доступу до цього розділу потрібна оплата курсу.
-                        </p>
+                    </p>
                         <p className="text-sm text-gray-500 mb-4">
                           Придбайте один з тарифів на головній сторінці: VIP Premium, Premium Standard, Standard або Базове самоопрацювання.
                         </p>
@@ -259,10 +259,10 @@ export default function SectionOrTopicPage({ params }: PageProps) {
               </div>
             </div>
           </div>
-        </AuthGuard>
+          </AuthGuard>
       )
     }
-
+    
     // Поки завантажується - показуємо пустий екран
     return null
   }

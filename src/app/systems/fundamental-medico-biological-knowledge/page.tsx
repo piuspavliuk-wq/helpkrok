@@ -183,13 +183,28 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
             </Link>
           </div>
 
-          <div className="px-6 py-8 sm:px-8 md:px-12">
-            <div className="space-y-2 mb-10">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Фундаментальні медико-біологічні знання
-              </h1>
-            </div>
-          </div>
+                <div className="px-6 py-8 sm:px-8 md:px-12">
+                  <div className="space-y-4 mb-10">
+                    <h1 className="text-3xl font-bold text-gray-900">
+                      Фундаментальні медико-біологічні знання
+                    </h1>
+                    {!hasCourseAccess && !checkingAccess && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600 font-medium">
+                            Для доступу до всіх розділів потрібна оплата курсу
+                          </p>
+                        </div>
+                        <Link
+                          href="/#pricing"
+                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap ml-4"
+                        >
+                          Перейти до оплати
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
           <div className="space-y-0 pb-16 md:pb-20">
             {sections.map((section, index) => {
@@ -232,17 +247,9 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
                           </p>
                         )}
                         {!hasCourseAccess ? (
-                          <div className="mt-2 ml-8">
-                            <p className="text-sm text-blue-600 font-medium mb-2">
-                              Для доступу до цього розділу потрібна оплата курсу
-                            </p>
-                            <Link
-                              href="/#pricing"
-                              className="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                            >
-                              Перейти до тарифних планів
-                            </Link>
-                          </div>
+                          <p className="text-sm text-gray-500 mt-2 ml-8">
+                            Для доступу до цього розділу потрібна оплата курсу
+                          </p>
                         ) : (
                           <p className="text-sm text-gray-500 mt-2 ml-8">
                             Спочатку пройдіть попередній розділ на 80% і більше

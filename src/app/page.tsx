@@ -31,25 +31,25 @@ export default function Home() {
       id: 'vip-premium',
       name: 'VIP Premium',
       medicalPrice: 1, // Тимчасово для тестування
-      pharmaceuticalPrice: 11500
+      pharmaceuticalPrice: 1 // Тимчасово для тестування
     },
     'premium-standard': {
       id: 'premium-standard',
       name: 'Premium Standard',
-      medicalPrice: 10000,
-      pharmaceuticalPrice: 9000
+      medicalPrice: 1, // Тимчасово для тестування
+      pharmaceuticalPrice: 1 // Тимчасово для тестування
     },
     'standard': {
       id: 'standard',
       name: 'Standard',
-      medicalPrice: 8500,
-      pharmaceuticalPrice: 7500
+      medicalPrice: 1, // Тимчасово для тестування
+      pharmaceuticalPrice: 1 // Тимчасово для тестування
     },
     'basic': {
       id: 'basic',
       name: 'Базове самоопрацювання',
-      medicalPrice: 6500,
-      pharmaceuticalPrice: 5500
+      medicalPrice: 1, // Тимчасово для тестування
+      pharmaceuticalPrice: 1 // Тимчасово для тестування
     }
   }
 
@@ -245,7 +245,7 @@ export default function Home() {
               <h3 className="text-xl font-bold text-gray-900 mb-3">VIP Premium</h3>
               <div className="text-2xl font-bold text-gray-900 mb-4">
                 <div>Медицина: 1 ₴</div>
-                <div className="text-lg text-gray-600">Фармація: 11 500 ₴</div>
+                <div className="text-lg text-gray-600">Фармація: 1 ₴</div>
               </div>
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-start">
@@ -292,8 +292,8 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Premium Standard</h3>
               <div className="text-2xl font-bold text-gray-900 mb-4">
-                <div>Медицина: 10 000 ₴</div>
-                <div className="text-lg text-gray-600">Фармація: 9 000 ₴</div>
+                <div>Медицина: 1 ₴</div>
+                <div className="text-lg text-gray-600">Фармація: 1 ₴</div>
               </div>
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-start">
@@ -331,8 +331,8 @@ export default function Home() {
             <div className="card p-6 flex flex-col h-full">
               <h3 className="text-xl font-bold text-gray-900 mb-3">📘 Standard</h3>
               <div className="text-2xl font-bold text-gray-900 mb-4">
-                <div>Медицина: 8 500 ₴</div>
-                <div className="text-lg text-gray-600">Фармація: 7 500 ₴</div>
+                <div>Медицина: 1 ₴</div>
+                <div className="text-lg text-gray-600">Фармація: 1 ₴</div>
               </div>
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-start">
@@ -366,8 +366,8 @@ export default function Home() {
             <div className="card p-6 flex flex-col h-full">
               <h3 className="text-xl font-bold text-gray-900 mb-3">📚 Базове самоопрацювання</h3>
               <div className="text-2xl font-bold text-gray-900 mb-4">
-                <div>Медицина: 6 500 ₴</div>
-                <div className="text-lg text-gray-600">Фармація: 5 500 ₴</div>
+                <div>Медицина: 1 ₴</div>
+                <div className="text-lg text-gray-600">Фармація: 1 ₴</div>
               </div>
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-start">
