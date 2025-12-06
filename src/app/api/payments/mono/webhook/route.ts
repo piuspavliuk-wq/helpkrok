@@ -185,6 +185,8 @@ export async function POST(request: NextRequest) {
             const subscriptionType = metadata.subscriptionType || 'medical';
             const subscriptionId = metadata.subscriptionId || 'standard';
             
+            console.log('Обробка підписки:', { subscriptionType, subscriptionId, metadata, payment_id: payment.id });
+            
             // Визначаємо дати підписки (1 рік)
             const startDate = new Date();
             const endDate = new Date();
@@ -223,7 +225,7 @@ export async function POST(request: NextRequest) {
               }
             } else {
               // Створюємо нову підписку
-              const { error: insertError } = await supabase
+              const { error: insertError, data: insertedSubscription } = await supabase
                 .from('user_subscriptions')
                 .insert({
                   user_id: payment.user_id,
@@ -232,13 +234,14 @@ export async function POST(request: NextRequest) {
                   start_date: startDate.toISOString(),
                   end_date: endDate.toISOString(),
                   payment_provider: 'mono',
-                  payment_id: payment.id
-                });
+                  payment_id: String(payment.id) // Перетворюємо в рядок для сумісності з VARCHAR
+                })
+                .select();
 
               if (insertError) {
                 console.error('Помилка створення підписки:', insertError);
               } else {
-                console.log('Створено нову підписку для користувача:', payment.user_id);
+                console.log('✅ Створено нову підписку для користувача:', payment.user_id, 'Тип:', subscriptionType, 'Підписка ID:', insertedSubscription?.[0]?.id);
               }
             }
 

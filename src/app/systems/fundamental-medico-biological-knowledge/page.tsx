@@ -20,6 +20,13 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
     if (session?.user?.id) {
       fetchAllProgress()
       checkCourseAccess()
+      
+      // Перевіряємо доступ кожні 5 секунд після оплати (для обробки webhook)
+      const interval = setInterval(() => {
+        checkCourseAccess()
+      }, 5000)
+      
+      return () => clearInterval(interval)
     } else {
       setLoading(false)
       setCheckingAccess(false)
@@ -118,6 +125,17 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
       setCheckingAccess(false)
     }
   }
+
+  // Перевіряємо доступ при завантаженні сторінки та після повернення з оплати
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('payment') === 'success') {
+      // Очищаємо параметр з URL
+      window.history.replaceState({}, '', window.location.pathname)
+      // Перевіряємо доступ знову
+      checkCourseAccess()
+    }
+  }, [])
 
   function canAccessSection(sectionIndex: number): boolean {
     // Перевіряємо чи користувач є адміном
