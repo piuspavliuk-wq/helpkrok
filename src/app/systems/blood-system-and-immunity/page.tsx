@@ -13,15 +13,52 @@ export default function BloodSystemAndImmunityPage() {
   const { data: session } = useSession()
   const [sectionProgress, setSectionProgress] = useState<Record<string, { score: number | null; completed: boolean }>>({})
   const [loading, setLoading] = useState(true)
+  const [hasCourseAccess, setHasCourseAccess] = useState(false)
+  const [courseId, setCourseId] = useState<string | null>(null)
   const baseSectionNumber = 15
 
   useEffect(() => {
     if (session?.user?.id) {
+      fetchCourseAccess()
       fetchAllProgress()
     } else {
       setLoading(false)
     }
   }, [session?.user?.id])
+
+  async function fetchCourseAccess() {
+    if (!session?.user?.id) return
+
+    try {
+      // Отримуємо курс
+      const courseResponse = await fetch('/api/courses?faculty=medical')
+      const courseData = await courseResponse.json()
+      
+      if (!courseData.success || !courseData.courses) {
+        return
+      }
+
+      const course = courseData.courses.find((c: { title: string }) => 
+        c.title === 'Система кровотворення й імунного захисту, кров'
+      )
+
+      if (!course) {
+        return
+      }
+
+      setCourseId(course.id)
+
+      // Перевіряємо доступ до курсу
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=${course.id}`)
+      const accessData = await accessResponse.json()
+      
+      if (accessData.success) {
+        setHasCourseAccess(accessData.hasAccess)
+      }
+    } catch (error) {
+      console.error('Помилка перевірки доступу до курсу:', error)
+    }
+  }
 
   async function fetchAllProgress() {
     if (!session?.user?.id) return
@@ -102,10 +139,12 @@ export default function BloodSystemAndImmunityPage() {
     // Адмін має доступ до всіх розділів
     if (isAdmin) return true
     
-    // Перший розділ завжди доступний
+    // Всі розділи вимагають оплату курсу
+    if (!hasCourseAccess) return false
+
+    // Перевіряємо попередній розділ (якщо це не перший розділ)
     if (sectionIndex === 0) return true
 
-    // Перевіряємо попередній розділ
     const previousSection = sections[sectionIndex - 1]
     const previousProgress = sectionProgress[previousSection.slug]
 
@@ -193,7 +232,12 @@ export default function BloodSystemAndImmunityPage() {
                             </p>
                           )}
                           <p className="text-sm text-gray-500 mt-2 ml-8">
-                            Спочатку пройдіть попередній розділ на 80% і більше
+                            {!hasCourseAccess 
+                              ? 'Для доступу до цього розділу необхідна оплата курсу'
+                              : index === 0 
+                                ? 'Для доступу до цього розділу необхідна оплата курсу'
+                                : 'Спочатку пройдіть попередній розділ на 80% і більше'
+                            }
                           </p>
                         </div>
                       </div>
