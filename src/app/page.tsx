@@ -7,10 +7,75 @@ import Image from 'next/image'
 import { useState } from 'react'
 import RevealOnScroll from '@/components/ui/RevealOnScroll'
 import TestSelectionModal from '@/components/ui/TestSelectionModal'
+import FacultySelectionModal from '@/components/subscription/FacultySelectionModal'
+import PaymentModal from '@/components/payment/PaymentModal'
+
+interface SubscriptionPlan {
+  id: string
+  name: string
+  medicalPrice: number
+  pharmaceuticalPrice: number
+}
 
 export default function Home() {
   const { data: session, status } = useSession()
   const [showTestModal, setShowTestModal] = useState(false)
+  const [showFacultyModal, setShowFacultyModal] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [selectedFaculty, setSelectedFaculty] = useState<'medical' | 'pharmaceutical' | null>(null)
+  const [paymentPrice, setPaymentPrice] = useState(0)
+
+  const subscriptionPlans: Record<string, SubscriptionPlan> = {
+    'vip-premium': {
+      id: 'vip-premium',
+      name: 'VIP Premium',
+      medicalPrice: 1, // Тимчасово для тестування
+      pharmaceuticalPrice: 11500
+    },
+    'premium-standard': {
+      id: 'premium-standard',
+      name: 'Premium Standard',
+      medicalPrice: 10000,
+      pharmaceuticalPrice: 9000
+    },
+    'standard': {
+      id: 'standard',
+      name: 'Standard',
+      medicalPrice: 8500,
+      pharmaceuticalPrice: 7500
+    },
+    'basic': {
+      id: 'basic',
+      name: 'Базове самоопрацювання',
+      medicalPrice: 6500,
+      pharmaceuticalPrice: 5500
+    }
+  }
+
+  const handlePlanClick = (planId: string) => {
+    const plan = subscriptionPlans[planId]
+    if (plan) {
+      setSelectedPlan(plan)
+      setShowFacultyModal(true)
+    }
+  }
+
+  const handleFacultySelect = (faculty: 'medical' | 'pharmaceutical') => {
+    if (!selectedPlan) return
+    
+    // Спочатку встановлюємо всі стани
+    setSelectedFaculty(faculty)
+    setPaymentPrice(faculty === 'medical' ? selectedPlan.medicalPrice : selectedPlan.pharmaceuticalPrice)
+    
+    // Закриваємо модальне вікно вибору факультету
+    setShowFacultyModal(false)
+    
+    // Відкриваємо модальне вікно оплати з невеликою затримкою, щоб стан встиг оновитися
+    setTimeout(() => {
+      setShowPaymentModal(true)
+    }, 100)
+  }
 
   return (
     <div className="min-h-screen" style={{backgroundColor: 'var(--background)'}}>
@@ -179,7 +244,7 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">VIP Premium</h3>
               <div className="text-2xl font-bold text-gray-900 mb-4">
-                <div>Медицина: 14 500 ₴</div>
+                <div>Медицина: 1 ₴</div>
                 <div className="text-lg text-gray-600">Фармація: 11 500 ₴</div>
               </div>
               <ul className="space-y-2 mb-6 text-sm">
@@ -208,7 +273,10 @@ export default function Home() {
                   Підтримка в чаті
                 </li>
               </ul>
-              <button className="bg-gradient-to-r from-[#1128C6] to-[#D23DE3] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto">
+              <button 
+                onClick={() => handlePlanClick('vip-premium')}
+                className="bg-gradient-to-r from-[#1128C6] to-[#D23DE3] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto"
+              >
                 Обрати VIP Premium
               </button>
             </div>
@@ -249,7 +317,10 @@ export default function Home() {
                   Підтримка в чаті
                 </li>
               </ul>
-              <button className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto">
+              <button 
+                onClick={() => handlePlanClick('premium-standard')}
+                className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto"
+              >
                 Обрати Premium
               </button>
             </div>
@@ -281,7 +352,10 @@ export default function Home() {
                   Підтримка в чаті
                 </li>
               </ul>
-              <button className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto">
+              <button 
+                onClick={() => handlePlanClick('standard')}
+                className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto"
+              >
                 Обрати Standard
               </button>
             </div>
@@ -309,7 +383,10 @@ export default function Home() {
                   Імітація КРОК (до 2 спроб/день)
                 </li>
               </ul>
-              <button className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto">
+              <button 
+                onClick={() => handlePlanClick('basic')}
+                className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto"
+              >
                 Обрати Базовий
               </button>
             </div>
@@ -393,6 +470,41 @@ export default function Home() {
         isOpen={showTestModal}
         onClose={() => setShowTestModal(false)}
       />
+
+      {/* Faculty Selection Modal */}
+      {selectedPlan && !showPaymentModal && (
+        <FacultySelectionModal
+          isOpen={showFacultyModal}
+          onClose={() => {
+            setShowFacultyModal(false)
+            setSelectedPlan(null)
+            setSelectedFaculty(null)
+          }}
+          planName={selectedPlan.name}
+          medicalPrice={selectedPlan.medicalPrice}
+          pharmaceuticalPrice={selectedPlan.pharmaceuticalPrice}
+          onSelectFaculty={handleFacultySelect}
+        />
+      )}
+
+      {/* Payment Modal */}
+      {selectedPlan && selectedFaculty && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false)
+            setSelectedPlan(null)
+            setSelectedFaculty(null)
+            setPaymentPrice(0)
+          }}
+          packageId={`subscription-${selectedPlan.id}-${selectedFaculty}`}
+          packageName={`${selectedPlan.name} - ${selectedFaculty === 'medical' ? 'Медицина' : 'Фармація'}`}
+          packagePrice={paymentPrice}
+          packageAttempts={0}
+          isSubscription={true}
+          subscriptionType={selectedFaculty}
+        />
+      )}
     </div>
   )
 }

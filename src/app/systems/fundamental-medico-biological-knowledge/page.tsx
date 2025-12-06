@@ -13,12 +13,16 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
   const { data: session } = useSession()
   const [sectionProgress, setSectionProgress] = useState<Record<string, { score: number | null; completed: boolean }>>({})
   const [loading, setLoading] = useState(true)
+  const [hasCourseAccess, setHasCourseAccess] = useState(false)
+  const [checkingAccess, setCheckingAccess] = useState(true)
 
   useEffect(() => {
     if (session?.user?.id) {
       fetchAllProgress()
+      checkCourseAccess()
     } else {
       setLoading(false)
+      setCheckingAccess(false)
     }
   }, [session?.user?.id])
 
@@ -94,6 +98,27 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
     }
   }
 
+
+  async function checkCourseAccess() {
+    if (!session?.user?.id) {
+      setCheckingAccess(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/courses/check-access?course_id=fundamental-medico-biological-knowledge')
+      const data = await response.json()
+
+      if (data.success) {
+        setHasCourseAccess(data.hasAccess)
+      }
+    } catch (error) {
+      console.error('Помилка перевірки доступу до курсу:', error)
+    } finally {
+      setCheckingAccess(false)
+    }
+  }
+
   function canAccessSection(sectionIndex: number): boolean {
     // Перевіряємо чи користувач є адміном
     const isAdmin = session?.user?.email === 'admin@helpkrok.com'
@@ -103,6 +128,9 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
     
     // Перший розділ завжди доступний
     if (sectionIndex === 0) return true
+
+    // Для інших розділів потрібна оплата курсу
+    if (!hasCourseAccess) return false
 
     // Перевіряємо попередній розділ
     const previousSection = sections[sectionIndex - 1]
@@ -155,7 +183,8 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
               return (
                 <div key={section.title}>
                   {isLocked ? (
-                    <div className="w-full flex items-start gap-4 rounded-lg bg-blue-50/50 px-6 py-4 text-left sm:px-8 md:px-12 cursor-not-allowed">
+                    <div className="w-full flex items-start gap-4 rounded-lg bg-blue-50/50 px-6 py-4 text-left sm:px-8 md:px-12"
+                    >
                       <div className="flex-1">
                         <div className="font-medium text-gray-600 mb-1 flex items-center gap-3">
                           <svg 
@@ -184,9 +213,23 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
                             ))}
                           </p>
                         )}
-                        <p className="text-sm text-gray-500 mt-2 ml-8">
-                          Спочатку пройдіть попередній розділ на 80% і більше
-                        </p>
+                        {!hasCourseAccess ? (
+                          <div className="mt-2 ml-8">
+                            <p className="text-sm text-blue-600 font-medium mb-2">
+                              Для доступу до цього розділу потрібна оплата курсу
+                            </p>
+                            <Link
+                              href="/#pricing"
+                              className="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            >
+                              Перейти до тарифних планів
+                            </Link>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 mt-2 ml-8">
+                            Спочатку пройдіть попередній розділ на 80% і більше
+                          </p>
+                        )}
                       </div>
                     </div>
                   ) : (

@@ -96,53 +96,159 @@ export async function POST(request: NextRequest) {
 
     console.log('Оновлено платіж:', updatedPayment.id, 'Новий статус:', paymentStatus);
 
-    // Якщо платіж успішний, додаємо спроби користувачу
+    // Якщо платіж успішний, обробляємо залежно від типу платежу
     if (paymentStatus === 'success') {
       try {
-        const { data: userAttempts, error: attemptsFetchError } = await supabase
-          .from('randomizer_attempts')
-          .select('*')
-          .eq('user_id', payment.user_id)
-          .maybeSingle();
-
-        if (attemptsFetchError) {
-          console.error('Помилка отримання спроб користувача:', attemptsFetchError);
-        }
-
-        if (userAttempts) {
-          const { error: attemptsUpdateError } = await supabase
+        if (payment.payment_type === 'randomizer') {
+          // Обробка оплати randomizer
+          const { data: userAttempts, error: attemptsFetchError } = await supabase
             .from('randomizer_attempts')
-            .update({
-              total_attempts: userAttempts.total_attempts + payment.attempts_count,
-              used_attempts: userAttempts.used_attempts
-            })
-            .eq('id', userAttempts.id);
+            .select('*')
+            .eq('user_id', payment.user_id)
+            .maybeSingle();
 
-          if (attemptsUpdateError) {
-            console.error('Помилка оновлення спроб користувача:', attemptsUpdateError);
-          } else {
-            console.log('Оновлено спроби користувача:', userAttempts.id);
+          if (attemptsFetchError) {
+            console.error('Помилка отримання спроб користувача:', attemptsFetchError);
           }
-        } else {
-          const { error: attemptsInsertError } = await supabase
-            .from('randomizer_attempts')
-            .insert({
-              user_id: payment.user_id,
-              total_attempts: payment.attempts_count,
-              used_attempts: 0,
-              payment_id: payment.id
-            });
 
-          if (attemptsInsertError) {
-            console.error('Помилка створення запису спроб:', attemptsInsertError);
+          if (userAttempts) {
+            const { error: attemptsUpdateError } = await supabase
+              .from('randomizer_attempts')
+              .update({
+                total_attempts: userAttempts.total_attempts + payment.attempts_count,
+                used_attempts: userAttempts.used_attempts
+              })
+              .eq('id', userAttempts.id);
+
+            if (attemptsUpdateError) {
+              console.error('Помилка оновлення спроб користувача:', attemptsUpdateError);
+            } else {
+              console.log('Оновлено спроби користувача:', userAttempts.id);
+            }
           } else {
-            console.log('Створено новий запис спроб для користувача:', payment.user_id);
+            const { error: attemptsInsertError } = await supabase
+              .from('randomizer_attempts')
+              .insert({
+                user_id: payment.user_id,
+                total_attempts: payment.attempts_count,
+                used_attempts: 0,
+                payment_id: payment.id
+              });
+
+            if (attemptsInsertError) {
+              console.error('Помилка створення запису спроб:', attemptsInsertError);
+            } else {
+              console.log('Створено новий запис спроб для користувача:', payment.user_id);
+            }
+          }
+
+          console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав ${payment.attempts_count} спроб`);
+        } else if (payment.payment_type === 'course') {
+          // Обробка оплати курсу
+          // Створюємо запис про доступ до курсу в таблиці course_access
+          // Спочатку перевіряємо чи існує таблиця course_access
+          const { data: courseAccess, error: courseAccessError } = await supabase
+            .from('course_access')
+            .select('*')
+            .eq('user_id', payment.user_id)
+            .eq('course_id', payment.package_id) // Використовуємо package_id для зберігання course_id
+            .maybeSingle();
+
+          if (courseAccessError && courseAccessError.code !== 'PGRST116') {
+            // PGRST116 - таблиця не існує, створюємо запис через payments
+            console.log('Таблиця course_access не існує, використовуємо payments для перевірки доступу');
+          } else if (!courseAccess) {
+            // Створюємо новий запис доступу
+            const { error: insertError } = await supabase
+              .from('course_access')
+              .insert({
+                user_id: payment.user_id,
+                course_id: payment.package_id,
+                access_granted: true,
+                granted_at: new Date().toISOString(),
+                payment_id: payment.id
+              });
+
+            if (insertError) {
+              console.error('Помилка створення доступу до курсу:', insertError);
+              // Якщо таблиця не існує, просто логуємо - доступ буде перевірятися через payments
+            } else {
+              console.log('Створено доступ до курсу для користувача:', payment.user_id);
+            }
+          }
+
+          console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав доступ до курсу`);
+        } else if (payment.payment_type === 'subscription') {
+          // Обробка оплати підписки
+          try {
+            const metadata = payment.metadata ? JSON.parse(payment.metadata) : {};
+            const subscriptionType = metadata.subscriptionType || 'medical';
+            const subscriptionId = metadata.subscriptionId || 'standard';
+            
+            // Визначаємо дати підписки (1 рік)
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setFullYear(endDate.getFullYear() + 1);
+
+            // Створюємо або оновлюємо підписку
+            const { data: existingSubscription, error: fetchError } = await supabase
+              .from('user_subscriptions')
+              .select('*')
+              .eq('user_id', payment.user_id)
+              .eq('subscription_type', subscriptionType)
+              .eq('status', 'active')
+              .maybeSingle();
+
+            if (fetchError && fetchError.code !== 'PGRST116') {
+              console.error('Помилка перевірки підписки:', fetchError);
+            }
+
+            if (existingSubscription) {
+              // Оновлюємо існуючу підписку
+              const { error: updateError } = await supabase
+                .from('user_subscriptions')
+                .update({
+                  status: 'active',
+                  start_date: startDate.toISOString(),
+                  end_date: endDate.toISOString(),
+                  payment_id: payment.id,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', existingSubscription.id);
+
+              if (updateError) {
+                console.error('Помилка оновлення підписки:', updateError);
+              } else {
+                console.log('Оновлено підписку для користувача:', payment.user_id);
+              }
+            } else {
+              // Створюємо нову підписку
+              const { error: insertError } = await supabase
+                .from('user_subscriptions')
+                .insert({
+                  user_id: payment.user_id,
+                  subscription_type: subscriptionType,
+                  status: 'active',
+                  start_date: startDate.toISOString(),
+                  end_date: endDate.toISOString(),
+                  payment_provider: 'mono',
+                  payment_id: payment.id
+                });
+
+              if (insertError) {
+                console.error('Помилка створення підписки:', insertError);
+              } else {
+                console.log('Створено нову підписку для користувача:', payment.user_id);
+              }
+            }
+
+            console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав підписку ${subscriptionType}`);
+          } catch (error) {
+            console.error('Помилка обробки підписки:', error);
           }
         }
-
-        console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав ${payment.attempts_count} спроб`);
       } catch (error) {
-        console.error('Помилка додавання спроб:', error);
+        console.error('Помилка обробки платежу:', error);
       }
     }
 

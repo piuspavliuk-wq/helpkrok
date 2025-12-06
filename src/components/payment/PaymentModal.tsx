@@ -13,6 +13,9 @@ interface PaymentModalProps {
   packageName: string
   packagePrice: number
   packageAttempts: number
+  isCourse?: boolean
+  isSubscription?: boolean
+  subscriptionType?: 'medical' | 'pharmaceutical'
 }
 
 export default function PaymentModal({
@@ -21,7 +24,10 @@ export default function PaymentModal({
   packageId,
   packageName,
   packagePrice,
-  packageAttempts
+  packageAttempts,
+  isCourse = false,
+  isSubscription = false,
+  subscriptionType
 }: PaymentModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,9 +44,13 @@ export default function PaymentModal({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          packageId
-        })
+        body: JSON.stringify(
+          isCourse
+            ? { courseId: packageId }
+            : isSubscription
+            ? { subscriptionId: packageId, subscriptionType }
+            : { packageId }
+        )
       })
 
       const data = await response.json()
@@ -78,7 +88,12 @@ export default function PaymentModal({
         <DialogHeader>
           <DialogTitle>Оплата {packageName}</DialogTitle>
           <DialogDescription>
-            {packageAttempts} {packageAttempts === 1 ? 'спроба' : 'спроб'} • {packagePrice} ₴
+            {isCourse 
+              ? 'Повний доступ до курсу' 
+              : isSubscription
+              ? 'Підписка на платформу'
+              : `${packageAttempts} ${packageAttempts === 1 ? 'спроба' : 'спроб'}`
+            } • {packagePrice.toLocaleString('uk-UA')} ₴
           </DialogDescription>
         </DialogHeader>
 
@@ -106,17 +121,19 @@ export default function PaymentModal({
 
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Пакет:</span>
+                  <span className="text-gray-600">{isCourse ? 'Курс:' : 'Пакет:'}</span>
                   <span className="font-medium">{packageName}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Кількість спроб:</span>
-                  <span className="font-medium">{packageAttempts}</span>
-                </div>
+                {!isCourse && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Кількість спроб:</span>
+                    <span className="font-medium">{packageAttempts}</span>
+                  </div>
+                )}
                 <div className="border-t border-gray-200 pt-2 mt-2">
                   <div className="flex justify-between">
                     <span className="font-medium">Всього до оплати:</span>
-                    <span className="text-lg font-bold text-blue-600">{packagePrice} ₴</span>
+                    <span className="text-lg font-bold text-blue-600">{packagePrice.toLocaleString('uk-UA')} ₴</span>
                   </div>
                 </div>
               </div>
@@ -178,7 +195,12 @@ export default function PaymentModal({
 
               <div className="bg-yellow-50 p-3 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  💡 Після успішної оплати спроби автоматично з&apos;являться у вашому профілі
+                  💡 {isCourse 
+                    ? 'Після успішної оплати доступ до курсу автоматично активується'
+                    : isSubscription
+                    ? 'Після успішної оплати підписка автоматично активується'
+                    : 'Після успішної оплати спроби автоматично з\'являться у вашому профілі'
+                  }
                 </p>
               </div>
 

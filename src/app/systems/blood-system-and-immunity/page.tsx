@@ -157,7 +157,13 @@ export default function BloodSystemAndImmunityPage() {
                 return (
                   <div key={section.title}>
                     {isLocked ? (
-                      <div className="w-full flex items-start gap-4 rounded-lg bg-blue-50/50 px-6 py-4 text-left sm:px-8 md:px-12 cursor-not-allowed">
+                      <div 
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                        }}
+                        className="w-full flex items-start gap-4 rounded-lg bg-blue-50/50 px-6 py-4 text-left sm:px-8 md:px-12 cursor-not-allowed pointer-events-none"
+                      >
                         <div className="flex-1">
                           <div className="font-medium text-gray-600 mb-1 flex items-center gap-3">
                             <svg 

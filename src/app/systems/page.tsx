@@ -14,7 +14,7 @@ const courses = [
     description:
       'Комплексний курс із молекулярної біології, генетики та біохімії для майбутніх медиків.',
     slug: '/systems/fundamental-medico-biological-knowledge',
-    price: '3000 грн',
+    price: '5990 грн',
     isTrialAvailable: true,
     topicsCount: fundamentalSections.reduce((total, section) => total + section.topics.length, 0),
     faculty: 'medical' as const,

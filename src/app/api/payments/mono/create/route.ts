@@ -10,6 +10,70 @@ interface PackageInfo {
   price: number;
 }
 
+interface CourseInfo {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface SubscriptionInfo {
+  id: string;
+  name: string;
+  medicalPrice: number;
+  pharmaceuticalPrice: number;
+}
+
+const SUBSCRIPTIONS: Record<string, SubscriptionInfo> = {
+  'subscription-vip-premium-medical': {
+    id: 'vip-premium',
+    name: 'VIP Premium - Медицина',
+    medicalPrice: 1, // Тимчасово для тестування
+    pharmaceuticalPrice: 11500
+  },
+  'subscription-vip-premium-pharmaceutical': {
+    id: 'vip-premium',
+    name: 'VIP Premium - Фармація',
+    medicalPrice: 14500,
+    pharmaceuticalPrice: 11500
+  },
+  'subscription-premium-standard-medical': {
+    id: 'premium-standard',
+    name: 'Premium Standard - Медицина',
+    medicalPrice: 10000,
+    pharmaceuticalPrice: 9000
+  },
+  'subscription-premium-standard-pharmaceutical': {
+    id: 'premium-standard',
+    name: 'Premium Standard - Фармація',
+    medicalPrice: 10000,
+    pharmaceuticalPrice: 9000
+  },
+  'subscription-standard-medical': {
+    id: 'standard',
+    name: 'Standard - Медицина',
+    medicalPrice: 8500,
+    pharmaceuticalPrice: 7500
+  },
+  'subscription-standard-pharmaceutical': {
+    id: 'standard',
+    name: 'Standard - Фармація',
+    medicalPrice: 8500,
+    pharmaceuticalPrice: 7500
+  },
+  'subscription-basic-medical': {
+    id: 'basic',
+    name: 'Базове самоопрацювання - Медицина',
+    medicalPrice: 6500,
+    pharmaceuticalPrice: 5500
+  },
+  'subscription-basic-pharmaceutical': {
+    id: 'basic',
+    name: 'Базове самоопрацювання - Фармація',
+    medicalPrice: 6500,
+    pharmaceuticalPrice: 5500
+  }
+};
+
 const PACKAGES: Record<string, PackageInfo> = {
   'single': {
     id: 'single',
@@ -31,6 +95,14 @@ const PACKAGES: Record<string, PackageInfo> = {
   }
 };
 
+const COURSES: Record<string, CourseInfo> = {
+  'fundamental-medico-biological-knowledge': {
+    id: 'fundamental-medico-biological-knowledge',
+    name: 'Фундаментальні медико-біологічні знання',
+    price: 5990
+  }
+};
+
 export async function POST(request: NextRequest) {
   try {
     // Перевірка авторизації
@@ -44,16 +116,68 @@ export async function POST(request: NextRequest) {
 
     // Отримання даних з запиту
     const body = await request.json();
-    const { packageId } = body;
+    const { packageId, courseId, subscriptionId, subscriptionType } = body;
 
-    if (!packageId || !PACKAGES[packageId]) {
+    // Перевірка чи це оплата курсу, підписки або пакету
+    let paymentType: 'randomizer' | 'course' | 'subscription' = 'randomizer';
+    let itemInfo: PackageInfo | CourseInfo | SubscriptionInfo | null = null;
+    let redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/randomizer/payment/success`;
+    let destination = '';
+    let comment = '';
+    let subscriptionFaculty: 'medical' | 'pharmaceutical' | null = null;
+
+    if (courseId) {
+      // Оплата курсу
+      if (!COURSES[courseId]) {
+        return NextResponse.json(
+          { error: 'Невірний курс' },
+          { status: 400 }
+        );
+      }
+      paymentType = 'course';
+      itemInfo = COURSES[courseId];
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/systems/fundamental-medico-biological-knowledge?payment=success`;
+      destination = `Курс: ${itemInfo.name}`;
+      comment = 'Повний доступ до курсу';
+    } else if (subscriptionId && subscriptionType) {
+      // Оплата підписки
+      const subscriptionKey = `${subscriptionId}-${subscriptionType}`;
+      if (!SUBSCRIPTIONS[subscriptionKey]) {
+        return NextResponse.json(
+          { error: 'Невірна підписка' },
+          { status: 400 }
+        );
+      }
+      paymentType = 'subscription';
+      itemInfo = SUBSCRIPTIONS[subscriptionKey];
+      subscriptionFaculty = subscriptionType;
+      redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/?payment=success`;
+      destination = `Підписка: ${itemInfo.name}`;
+      comment = `Підписка на ${subscriptionType === 'medical' ? 'Медицину' : 'Фармацію'}`;
+    } else if (packageId) {
+      // Оплата пакету randomizer
+      if (!PACKAGES[packageId]) {
+        return NextResponse.json(
+          { error: 'Невірний пакет' },
+          { status: 400 }
+        );
+      }
+      itemInfo = PACKAGES[packageId];
+      destination = `Randomizer PRO: ${itemInfo.name}`;
+      comment = `${itemInfo.attempts} ${itemInfo.attempts === 1 ? 'спроба' : 'спроб'}`;
+    } else {
       return NextResponse.json(
-        { error: 'Невірний пакет' },
+        { error: 'Необхідно вказати packageId, courseId або subscriptionId з subscriptionType' },
         { status: 400 }
       );
     }
 
-    const packageInfo = PACKAGES[packageId];
+    if (!itemInfo) {
+      return NextResponse.json(
+        { error: 'Помилка обробки запиту' },
+        { status: 400 }
+      );
+    }
 
     // Ініціалізація Supabase
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -96,7 +220,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Визначаємо ціну
+    let price = 0;
+    if (paymentType === 'subscription' && itemInfo && 'medicalPrice' in itemInfo) {
+      price = subscriptionFaculty === 'medical' 
+        ? itemInfo.medicalPrice 
+        : itemInfo.pharmaceuticalPrice;
+    } else if (itemInfo && 'price' in itemInfo) {
+      price = itemInfo.price;
+    }
+
     // Створення інвойсу через Monobank API
+    const reference = courseId 
+      ? `course-${courseId}-${Date.now()}`
+      : subscriptionId
+      ? `subscription-${subscriptionId}-${subscriptionType}-${Date.now()}`
+      : `randomizer-${packageId}-${Date.now()}`;
+
     const monoResponse = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
       headers: {
@@ -104,14 +244,14 @@ export async function POST(request: NextRequest) {
         'X-Token': monoToken
       },
       body: JSON.stringify({
-        amount: packageInfo.price * 100, // Конвертація в копійки
+        amount: price * 100, // Конвертація в копійки
         ccy: 980, // UAH
         merchantPaymInfo: {
-          reference: `randomizer-${packageId}-${Date.now()}`,
-          destination: `Randomizer PRO: ${packageInfo.name}`,
-          comment: `${packageInfo.attempts} ${packageInfo.attempts === 1 ? 'спроба' : 'спроб'}`
+          reference,
+          destination,
+          comment
         },
-        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/randomizer/payment/success`,
+        redirectUrl,
         webHookUrl: webhookUrl,
         validity: 3600, // 1 година
         paymentType: 'debit'
@@ -130,24 +270,52 @@ export async function POST(request: NextRequest) {
     const monoData = await monoResponse.json();
 
     // Збереження платежу в базу даних
+    const paymentData: any = {
+      user_id: user.id,
+      invoice_id: monoData.invoiceId,
+      amount: price * 100,
+      status: 'pending',
+      payment_type: paymentType,
+      page_url: monoData.pageUrl,
+      qr_code_data: monoData.qrId || null,
+      metadata: JSON.stringify({
+        userEmail: user.email,
+        userName: user.name
+      })
+    };
+
+    if (paymentType === 'randomizer' && 'attempts' in itemInfo) {
+      paymentData.package_id = itemInfo.id;
+      paymentData.attempts_count = itemInfo.attempts;
+      paymentData.metadata = JSON.stringify({
+        packageName: itemInfo.name,
+        userEmail: user.email,
+        userName: user.name
+      });
+    } else if (paymentType === 'course' && 'id' in itemInfo) {
+      paymentData.package_id = itemInfo.id; // Використовуємо package_id для зберігання course_id
+      paymentData.attempts_count = 0; // Для курсів не потрібні спроби
+      paymentData.metadata = JSON.stringify({
+        courseName: itemInfo.name,
+        courseId: itemInfo.id,
+        userEmail: user.email,
+        userName: user.name
+      });
+    } else if (paymentType === 'subscription' && 'id' in itemInfo && subscriptionFaculty) {
+      paymentData.package_id = itemInfo.id; // ID плану підписки
+      paymentData.attempts_count = 0;
+      paymentData.metadata = JSON.stringify({
+        subscriptionName: itemInfo.name,
+        subscriptionId: itemInfo.id,
+        subscriptionType: subscriptionFaculty,
+        userEmail: user.email,
+        userName: user.name
+      });
+    }
+
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
-      .insert({
-        user_id: user.id,
-        invoice_id: monoData.invoiceId,
-        amount: packageInfo.price * 100,
-        status: 'pending',
-        payment_type: 'randomizer',
-        package_id: packageInfo.id,
-        attempts_count: packageInfo.attempts,
-        page_url: monoData.pageUrl,
-        qr_code_data: monoData.qrId || null,
-        metadata: JSON.stringify({
-          packageName: packageInfo.name,
-          userEmail: user.email,
-          userName: user.name
-        })
-      })
+      .insert(paymentData)
       .select()
       .single();
 
