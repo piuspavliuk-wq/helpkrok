@@ -163,8 +163,9 @@ export async function POST(request: NextRequest) {
         );
       }
       itemInfo = PACKAGES[packageId];
-      destination = `Randomizer PRO: ${itemInfo.name}`;
-      comment = `${itemInfo.attempts} ${itemInfo.attempts === 1 ? 'спроба' : 'спроб'}`;
+      const packageInfo = itemInfo as PackageInfo;
+      destination = `Randomizer PRO: ${packageInfo.name}`;
+      comment = `${packageInfo.attempts} ${packageInfo.attempts === 1 ? 'спроба' : 'спроб'}`;
     } else {
       return NextResponse.json(
         { error: 'Необхідно вказати packageId, courseId або subscriptionId з subscriptionType' },
