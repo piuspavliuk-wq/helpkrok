@@ -246,6 +246,44 @@ export async function POST(request: NextRequest) {
             }
 
             console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав підписку ${subscriptionType}`);
+            
+            // Автоматично надаємо доступ до всіх курсів медичного факультету при оплаті підписки
+            if (subscriptionType === 'medical' || subscriptionType === 'premium') {
+              const courses = ['fundamental-medico-biological-knowledge', 'organic-compounds-basics', 'blood-system-and-immunity'];
+              
+              for (const courseId of courses) {
+                try {
+                  // Перевіряємо чи вже є доступ
+                  const { data: existingAccess } = await supabase
+                    .from('course_access')
+                    .select('*')
+                    .eq('user_id', payment.user_id)
+                    .eq('course_id', courseId)
+                    .maybeSingle();
+
+                  if (!existingAccess) {
+                    // Створюємо доступ до курсу
+                    const { error: courseAccessError } = await supabase
+                      .from('course_access')
+                      .insert({
+                        user_id: payment.user_id,
+                        course_id: courseId,
+                        access_granted: true,
+                        granted_at: new Date().toISOString(),
+                        payment_id: String(payment.id)
+                      });
+
+                    if (courseAccessError && courseAccessError.code !== 'PGRST116') {
+                      console.error(`Помилка створення доступу до курсу ${courseId}:`, courseAccessError);
+                    } else {
+                      console.log(`✅ Надано доступ до курсу ${courseId} для користувача ${payment.user_id}`);
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Помилка обробки доступу до курсу ${courseId}:`, error);
+                }
+              }
+            }
           } catch (error) {
             console.error('Помилка обробки підписки:', error);
           }

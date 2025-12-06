@@ -78,6 +78,20 @@ export async function GET(request: NextRequest) {
 
     const hasPaymentAccess = !!payment
 
+    // Також перевіряємо чи є успішний платіж за підписку (subscription)
+    // Якщо користувач оплатив підписку, він має доступ до всіх курсів
+    const { data: subscriptionPayment } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('payment_type', 'subscription')
+      .eq('status', 'success')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const hasSubscriptionPayment = !!subscriptionPayment
+
     // Перевіряємо також через таблицю course_access якщо вона існує
     let courseAccess = null
     try {
@@ -110,6 +124,12 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(1)
 
+      console.log('Перевірка підписок для користувача:', session.user.id, {
+        subscriptions,
+        subscriptionError,
+        hasAccess: !subscriptionError && subscriptions && subscriptions.length > 0
+      })
+
       if (!subscriptionError && subscriptions && subscriptions.length > 0) {
         hasSubscriptionAccess = true
       }
@@ -117,14 +137,29 @@ export async function GET(request: NextRequest) {
       console.error('Помилка перевірки підписок:', error)
     }
 
-    const finalAccess = hasPaymentAccess || !!courseAccess || hasSubscriptionAccess
+    const finalAccess = hasPaymentAccess || !!courseAccess || hasSubscriptionAccess || hasSubscriptionPayment
+
+    console.log('Перевірка доступу до курсу:', {
+      courseId,
+      userId: session.user.id,
+      hasPaymentAccess,
+      hasCourseAccess: !!courseAccess,
+      hasSubscriptionAccess,
+      finalAccess
+    })
 
     return NextResponse.json({
       success: true,
       hasAccess: finalAccess,
       paymentId: payment?.id || null,
       grantedAt: courseAccess?.granted_at || payment?.created_at || null,
-      accessType: hasSubscriptionAccess ? 'subscription' : (hasPaymentAccess ? 'payment' : (courseAccess ? 'access' : null))
+      accessType: hasSubscriptionAccess ? 'subscription' : (hasPaymentAccess ? 'payment' : (courseAccess ? 'access' : null)),
+      debug: {
+        hasPaymentAccess,
+        hasCourseAccess: !!courseAccess,
+        hasSubscriptionAccess,
+        hasSubscriptionPayment
+      }
     })
   } catch (error) {
     console.error('Check course access API error:', error)
