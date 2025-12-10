@@ -307,41 +307,42 @@ export async function POST(request: NextRequest) {
               }
             }
             
-            // Автоматично надаємо доступ до всіх курсів медичного факультету при оплаті підписки
+            // Автоматично надаємо доступ тільки до першого курсу медичного факультету при оплаті підписки
+            // Інші курси відкриються автоматично після проходження попередніх на 80%+
             if (subscriptionType === 'medical' || subscriptionType === 'premium') {
-              const courses = ['fundamental-medico-biological-knowledge', 'organic-compounds-basics', 'blood-system-and-immunity'];
+              // Визначаємо перший курс для медичного факультету
+              const firstCourseId = 'fundamental-medico-biological-knowledge';
               
-              for (const courseId of courses) {
-                try {
-                  // Перевіряємо чи вже є доступ
-                  const { data: existingAccess } = await supabase
+              try {
+                // Перевіряємо чи вже є доступ
+                const { data: existingAccess } = await supabase
+                  .from('course_access')
+                  .select('*')
+                  .eq('user_id', payment.user_id)
+                  .eq('course_id', firstCourseId)
+                  .maybeSingle();
+
+                if (!existingAccess) {
+                  // Створюємо доступ тільки до першого курсу
+                  const { error: courseAccessError } = await supabase
                     .from('course_access')
-                    .select('*')
-                    .eq('user_id', payment.user_id)
-                    .eq('course_id', courseId)
-                    .maybeSingle();
+                    .insert({
+                      user_id: payment.user_id,
+                      course_id: firstCourseId,
+                      access_granted: true,
+                      granted_at: new Date().toISOString(),
+                      payment_id: String(payment.id)
+                    });
 
-                  if (!existingAccess) {
-                    // Створюємо доступ до курсу
-                    const { error: courseAccessError } = await supabase
-                      .from('course_access')
-                      .insert({
-                        user_id: payment.user_id,
-                        course_id: courseId,
-                        access_granted: true,
-                        granted_at: new Date().toISOString(),
-                        payment_id: String(payment.id)
-                      });
-
-                    if (courseAccessError && courseAccessError.code !== 'PGRST116') {
-                      console.error(`Помилка створення доступу до курсу ${courseId}:`, courseAccessError);
-                    } else {
-                      console.log(`✅ Надано доступ до курсу ${courseId} для користувача ${payment.user_id}`);
-                    }
+                  if (courseAccessError && courseAccessError.code !== 'PGRST116') {
+                    console.error(`Помилка створення доступу до курсу ${firstCourseId}:`, courseAccessError);
+                  } else {
+                    console.log(`✅ Надано доступ до першого курсу ${firstCourseId} для користувача ${payment.user_id}`);
+                    console.log(`ℹ️  Доступ до наступних курсів буде надано автоматично після проходження попередніх на 80%+`);
                   }
-                } catch (error) {
-                  console.error(`Помилка обробки доступу до курсу ${courseId}:`, error);
                 }
+              } catch (error) {
+                console.error(`Помилка обробки доступу до курсу ${firstCourseId}:`, error);
               }
             }
           } catch (error) {

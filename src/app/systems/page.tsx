@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import AuthGuard from '@/components/auth/AuthGuard'
 import { sections as fundamentalSections } from './fundamental-medico-biological-knowledge/data'
 import { sections as organicCompoundsSections } from './organic-compounds-basics/data'
+import { sections as centralNervousSystemSections } from './central-nervous-system/data'
+import { sections as pharmaceuticalAnalysisSections } from './pharmaceutical-analysis-theory/data'
 import { CustomSelect } from '@/components/ui/CustomSelect'
 
 const courses = [
@@ -33,6 +36,18 @@ const courses = [
     emoji: '🛡️'
   },
   {
+    id: 'central-nervous-system',
+    title: 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття',
+    description:
+      'Комплексний курс з центральної та периферичної нервової системи та органів чуття для майбутніх медиків.',
+    slug: '/systems/central-nervous-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: centralNervousSystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🧠'
+  },
+  {
     id: 'organic-compounds-basics',
     title: 'Основи знань про органічні сполуки',
     description:
@@ -43,6 +58,18 @@ const courses = [
     topicsCount: organicCompoundsSections.reduce((total, section) => total + section.topics.length, 0),
     faculty: 'pharmaceutical' as const,
     emoji: '⚗️'
+  },
+  {
+    id: 'pharmaceutical-analysis-theory',
+    title: 'Теоретичні основи фармацевтичного аналізу',
+    description:
+      'Комплексний курс з теоретичних основ фармацевтичного аналізу для майбутніх фармацевтів.',
+    slug: '/systems/pharmaceutical-analysis-theory',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: pharmaceuticalAnalysisSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '🔬'
   }
 ]
 
@@ -74,8 +101,182 @@ function CoinIcon() {
 }
 
 export default function CoursesPage() {
+  const { data: session } = useSession()
   const [selectedFaculty, setSelectedFaculty] = useState<(typeof facultyOptions)[number]['value']>('medical')
+  const [courseAccess, setCourseAccess] = useState<Record<string, boolean>>({})
+  const [loadingAccess, setLoadingAccess] = useState(true)
+  const [previousCourseStatus, setPreviousCourseStatus] = useState<Record<string, { completed: boolean; hasAccess: boolean }>>({})
+  const [hasSubscription, setHasSubscription] = useState(false)
   const filteredCourses = courses.filter((course) => course.faculty === selectedFaculty)
+  
+  // Визначаємо порядок курсів медичного факультету
+  const medicalCourseOrder = [
+    'fundamental-medico-biological-knowledge',
+    'blood-system-and-immunity',
+    'central-nervous-system'
+  ]
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      checkCourseAccess()
+    } else {
+      setLoadingAccess(false)
+    }
+  }, [session?.user?.id, selectedFaculty])
+
+  async function checkCourseAccess() {
+    if (!session?.user?.id) {
+      setLoadingAccess(false)
+      return
+    }
+
+    try {
+      // Отримуємо всі курси для обраного факультету
+      const response = await fetch(`/api/courses?faculty=${selectedFaculty}`)
+      const data = await response.json()
+
+      if (!data.success || !data.courses) {
+        setLoadingAccess(false)
+        return
+      }
+
+      // Перевіряємо доступ для кожного курсу
+      const accessPromises = data.courses.map(async (course: { id: string; title: string }) => {
+        try {
+          const accessResponse = await fetch(`/api/courses/check-access?course_id=${course.id}`)
+          const accessData = await accessResponse.json()
+          
+          return {
+            courseTitle: course.title,
+            hasAccess: accessData.success ? accessData.hasAccess : false
+          }
+        } catch (error) {
+          console.error(`Помилка перевірки доступу для курсу ${course.title}:`, error)
+          return {
+            courseTitle: course.title,
+            hasAccess: false
+          }
+        }
+      })
+
+      const results = await Promise.all(accessPromises)
+      const accessMap: Record<string, boolean> = {}
+      
+      results.forEach(result => {
+        accessMap[result.courseTitle] = result.hasAccess
+      })
+
+      setCourseAccess(accessMap)
+
+      // Перевіряємо чи є у користувача підписка/оплата
+      await checkSubscriptionStatus()
+
+      // Перевіряємо статус попередніх курсів для медичного факультету
+      if (selectedFaculty === 'medical') {
+        await checkPreviousCoursesStatus(data.courses, accessMap)
+      }
+    } catch (error) {
+      console.error('Помилка перевірки доступу до курсів:', error)
+    } finally {
+      setLoadingAccess(false)
+    }
+  }
+
+  async function checkSubscriptionStatus() {
+    if (!session?.user?.id) {
+      setHasSubscription(false)
+      return
+    }
+
+    try {
+      // Перевіряємо чи є активна підписка через API перевірки доступу до першого курсу
+      // Якщо є hasSubscriptionAccess або hasSubscriptionPayment - значить є підписка
+      const response = await fetch('/api/courses/check-access?course_id=fundamental-medico-biological-knowledge')
+      const data = await response.json()
+
+      if (data.success && data.debug) {
+        // Перевіряємо чи є підписка через debug інформацію
+        const hasSub = data.debug.hasSubscriptionAccess || data.debug.hasSubscriptionPayment
+        setHasSubscription(hasSub || false)
+      } else {
+        setHasSubscription(false)
+      }
+    } catch (error) {
+      console.error('Помилка перевірки підписки:', error)
+      setHasSubscription(false)
+    }
+  }
+
+  async function checkPreviousCoursesStatus(coursesList: Array<{ id: string; title: string; slug?: string }>, accessMap: Record<string, boolean>) {
+    if (!session?.user?.id) return
+
+    const statusMap: Record<string, { completed: boolean; hasAccess: boolean }> = {}
+
+    try {
+      // Для кожного курсу (крім першого) перевіряємо попередній
+      for (let i = 1; i < medicalCourseOrder.length; i++) {
+        const currentCourseId = medicalCourseOrder[i]
+        const previousCourseId = medicalCourseOrder[i - 1]
+
+        const currentCourse = coursesList.find((c: { slug?: string }) => 
+          c.slug === `/systems/${currentCourseId}`
+        )
+        const previousCourse = coursesList.find((c: { slug?: string }) => 
+          c.slug === `/systems/${previousCourseId}`
+        )
+
+        if (currentCourse && previousCourse) {
+          // Перевіряємо чи є доступ до попереднього курсу
+          const hasAccess = accessMap[previousCourse.title] || false
+
+          if (hasAccess) {
+            // Перевіряємо чи завершено попередній курс
+            const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}`)
+            const topicsData = await topicsResponse.json()
+
+            if (topicsData.success && topicsData.topics && topicsData.topics.length > 0) {
+              const progressPromises = topicsData.topics.map(async (topic: { id: string }) => {
+                const progressResponse = await fetch(`/api/topics/progress?topic_id=${topic.id}`)
+                const progressData = await progressResponse.json()
+                
+                return progressData.success && progressData.progress 
+                  ? { 
+                      completed: progressData.progress.test_completed,
+                      score: progressData.progress.test_score || 0
+                    }
+                  : { completed: false, score: 0 }
+              })
+
+              const progressResults = await Promise.all(progressPromises)
+              
+              const allCompleted = progressResults.every(p => 
+                p.completed && p.score >= 80
+              ) && progressResults.length === topicsData.topics.length
+
+              statusMap[currentCourse.title] = {
+                hasAccess: true,
+                completed: allCompleted
+              }
+            } else {
+              statusMap[currentCourse.title] = {
+                hasAccess: true,
+                completed: false
+              }
+            }
+          } else {
+            statusMap[currentCourse.title] = {
+              hasAccess: false,
+              completed: false
+            }
+          }
+        }
+      }
+
+      setPreviousCourseStatus(statusMap)
+    } catch (error) {
+      console.error('Помилка перевірки попередніх курсів:', error)
+    }
+  }
 
   return (
     <AuthGuard>
@@ -101,46 +302,85 @@ export default function CoursesPage() {
             </header>
 
             <div className="grid gap-8 sm:grid-cols-2">
-              {filteredCourses.map((course) => (
-                <Link
-                  key={course.id}
-                  href={course.slug}
-                  className="group relative flex min-h-[420px] flex-col overflow-hidden rounded-[32px] border border-blue-100 bg-white shadow-[0_24px_50px_rgba(37,99,235,0.08)] transition-transform duration-200 hover:-translate-y-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-50"
-                >
-                  <div className="relative h-56 bg-gradient-to-r from-blue-200 via-blue-100 to-sky-100">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-7xl" aria-hidden="true">
-                        {course.emoji}
-                      </span>
-                    </div>
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-none bg-white/75 backdrop-blur-sm opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                      <div className="flex flex-col items-center gap-2 text-gray-800">
-                        <span className="text-3xl" aria-hidden="true">
-                          ☰
-                        </span>
-                        <span className="text-sm font-semibold uppercase tracking-wide">
-                          Переглянути теми
-                        </span>
+              {filteredCourses.map((course) => {
+                const hasAccess = courseAccess[course.title] || false
+                const courseIndex = medicalCourseOrder.indexOf(course.id)
+                const isFirstCourse = courseIndex === 0
+                const previousStatus = previousCourseStatus[course.title]
+                
+                // Якщо немає підписки - показуємо кнопку "Купити" на всіх курсах без доступу
+                // Якщо є підписка - для першого курсу доступ відкритий, для інших показуємо повідомлення
+                const showBuyButton = !hasAccess && !loadingAccess && !hasSubscription
+                const showPreviousCourseMessage = !hasAccess && !loadingAccess && hasSubscription && !isFirstCourse
+
+                return (
+                  <div
+                    key={course.id}
+                    className="group relative flex min-h-[420px] flex-col overflow-hidden rounded-[32px] border border-blue-100 bg-white shadow-[0_24px_50px_rgba(37,99,235,0.08)] transition-transform duration-200 hover:-translate-y-2"
+                  >
+                    <Link
+                      href={course.slug}
+                      className="flex-1 flex flex-col"
+                    >
+                      <div className="relative h-56 bg-gradient-to-r from-blue-200 via-blue-100 to-sky-100">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-7xl" aria-hidden="true">
+                            {course.emoji}
+                          </span>
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-none bg-white/75 backdrop-blur-sm opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                          <div className="flex flex-col items-center gap-2 text-gray-800">
+                            <span className="text-3xl" aria-hidden="true">
+                              ☰
+                            </span>
+                            <span className="text-sm font-semibold uppercase tracking-wide">
+                              Переглянути теми
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-1 flex-col px-6 py-8 sm:px-8 sm:py-10">
-                    <div className="space-y-3">
-                      <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl transition-colors duration-150 group-hover:text-blue-600">
-                        {course.title}
-                      </h2>
-                    </div>
+                      <div className="flex flex-1 flex-col px-6 py-8 sm:px-8 sm:py-10">
+                        <div className="space-y-3">
+                          <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl transition-colors duration-150 group-hover:text-blue-600">
+                            {course.title}
+                          </h2>
+                        </div>
+                      </div>
+                    </Link>
 
-                    <div className="mt-8 flex items-center justify-end">
-                      <span className="inline-flex items-center gap-2 rounded-full bg-blue-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition-colors duration-150 group-hover:bg-blue-600">
-                        Купити
-                      </span>
-                    </div>
+                    {showBuyButton && (
+                      <div className="px-6 pb-8 sm:px-8 sm:pb-10 pt-0">
+                        <Link
+                          href="/#pricing"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className="inline-flex items-center gap-2 rounded-full bg-blue-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition-colors duration-150 hover:bg-blue-600 w-full justify-center"
+                        >
+                          Купити
+                        </Link>
+                      </div>
+                    )}
+
+                    {showPreviousCourseMessage && (
+                      <div className="px-6 pb-8 sm:px-8 sm:pb-10 pt-0">
+                        <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
+                          <p className="text-sm text-gray-700 text-center">
+                            {previousStatus && previousStatus.hasAccess && !previousStatus.completed
+                              ? 'Спочатку пройдіть попередній курс на 80% і більше'
+                              : previousStatus && !previousStatus.hasAccess
+                                ? 'Спочатку пройдіть попередній курс "Фундаментальні медико-біологічні знання"'
+                                : 'Спочатку пройдіть попередній курс на 80% і більше'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </Link>
-              ))}
+                )
+              })}
             </div>
 
             {filteredCourses.length === 0 && (

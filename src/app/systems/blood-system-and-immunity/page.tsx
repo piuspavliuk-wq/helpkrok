@@ -15,14 +15,18 @@ export default function BloodSystemAndImmunityPage() {
   const [loading, setLoading] = useState(true)
   const [hasCourseAccess, setHasCourseAccess] = useState(false)
   const [courseId, setCourseId] = useState<string | null>(null)
+  const [previousCourseCompleted, setPreviousCourseCompleted] = useState(false)
+  const [checkingPreviousCourse, setCheckingPreviousCourse] = useState(true)
   const baseSectionNumber = 15
 
   useEffect(() => {
     if (session?.user?.id) {
       fetchCourseAccess()
       fetchAllProgress()
+      checkPreviousCourseCompletion()
     } else {
       setLoading(false)
+      setCheckingPreviousCourse(false)
     }
   }, [session?.user?.id])
 
@@ -57,6 +61,78 @@ export default function BloodSystemAndImmunityPage() {
       }
     } catch (error) {
       console.error('Помилка перевірки доступу до курсу:', error)
+    }
+  }
+
+  async function checkPreviousCourseCompletion() {
+    if (!session?.user?.id) {
+      setCheckingPreviousCourse(false)
+      return
+    }
+
+    try {
+      // Перевіряємо чи є підписка (базовий доступ)
+      const coursesResponse = await fetch('/api/courses?faculty=medical')
+      const coursesData = await coursesResponse.json()
+      
+      if (!coursesData.success || !coursesData.courses) {
+        setCheckingPreviousCourse(false)
+        return
+      }
+
+      const previousCourse = coursesData.courses.find((c: { title: string }) => 
+        c.title === 'Фундаментальні медико-біологічні знання'
+      )
+
+      if (!previousCourse) {
+        setCheckingPreviousCourse(false)
+        return
+      }
+
+      // Перевіряємо чи є доступ до попереднього курсу
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=${previousCourse.id}`)
+      const accessData = await accessResponse.json()
+
+      if (!accessData.success || !accessData.hasAccess) {
+        setPreviousCourseCompleted(false)
+        setCheckingPreviousCourse(false)
+        return
+      }
+
+      // Перевіряємо прогрес попереднього курсу
+      const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}`)
+      const topicsData = await topicsResponse.json()
+
+      if (topicsData.success && topicsData.topics && topicsData.topics.length > 0) {
+        // Перевіряємо прогрес по всіх topics
+        const progressPromises = topicsData.topics.map(async (topic: { id: string }) => {
+          const progressResponse = await fetch(`/api/topics/progress?topic_id=${topic.id}`)
+          const progressData = await progressResponse.json()
+          
+          return progressData.success && progressData.progress 
+            ? { 
+                completed: progressData.progress.test_completed,
+                score: progressData.progress.test_score || 0
+              }
+            : { completed: false, score: 0 }
+        })
+
+        const progressResults = await Promise.all(progressPromises)
+        
+        // Перевіряємо чи всі тести пройдені на 80%+
+        const allCompleted = progressResults.every(p => 
+          p.completed && p.score >= 80
+        ) && progressResults.length === topicsData.topics.length
+
+        setPreviousCourseCompleted(allCompleted)
+      } else {
+        setPreviousCourseCompleted(false)
+      }
+    } catch (error) {
+      console.error('Помилка перевірки попереднього курсу:', error)
+      setPreviousCourseCompleted(false)
+    } finally {
+      setCheckingPreviousCourse(false)
     }
   }
 
@@ -232,11 +308,15 @@ export default function BloodSystemAndImmunityPage() {
                             </p>
                           )}
                           <p className="text-sm text-gray-500 mt-2 ml-8">
-                            {!hasCourseAccess 
-                              ? 'Для доступу до цього розділу необхідна оплата курсу'
-                              : index === 0 
-                                ? 'Для доступу до цього розділу необхідна оплата курсу'
-                                : 'Спочатку пройдіть попередній розділ на 80% і більше'
+                            {!hasCourseAccess && !checkingPreviousCourse
+                              ? 'Спочатку пройдіть попередній курс "Фундаментальні медико-біологічні знання" на 80% і більше'
+                              : index === 0 && !previousCourseCompleted && !checkingPreviousCourse
+                                ? 'Спочатку пройдіть попередній курс "Фундаментальні медико-біологічні знання" на 80% і більше'
+                                : index > 0
+                                  ? 'Спочатку пройдіть попередній розділ на 80% і більше'
+                                  : checkingPreviousCourse
+                                    ? 'Перевірка доступу...'
+                                    : 'Для доступу до цього розділу необхідна оплата курсу'
                             }
                           </p>
                         </div>

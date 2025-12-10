@@ -19,9 +19,11 @@ interface Question {
 
 interface SectionContentProps {
   section: Section
+  courseTitle?: string
+  faculty?: 'medical' | 'pharmaceutical'
 }
 
-export default function SectionContent({ section }: SectionContentProps) {
+export default function SectionContent({ section, courseTitle, faculty = 'medical' }: SectionContentProps) {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState<'video' | 'notes' | 'tests'>('video')
   const [activeTestTab, setActiveTestTab] = useState<'test1' | 'test2'>('test1')
@@ -34,6 +36,32 @@ export default function SectionContent({ section }: SectionContentProps) {
   const [testCompleted, setTestCompleted] = useState(false)
   const [testScore, setTestScore] = useState<number | null>(null)
   const [savingResults, setSavingResults] = useState(false)
+  const [pdfErrors, setPdfErrors] = useState<Record<string, boolean>>({})
+  const [checkingPdf, setCheckingPdf] = useState<Record<string, boolean>>({})
+
+  // Перевіряємо наявність PDF файлів
+  useEffect(() => {
+    if (activeTab === 'notes' && section.notes && section.notes.length > 0) {
+      section.notes.forEach((note) => {
+        if (!pdfErrors[note.file] && !checkingPdf[note.file]) {
+          setCheckingPdf(prev => ({ ...prev, [note.file]: true }))
+          // Перевіряємо, чи файл існує
+          fetch(note.file, { method: 'HEAD' })
+            .then(response => {
+              if (!response.ok || response.status === 404) {
+                setPdfErrors(prev => ({ ...prev, [note.file]: true }))
+              }
+            })
+            .catch(() => {
+              setPdfErrors(prev => ({ ...prev, [note.file]: true }))
+            })
+            .finally(() => {
+              setCheckingPdf(prev => ({ ...prev, [note.file]: false }))
+            })
+        }
+      })
+    }
+  }, [activeTab, section.notes, pdfErrors, checkingPdf])
 
   // Отримуємо topic_id для поточного розділу та тесту
   useEffect(() => {
@@ -59,12 +87,29 @@ export default function SectionContent({ section }: SectionContentProps) {
   async function fetchTopicId() {
     setLoadingTopic(true)
     try {
-      const response = await fetch('/api/courses?faculty=medical')
+      // Визначаємо назву курсу
+      let targetCourseTitle = courseTitle
+      
+      // Якщо courseTitle не передано, визначаємо на основі section slug
+      if (!targetCourseTitle) {
+        // Розділи 18-21 належать до нового курсу
+        if (section.slug.startsWith('section-18') || 
+            section.slug.startsWith('section-19') || 
+            section.slug.startsWith('section-20') || 
+            section.slug.startsWith('section-21')) {
+          targetCourseTitle = 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття'
+        } else {
+          // Для інших розділів використовуємо старий курс
+          targetCourseTitle = 'Фундаментальні медико-біологічні знання'
+        }
+      }
+
+      const response = await fetch(`/api/courses?faculty=${faculty}`)
       const data = await response.json()
 
       if (data.success && data.courses) {
         const course = data.courses.find((c: { title: string }) =>
-          c.title === 'Фундаментальні медико-біологічні знання'
+          c.title === targetCourseTitle
         )
 
         if (course) {
@@ -79,12 +124,44 @@ export default function SectionContent({ section }: SectionContentProps) {
           const topicsResponse = await fetch(`/api/topics?course_id=${course.id}&title=${encodeURIComponent(topicTitle)}`)
           const topicsData = await topicsResponse.json()
 
+          console.log('Пошук topic:', {
+            courseTitle: targetCourseTitle,
+            courseId: course.id,
+            topicTitle,
+            response: topicsData
+          })
+
           if (topicsData.success && topicsData.topics && topicsData.topics.length > 0) {
             setTopicId(topicsData.topics[0].id)
           } else {
-            // Якщо topic не знайдено, скидаємо topicId
-            setTopicId(null)
+            // Якщо topic не знайдено за точною назвою, спробуємо знайти всі topics курсу
+            // і знайти найближчий за назвою
+            const allTopicsResponse = await fetch(`/api/topics?course_id=${course.id}`)
+            const allTopicsData = await allTopicsResponse.json()
+            
+            console.log('Всі topics курсу:', allTopicsData)
+            
+            if (allTopicsData.success && allTopicsData.topics) {
+              // Шукаємо topic, який містить назву розділу
+              const matchingTopic = allTopicsData.topics.find((t: { title: string }) => 
+                t.title === topicTitle || 
+                t.title.toLowerCase().includes(topicTitle.toLowerCase().substring(0, 30))
+              )
+              
+              if (matchingTopic) {
+                console.log('Знайдено topic за частковим зіставленням:', matchingTopic)
+                setTopicId(matchingTopic.id)
+              } else {
+                console.log('Topic не знайдено навіть за частковим зіставленням')
+                setTopicId(null)
+              }
+            } else {
+              setTopicId(null)
+            }
           }
+        } else {
+          console.error('Курс не знайдено:', targetCourseTitle)
+          setTopicId(null)
         }
       }
     } catch (error) {
@@ -281,30 +358,68 @@ export default function SectionContent({ section }: SectionContentProps) {
             <div className="px-[3px] md:px-8">
               {section.notes && section.notes.length > 0 ? (
                 <div className="space-y-12">
-                  {section.notes.map((note) => (
-                    <div
-                      key={note.file}
-                      className="bg-white/70 rounded-2xl shadow-md border border-blue-100 p-3 md:p-6"
-                    >
-                      <div 
-                        className="w-full h-[600px] md:h-[720px] relative rounded-xl border border-blue-100 bg-white overflow-hidden"
-                        onContextMenu={(e) => e.preventDefault()}
-                        onDragStart={(e) => e.preventDefault()}
-                        style={{ userSelect: 'none' }}
+                  {section.notes.map((note) => {
+                    const hasError = pdfErrors[note.file]
+                    return (
+                      <div
+                        key={note.file}
+                        className="bg-white/70 rounded-2xl shadow-md border border-blue-100 p-3 md:p-6"
                       >
-                        <iframe
-                          src={`${note.file}#toolbar=0&navpanes=0&scrollbar=1`}
-                          className="w-full h-full border-0"
-                          style={{ 
-                            WebkitOverflowScrolling: 'touch',
-                            overflow: 'auto'
-                          }}
-                          onContextMenu={(e) => e.preventDefault()}
-                          title={note.title || 'PDF конспект'}
-                        />
+                        {hasError ? (
+                          <div className="w-full h-[600px] md:h-[720px] flex items-center justify-center rounded-xl border border-blue-100 bg-white">
+                            <div className="text-center text-gray-600 px-6">
+                              <p className="text-lg mb-2 font-semibold">{note.title || 'Конспект'}</p>
+                              <p className="text-sm">Конспект готується і незабаром буде доступний</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div 
+                            className="w-full h-[600px] md:h-[720px] relative rounded-xl border border-blue-100 bg-white overflow-hidden"
+                            onContextMenu={(e) => e.preventDefault()}
+                            onDragStart={(e) => e.preventDefault()}
+                            style={{ userSelect: 'none' }}
+                          >
+                            <iframe
+                              src={`${note.file}#toolbar=0&navpanes=0&scrollbar=1`}
+                              className="w-full h-full border-0"
+                              style={{ 
+                                WebkitOverflowScrolling: 'touch',
+                                overflow: 'auto'
+                              }}
+                              onContextMenu={(e) => e.preventDefault()}
+                              title={note.title || 'PDF конспект'}
+                              onError={() => {
+                                setPdfErrors(prev => ({ ...prev, [note.file]: true }))
+                              }}
+                              onLoad={(e) => {
+                                // Перевіряємо, чи iframe завантажився з помилкою
+                                try {
+                                  const iframe = e.target as HTMLIFrameElement
+                                  // Якщо iframe показує 404, він все одно завантажиться, але з помилкою
+                                  // Перевіряємо через setTimeout, щоб дати час на завантаження
+                                  setTimeout(() => {
+                                    try {
+                                      // Якщо не можемо отримати доступ до contentDocument, можливо це помилка CORS
+                                      // Але якщо це 404, браузер покаже помилку
+                                      if (iframe.contentDocument?.location.href.includes('404') || 
+                                          iframe.contentWindow?.location.href.includes('404')) {
+                                        setPdfErrors(prev => ({ ...prev, [note.file]: true }))
+                                      }
+                                    } catch (err) {
+                                      // CORS помилка - це нормально для PDF, але якщо файл не існує,
+                                      // браузер може показати 404 в iframe
+                                    }
+                                  }, 2000)
+                                } catch (err) {
+                                  // Не можемо перевірити через CORS
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center text-gray-600 py-20">

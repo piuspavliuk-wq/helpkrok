@@ -137,7 +137,119 @@ export async function GET(request: NextRequest) {
       console.error('Помилка перевірки підписок:', error)
     }
 
-    const finalAccess = hasPaymentAccess || !!courseAccess || hasSubscriptionAccess || hasSubscriptionPayment
+    // Перевіряємо чи користувач має базовий доступ (оплату підписки)
+    const hasBaseAccess = hasPaymentAccess || !!courseAccess || hasSubscriptionAccess || hasSubscriptionPayment
+
+    // Якщо є базовий доступ, перевіряємо чи потрібно пройти попередній курс
+    if (hasBaseAccess) {
+      // Визначаємо порядок курсів медичного факультету
+      const medicalCourseOrder = [
+        'fundamental-medico-biological-knowledge', // 1-й курс
+        'blood-system-and-immunity', // 2-й курс
+        'central-nervous-system' // 3-й курс
+      ]
+
+      const courseIndex = medicalCourseOrder.indexOf(courseId)
+      
+      // Якщо це не перший курс, перевіряємо чи пройдено попередній на 80%+
+      if (courseIndex > 0) {
+        const previousCourseId = medicalCourseOrder[courseIndex - 1]
+        
+        try {
+          // Перевіряємо чи є доступ до попереднього курсу
+          const { data: previousCourseAccess } = await supabase
+            .from('course_access')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('course_id', previousCourseId)
+            .eq('access_granted', true)
+            .maybeSingle()
+
+          if (!previousCourseAccess) {
+            // Немає доступу до попереднього курсу
+            console.log(`Користувач ${session.user.id} не має доступу до попереднього курсу ${previousCourseId}`)
+            return NextResponse.json({
+              success: true,
+              hasAccess: false,
+              reason: 'previous_course_not_accessed',
+              previousCourseId
+            })
+          }
+
+          // Перевіряємо прогрес попереднього курсу
+          const { data: previousCourse } = await supabase
+            .from('courses')
+            .select('id')
+            .eq('slug', previousCourseId)
+            .maybeSingle()
+
+          if (previousCourse) {
+            // Отримуємо всі topics попереднього курсу
+            const { data: topics } = await supabase
+              .from('topics')
+              .select('id')
+              .eq('course_id', previousCourse.id)
+
+            if (topics && topics.length > 0) {
+              // Отримуємо прогрес по всіх topics
+              const { data: allProgress } = await supabase
+                .from('user_topic_progress')
+                .select('test_score, test_completed')
+                .eq('user_id', session.user.id)
+                .in('topic_id', topics.map(t => t.id))
+
+              // Перевіряємо чи всі тести пройдені на 80%+
+              if (allProgress && allProgress.length > 0) {
+                // Перевіряємо чи кількість пройдених тестів відповідає кількості topics
+                if (allProgress.length < topics.length) {
+                  console.log(`Користувач ${session.user.id} не пройшов всі тести попереднього курсу ${previousCourseId}`)
+                  return NextResponse.json({
+                    success: true,
+                    hasAccess: false,
+                    reason: 'previous_course_not_completed',
+                    previousCourseId
+                  })
+                }
+
+                const allPassed = allProgress.every(p => 
+                  p.test_completed && (p.test_score || 0) >= 80
+                )
+
+                if (!allPassed) {
+                  console.log(`Користувач ${session.user.id} не пройшов попередній курс ${previousCourseId} на 80%+`)
+                  return NextResponse.json({
+                    success: true,
+                    hasAccess: false,
+                    reason: 'previous_course_not_completed',
+                    previousCourseId
+                  })
+                }
+              } else {
+                // Немає прогресу - курс не пройдено
+                console.log(`Користувач ${session.user.id} не має прогресу по попередньому курсу ${previousCourseId}`)
+                return NextResponse.json({
+                  success: true,
+                  hasAccess: false,
+                  reason: 'previous_course_not_completed',
+                  previousCourseId
+                })
+              }
+            } else {
+              // Якщо немає topics в попередньому курсі, не блокуємо доступ
+              console.log(`Попередній курс ${previousCourseId} не має topics, дозволяємо доступ`)
+            }
+          } else {
+            // Якщо не знайдено попередній курс в базі, не блокуємо доступ
+            console.log(`Попередній курс ${previousCourseId} не знайдено в базі, дозволяємо доступ`)
+          }
+        } catch (error) {
+          console.error('Помилка перевірки попереднього курсу:', error)
+          // У випадку помилки, не блокуємо доступ
+        }
+      }
+    }
+
+    const finalAccess = hasBaseAccess
 
     console.log('Перевірка доступу до курсу:', {
       courseId,
