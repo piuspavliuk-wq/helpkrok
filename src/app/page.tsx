@@ -266,7 +266,7 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-4 w-4 text-success-500 mr-2 mt-0.5 flex-shrink-0" />
-                  Необмежена імітація КРОК
+                  Необмежена імітація КРОК (необмежено спроб)
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-4 w-4 text-success-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -310,7 +310,7 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-4 w-4 text-success-500 mr-2 mt-0.5 flex-shrink-0" />
-                  Необмежена імітація КРОК
+                  Необмежена імітація КРОК (необмежено спроб)
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="h-4 w-4 text-success-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -392,10 +392,10 @@ export default function Home() {
             </div>
             </RevealOnScroll>
 
-            {/* Randomizer PRO */}
+            {/* Імітація крок */}
             <RevealOnScroll direction="up" delayMs={400}>
             <div className="card p-6 border border-purple-200 flex flex-col h-full">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">🎯 Randomizer PRO</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">🎯 Імітація крок</h3>
               <div className="text-2xl font-bold text-gray-900 mb-4">
                 <div>180 ₴ за спробу</div>
                 <div className="text-sm text-gray-600">5 спроб: 650 ₴ | 10 спроб: 1 450 ₴</div>
@@ -426,7 +426,7 @@ export default function Home() {
                 href="/randomizer/buy" 
                 className="bg-[#1128C6] text-white px-8 py-4 rounded-xl font-medium text-lg hover:opacity-90 transition-opacity duration-200 w-full mt-auto text-center"
               >
-                Спробувати Randomizer
+                Спробувати імітацію
               </Link>
             </div>
             </RevealOnScroll>

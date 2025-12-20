@@ -110,21 +110,66 @@ export async function GET(request: NextRequest) {
       // Таблиця може не існувати, це нормально
     }
 
-    // Перевіряємо активні підписки для медичного факультету
-    // Якщо курс належить до медичного факультету, перевіряємо підписки типу 'medical' або 'premium'
+    // Визначаємо факультет курсу
+    // Оскільки courseId - це рядок типу 'fundamental-medico-biological-knowledge', 
+    // а не UUID, визначаємо факультет за списком курсів
+    const medicalCourses = ['fundamental-medico-biological-knowledge', 'blood-system-and-immunity', 'central-nervous-system']
+    const pharmaceuticalCourses = ['organic-compounds-basics', 'pharmaceutical-analysis-theory', 'physical-physicochemical-basics', 'pharmaceutical-botany', 'pathological-processes', 'biochemical-processes', 'infectious-disease-agents', 'rational-drug-use']
+    
+    let courseFaculty: 'medical' | 'pharmaceutical' | null = null
+    
+    if (medicalCourses.includes(courseId)) {
+      courseFaculty = 'medical'
+    } else if (pharmaceuticalCourses.includes(courseId)) {
+      courseFaculty = 'pharmaceutical'
+    }
+    
+    // Якщо не вдалося визначити за списком, намагаємося знайти в базі даних
+    if (!courseFaculty) {
+      try {
+        // Шукаємо курс за id (якщо courseId це UUID) або за title
+        const { data: course } = await supabase
+          .from('courses')
+          .select('faculty')
+          .or(`id.eq.${courseId},title.ilike.%${courseId}%`)
+          .maybeSingle()
+
+        if (course?.faculty) {
+          courseFaculty = course.faculty as 'medical' | 'pharmaceutical'
+        }
+      } catch (error) {
+        console.error('Помилка визначення факультету курсу:', error)
+      }
+    }
+
+    // Перевіряємо активні підписки залежно від факультету курсу
     let hasSubscriptionAccess = false
     try {
+      // Визначаємо які типи підписок перевіряти
+      const subscriptionTypes: string[] = ['premium'] // Premium дає доступ до всіх
+      
+      if (courseFaculty === 'medical') {
+        subscriptionTypes.push('medical')
+      } else if (courseFaculty === 'pharmaceutical') {
+        subscriptionTypes.push('pharmaceutical')
+      } else {
+        // Якщо не вдалося визначити факультет, перевіряємо всі типи
+        subscriptionTypes.push('medical', 'pharmaceutical')
+      }
+
       const { data: subscriptions, error: subscriptionError } = await supabase
         .from('user_subscriptions')
         .select('*')
         .eq('user_id', session.user.id)
         .eq('status', 'active')
-        .in('subscription_type', ['medical', 'premium'])
+        .in('subscription_type', subscriptionTypes)
         .gte('end_date', new Date().toISOString()) // Підписка ще не закінчилася
         .order('created_at', { ascending: false })
         .limit(1)
 
       console.log('Перевірка підписок для користувача:', session.user.id, {
+        courseFaculty,
+        subscriptionTypes,
         subscriptions,
         subscriptionError,
         hasAccess: !subscriptionError && subscriptions && subscriptions.length > 0
@@ -142,18 +187,31 @@ export async function GET(request: NextRequest) {
 
     // Якщо є базовий доступ, перевіряємо чи потрібно пройти попередній курс
     if (hasBaseAccess) {
-      // Визначаємо порядок курсів медичного факультету
+      // Визначаємо порядок курсів залежно від факультету
       const medicalCourseOrder = [
         'fundamental-medico-biological-knowledge', // 1-й курс
         'blood-system-and-immunity', // 2-й курс
         'central-nervous-system' // 3-й курс
       ]
-
-      const courseIndex = medicalCourseOrder.indexOf(courseId)
+      
+      const pharmaceuticalCourseOrder = [
+        'organic-compounds-basics',
+        'pharmaceutical-analysis-theory',
+        'physical-physicochemical-basics',
+        'pharmaceutical-botany',
+        'pathological-processes',
+        'biochemical-processes',
+        'infectious-disease-agents',
+        'rational-drug-use'
+      ]
+      
+      const courseOrder = courseFaculty === 'pharmaceutical' ? pharmaceuticalCourseOrder : medicalCourseOrder
+      const courseIndex = courseOrder.indexOf(courseId)
       
       // Якщо це не перший курс, перевіряємо чи пройдено попередній на 80%+
-      if (courseIndex > 0) {
-        const previousCourseId = medicalCourseOrder[courseIndex - 1]
+      // Поки що перевірка попередніх курсів працює тільки для медицини
+      if (courseIndex > 0 && courseFaculty === 'medical') {
+        const previousCourseId = courseOrder[courseIndex - 1]
         
         try {
           // Перевіряємо чи є доступ до попереднього курсу

@@ -44,7 +44,7 @@ function RandomizerSettingsContent() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-blue-600 mb-2">
-              Налаштування Randomizer PRO
+              Налаштування Імітація крок
             </h1>
             <p className="text-gray-600">
               Налаштуйте параметри тесту перед початком

@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
 
             console.log(`✅ Успішний платіж! Користувач ${payment.user.email} отримав підписку ${subscriptionType}`);
             
-            // Додаємо спроби для Randomizer PRO залежно від типу підписки
+            // Додаємо спроби для Імітація крок залежно від типу підписки
             let attemptsToAdd = 0;
             let isUnlimited = false;
             if (subscriptionId === 'vip-premium' || subscriptionId === 'premium-standard') {
@@ -307,42 +307,90 @@ export async function POST(request: NextRequest) {
               }
             }
             
-            // Автоматично надаємо доступ тільки до першого курсу медичного факультету при оплаті підписки
+            // Автоматично надаємо доступ тільки до першого курсу відповідного факультету при оплаті підписки
             // Інші курси відкриються автоматично після проходження попередніх на 80%+
-            if (subscriptionType === 'medical' || subscriptionType === 'premium') {
-              // Визначаємо перший курс для медичного факультету
-              const firstCourseId = 'fundamental-medico-biological-knowledge';
+            if (subscriptionType === 'medical' || subscriptionType === 'pharmaceutical' || subscriptionType === 'premium') {
+              // Визначаємо перший курс залежно від типу підписки
+              let firstCourseId: string | null = null;
               
-              try {
-                // Перевіряємо чи вже є доступ
-                const { data: existingAccess } = await supabase
-                  .from('course_access')
-                  .select('*')
-                  .eq('user_id', payment.user_id)
-                  .eq('course_id', firstCourseId)
-                  .maybeSingle();
+              if (subscriptionType === 'medical' || subscriptionType === 'premium') {
+                firstCourseId = 'fundamental-medico-biological-knowledge';
+              } else if (subscriptionType === 'pharmaceutical') {
+                firstCourseId = 'organic-compounds-basics';
+              }
+              
+              // Для premium надаємо доступ до обох перших курсів
+              if (subscriptionType === 'premium') {
+                const firstCourses = [
+                  'fundamental-medico-biological-knowledge',
+                  'organic-compounds-basics'
+                ];
+                
+                for (const courseId of firstCourses) {
+                  try {
+                    // Перевіряємо чи вже є доступ
+                    const { data: existingAccess } = await supabase
+                      .from('course_access')
+                      .select('*')
+                      .eq('user_id', payment.user_id)
+                      .eq('course_id', courseId)
+                      .maybeSingle();
 
-                if (!existingAccess) {
-                  // Створюємо доступ тільки до першого курсу
-                  const { error: courseAccessError } = await supabase
-                    .from('course_access')
-                    .insert({
-                      user_id: payment.user_id,
-                      course_id: firstCourseId,
-                      access_granted: true,
-                      granted_at: new Date().toISOString(),
-                      payment_id: String(payment.id)
-                    });
+                    if (!existingAccess) {
+                      // Створюємо доступ тільки до першого курсу
+                      const { error: courseAccessError } = await supabase
+                        .from('course_access')
+                        .insert({
+                          user_id: payment.user_id,
+                          course_id: courseId,
+                          access_granted: true,
+                          granted_at: new Date().toISOString(),
+                          payment_id: String(payment.id)
+                        });
 
-                  if (courseAccessError && courseAccessError.code !== 'PGRST116') {
-                    console.error(`Помилка створення доступу до курсу ${firstCourseId}:`, courseAccessError);
-                  } else {
-                    console.log(`✅ Надано доступ до першого курсу ${firstCourseId} для користувача ${payment.user_id}`);
-                    console.log(`ℹ️  Доступ до наступних курсів буде надано автоматично після проходження попередніх на 80%+`);
+                      if (courseAccessError && courseAccessError.code !== 'PGRST116') {
+                        console.error(`Помилка створення доступу до курсу ${courseId}:`, courseAccessError);
+                      } else {
+                        console.log(`✅ Надано доступ до першого курсу ${courseId} для користувача ${payment.user_id}`);
+                        console.log(`ℹ️  Доступ до наступних курсів буде надано автоматично після проходження попередніх на 80%+`);
+                      }
+                    }
+                  } catch (error) {
+                    console.error(`Помилка обробки доступу до курсу ${courseId}:`, error);
                   }
                 }
-              } catch (error) {
-                console.error(`Помилка обробки доступу до курсу ${firstCourseId}:`, error);
+              } else if (firstCourseId) {
+                try {
+                  // Перевіряємо чи вже є доступ
+                  const { data: existingAccess } = await supabase
+                    .from('course_access')
+                    .select('*')
+                    .eq('user_id', payment.user_id)
+                    .eq('course_id', firstCourseId)
+                    .maybeSingle();
+
+                  if (!existingAccess) {
+                    // Створюємо доступ тільки до першого курсу
+                    const { error: courseAccessError } = await supabase
+                      .from('course_access')
+                      .insert({
+                        user_id: payment.user_id,
+                        course_id: firstCourseId,
+                        access_granted: true,
+                        granted_at: new Date().toISOString(),
+                        payment_id: String(payment.id)
+                      });
+
+                    if (courseAccessError && courseAccessError.code !== 'PGRST116') {
+                      console.error(`Помилка створення доступу до курсу ${firstCourseId}:`, courseAccessError);
+                    } else {
+                      console.log(`✅ Надано доступ до першого курсу ${firstCourseId} для користувача ${payment.user_id}`);
+                      console.log(`ℹ️  Доступ до наступних курсів буде надано автоматично після проходження попередніх на 80%+`);
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Помилка обробки доступу до курсу ${firstCourseId}:`, error);
+                }
               }
             }
           } catch (error) {

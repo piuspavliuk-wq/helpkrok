@@ -20,7 +20,7 @@ export default function MedicalDiagnosticTestPage() {
       <div className="p-2 md:p-8 relative z-10">
         <UniversalDiagnosticTest 
           testType="medical" 
-          testName="Randomizer PRO"
+          testName="Імітація крок"
           limit={100}
         />
       </div>

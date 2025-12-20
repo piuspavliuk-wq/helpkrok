@@ -138,10 +138,10 @@ function RandomizerTestContent() {
           setQuestions(validQuestions);
           setTotalQuestionsInDatabase(data.total || 0);
         } else {
-          console.log('Немає питань для Randomizer PRO');
+          console.log('Немає питань для Імітація крок');
         }
       } else {
-        console.error('Помилка завантаження питань для Randomizer PRO');
+        console.error('Помилка завантаження питань для Імітація крок');
       }
     } catch (error) {
       console.error('Помилка завантаження питань:', error);
@@ -457,7 +457,7 @@ function RandomizerTestContent() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">Завантаження питань з Randomizer PRO...</p>
+          <p className="text-xl text-gray-600">Завантаження питань з Імітація крок...</p>
         </div>
 
         {showAIExplanation && currentQuestionForAI && (
@@ -483,7 +483,7 @@ function RandomizerTestContent() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-blue-800 mb-2">
-              Налаштування Randomizer PRO
+              Налаштування Імітація крок
             </CardTitle>
             <p className="text-gray-600">
               Налаштуйте параметри тесту перед початком
@@ -534,7 +534,7 @@ function RandomizerTestContent() {
           <Card className="mb-6">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
-                Результати Randomizer PRO
+                Результати Імітація крок
               </CardTitle>
               <div className="text-2xl text-gray-700">
                 Правильних відповідей: <span className="font-bold text-green-600">{correctAnswers}</span> з {totalQuestions}
@@ -767,7 +767,7 @@ function RandomizerTestContent() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl font-bold text-blue-800">
-                Randomizer PRO ({shuffledQuestions.length} питань)
+                Імітація крок ({shuffledQuestions.length} питань)
                 <span className="text-sm font-normal text-gray-600 ml-2">
                   з бази {totalQuestionsInDatabase || questions.length} питань
                 </span>
@@ -958,7 +958,7 @@ export default function RandomizerTest() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">Завантаження Randomizer PRO...</p>
+          <p className="text-xl text-gray-600">Завантаження Імітація крок...</p>
         </div>
       </div>
     }>

@@ -22,6 +22,7 @@ export default function SectionOrTopicPage({ params }: PageProps) {
   const topic = topicMap[slug]
   const [sectionProgress, setSectionProgress] = useState<Record<string, { score: number | null; completed: boolean }>>({})
   const [loading, setLoading] = useState(true)
+  const [hasCourseAccess, setHasCourseAccess] = useState(false)
 
   useEffect(() => {
     if (!section && !topic) {
@@ -32,10 +33,26 @@ export default function SectionOrTopicPage({ params }: PageProps) {
   useEffect(() => {
     if (session?.user?.id && section) {
       fetchSectionProgress()
+      checkCourseAccess()
     } else {
       setLoading(false)
     }
   }, [session?.user?.id, section])
+
+  async function checkCourseAccess() {
+    if (!session?.user?.id) return
+
+    try {
+      const response = await fetch('/api/courses/check-access?course_id=organic-compounds-basics')
+      const data = await response.json()
+
+      if (data.success) {
+        setHasCourseAccess(data.hasAccess)
+      }
+    } catch (error) {
+      console.error('Помилка перевірки доступу до курсу:', error)
+    }
+  }
 
   async function fetchSectionProgress() {
     if (!session?.user?.id) return
@@ -117,8 +134,11 @@ export default function SectionOrTopicPage({ params }: PageProps) {
     // Знаходимо індекс розділу
     const sectionIndex = sections.findIndex(s => s.slug === sectionSlug)
     
-    // Перший розділ завжди доступний
+    // Перший розділ завжди доступний безкоштовно
     if (sectionIndex === 0) return true
+
+    // Для інших розділів потрібна оплата курсу
+    if (!hasCourseAccess) return false
 
     // Перевіряємо попередній розділ
     const previousSection = sections[sectionIndex - 1]
@@ -175,8 +195,19 @@ export default function SectionOrTopicPage({ params }: PageProps) {
                       Доступ обмежений
                     </h2>
                     <p className="text-gray-600 mb-4">
-                      Спочатку пройдіть попередній розділ на 80% і більше, щоб отримати доступ до цього розділу.
+                      {!hasCourseAccess 
+                        ? 'Для доступу до цього розділу потрібна оплата курсу.'
+                        : 'Спочатку пройдіть попередній розділ на 80% і більше, щоб отримати доступ до цього розділу.'
+                      }
                     </p>
+                    {!hasCourseAccess && (
+                      <Link
+                        href="/#pricing"
+                        className="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Перейти до оплати
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
@@ -209,7 +240,7 @@ export default function SectionOrTopicPage({ params }: PageProps) {
               </Link>
             </div>
 
-            <SectionContent section={section} />
+            <SectionContent section={section} courseTitle="Основи знань про органічні сполуки" faculty="pharmaceutical" />
           </div>
         </div>
       </AuthGuard>

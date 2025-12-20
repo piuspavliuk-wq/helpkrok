@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       }
       itemInfo = PACKAGES[packageId];
       const packageInfo = itemInfo as PackageInfo;
-      destination = `Randomizer PRO: ${packageInfo.name}`;
+      destination = `Імітація крок: ${packageInfo.name}`;
       comment = `${packageInfo.attempts} ${packageInfo.attempts === 1 ? 'спроба' : 'спроб'}`;
     } else {
       return NextResponse.json(

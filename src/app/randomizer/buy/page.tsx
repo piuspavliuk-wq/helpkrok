@@ -158,7 +158,7 @@ export default function RandomizerBuyPage() {
             <div className="text-center">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
                 <Zap className="inline-block w-10 h-10 text-yellow-500 mr-2" />
-                Randomizer PRO
+                Імітація крок
               </h1>
               <p className="text-xl text-gray-600 max-w-2xl mx-auto">
                 Оберіть пакет спроб для проходження повної імітації КРОК-тесту
@@ -244,7 +244,7 @@ export default function RandomizerBuyPage() {
           <Card className="bg-blue-50 border-blue-200">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Що таке Randomizer PRO?
+                Що таке Імітація крок?
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
                 <div>

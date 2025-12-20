@@ -63,8 +63,8 @@ const menuItems: MenuItem[] = [
   },
   {
     id: 'randomizer',
-    label: 'Randomizer PRO',
-    mobileLabel: 'Randomizer',
+    label: 'Імітація крок',
+    mobileLabel: 'Імітація',
     href: '/randomizer/buy',
     icon: Sparkles
   },

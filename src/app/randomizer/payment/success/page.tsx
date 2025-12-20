@@ -45,7 +45,7 @@ export default function PaymentSuccessPage() {
                   Оплата успішна!
                 </CardTitle>
                 <CardDescription>
-                  Дякуємо за покупку Randomizer PRO
+                  Дякуємо за покупку Імітація крок
                 </CardDescription>
               </>
             )}

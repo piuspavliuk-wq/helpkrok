@@ -8,6 +8,13 @@ import { sections as fundamentalSections } from './fundamental-medico-biological
 import { sections as organicCompoundsSections } from './organic-compounds-basics/data'
 import { sections as centralNervousSystemSections } from './central-nervous-system/data'
 import { sections as pharmaceuticalAnalysisSections } from './pharmaceutical-analysis-theory/data'
+import { sections as physicalPhysicochemicalSections } from './physical-physicochemical-basics/data'
+import { sections as pharmaceuticalBotanySections } from './pharmaceutical-botany/data'
+import { sections as pathologicalProcessesSections } from './pathological-processes/data'
+import { sections as biochemicalProcessesSections } from './biochemical-processes/data'
+import { sections as infectiousDiseaseAgentsSections } from './infectious-disease-agents/data'
+import { sections as rationalDrugUseSections } from './rational-drug-use/data'
+import { sections as morphologicalStructureVegetativeOrgansSections } from './morphological-structure-vegetative-organs/data'
 import { CustomSelect } from '@/components/ui/CustomSelect'
 
 const courses = [
@@ -70,6 +77,90 @@ const courses = [
     topicsCount: pharmaceuticalAnalysisSections.reduce((total, section) => total + section.topics.length, 0),
     faculty: 'pharmaceutical' as const,
     emoji: '🔬'
+  },
+  {
+    id: 'physical-physicochemical-basics',
+    title: 'Фізичні та фізико-хімічні основи хіміко-біологічних процесів і фармацевтичної технології',
+    description:
+      'Комплексний курс з фізичних та фізико-хімічних основ хіміко-біологічних процесів і фармацевтичної технології для майбутніх фармацевтів.',
+    slug: '/systems/physical-physicochemical-basics',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: physicalPhysicochemicalSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '⚛️'
+  },
+  {
+    id: 'pharmaceutical-botany',
+    title: 'Фармацевтична ботаніка',
+    description:
+      'Комплексний курс з фармацевтичної ботаніки для майбутніх фармацевтів.',
+    slug: '/systems/pharmaceutical-botany',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: pharmaceuticalBotanySections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '🌿'
+  },
+  {
+    id: 'pathological-processes',
+    title: 'Основні патологічні процеси',
+    description:
+      'Комплексний курс з основних патологічних процесів для майбутніх фармацевтів.',
+    slug: '/systems/pathological-processes',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: pathologicalProcessesSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '🩺'
+  },
+  {
+    id: 'biochemical-processes',
+    title: 'Основні біохімічні процеси',
+    description:
+      'Комплексний курс з основних біохімічних процесів для майбутніх фармацевтів.',
+    slug: '/systems/biochemical-processes',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: biochemicalProcessesSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '🧪'
+  },
+  {
+    id: 'infectious-disease-agents',
+    title: 'Основи знань про збудників інфекційних хвороб',
+    description:
+      'Комплексний курс з основ знань про збудників інфекційних хвороб для майбутніх фармацевтів.',
+    slug: '/systems/infectious-disease-agents',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: infectiousDiseaseAgentsSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '🦠'
+  },
+  {
+    id: 'rational-drug-use',
+    title: 'Основи раціонального застосування лікарських засобів',
+    description:
+      'Комплексний курс з основ раціонального застосування лікарських засобів для майбутніх фармацевтів.',
+    slug: '/systems/rational-drug-use',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: rationalDrugUseSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '💊'
+  },
+  {
+    id: 'morphological-structure-vegetative-organs',
+    title: 'Морфологічна будова вегетативних органів',
+    description:
+      'морфологічна будова кореня, стебла, листка та їх видозміни',
+    slug: '/systems/morphological-structure-vegetative-organs',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: morphologicalStructureVegetativeOrgansSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'pharmaceutical' as const,
+    emoji: '🌱'
   }
 ]
 
@@ -107,6 +198,7 @@ export default function CoursesPage() {
   const [loadingAccess, setLoadingAccess] = useState(true)
   const [previousCourseStatus, setPreviousCourseStatus] = useState<Record<string, { completed: boolean; hasAccess: boolean }>>({})
   const [hasSubscription, setHasSubscription] = useState(false)
+  const [profileLoaded, setProfileLoaded] = useState(false)
   const filteredCourses = courses.filter((course) => course.faculty === selectedFaculty)
   
   // Визначаємо порядок курсів медичного факультету
@@ -115,14 +207,59 @@ export default function CoursesPage() {
     'blood-system-and-immunity',
     'central-nervous-system'
   ]
+  
+  // Визначаємо порядок курсів фармацевтичного факультету
+  const pharmaceuticalCourseOrder = [
+    'organic-compounds-basics',
+    'pharmaceutical-analysis-theory',
+    'physical-physicochemical-basics',
+    'pharmaceutical-botany',
+    'pathological-processes',
+    'biochemical-processes',
+    'infectious-disease-agents',
+    'rational-drug-use',
+    'morphological-structure-vegetative-organs'
+  ]
+  
+  // Визначаємо порядок курсів для поточного факультету
+  const currentCourseOrder = selectedFaculty === 'medical' ? medicalCourseOrder : pharmaceuticalCourseOrder
+
+  // Завантажуємо профіль користувача для встановлення факультету за замовчуванням
+  useEffect(() => {
+    async function loadUserProfile() {
+      if (!session?.user?.id) {
+        setProfileLoaded(true)
+        return
+      }
+
+      try {
+        const response = await fetch('/api/user/profile')
+        const data = await response.json()
+
+        if (data.success && data.profile?.faculty) {
+          const userFaculty = data.profile.faculty as 'medical' | 'pharmaceutical'
+          // Встановлюємо факультет з профілю, якщо він валідний
+          if (userFaculty === 'medical' || userFaculty === 'pharmaceutical') {
+            setSelectedFaculty(userFaculty)
+          }
+        }
+      } catch (error) {
+        console.error('Помилка завантаження профілю:', error)
+      } finally {
+        setProfileLoaded(true)
+      }
+    }
+
+    loadUserProfile()
+  }, [session?.user?.id])
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (session?.user?.id && profileLoaded) {
       checkCourseAccess()
-    } else {
+    } else if (!session?.user?.id) {
       setLoadingAccess(false)
     }
-  }, [session?.user?.id, selectedFaculty])
+  }, [session?.user?.id, selectedFaculty, profileLoaded])
 
   async function checkCourseAccess() {
     if (!session?.user?.id) {
@@ -172,6 +309,7 @@ export default function CoursesPage() {
       await checkSubscriptionStatus()
 
       // Перевіряємо статус попередніх курсів для медичного факультету
+      // Для фармації поки що не перевіряємо послідовність курсів
       if (selectedFaculty === 'medical') {
         await checkPreviousCoursesStatus(data.courses, accessMap)
       }
@@ -189,9 +327,13 @@ export default function CoursesPage() {
     }
 
     try {
-      // Перевіряємо чи є активна підписка через API перевірки доступу до першого курсу
+      // Перевіряємо чи є активна підписка через API перевірки доступу до першого курсу відповідного факультету
       // Якщо є hasSubscriptionAccess або hasSubscriptionPayment - значить є підписка
-      const response = await fetch('/api/courses/check-access?course_id=fundamental-medico-biological-knowledge')
+      const firstCourseId = selectedFaculty === 'medical' 
+        ? 'fundamental-medico-biological-knowledge'
+        : 'organic-compounds-basics'
+      
+      const response = await fetch(`/api/courses/check-access?course_id=${firstCourseId}`)
       const data = await response.json()
 
       if (data.success && data.debug) {
@@ -214,9 +356,12 @@ export default function CoursesPage() {
 
     try {
       // Для кожного курсу (крім першого) перевіряємо попередній
-      for (let i = 1; i < medicalCourseOrder.length; i++) {
-        const currentCourseId = medicalCourseOrder[i]
-        const previousCourseId = medicalCourseOrder[i - 1]
+      // Використовуємо порядок курсів для поточного факультету
+      const courseOrder = selectedFaculty === 'medical' ? medicalCourseOrder : pharmaceuticalCourseOrder
+      
+      for (let i = 1; i < courseOrder.length; i++) {
+        const currentCourseId = courseOrder[i]
+        const previousCourseId = courseOrder[i - 1]
 
         const currentCourse = coursesList.find((c: { slug?: string }) => 
           c.slug === `/systems/${currentCourseId}`
@@ -304,14 +449,17 @@ export default function CoursesPage() {
             <div className="grid gap-8 sm:grid-cols-2">
               {filteredCourses.map((course) => {
                 const hasAccess = courseAccess[course.title] || false
-                const courseIndex = medicalCourseOrder.indexOf(course.id)
+                const courseIndex = currentCourseOrder.indexOf(course.id)
                 const isFirstCourse = courseIndex === 0
                 const previousStatus = previousCourseStatus[course.title]
                 
-                // Якщо немає підписки - показуємо кнопку "Купити" на всіх курсах без доступу
+                // Для фармації: всі курси платні - показуємо кнопку "Купити" якщо немає доступу
+                // Для медицини: якщо немає підписки - показуємо кнопку "Купити" на всіх курсах без доступу
                 // Якщо є підписка - для першого курсу доступ відкритий, для інших показуємо повідомлення
-                const showBuyButton = !hasAccess && !loadingAccess && !hasSubscription
-                const showPreviousCourseMessage = !hasAccess && !loadingAccess && hasSubscription && !isFirstCourse
+                const showBuyButton = !hasAccess && !loadingAccess && (
+                  selectedFaculty === 'pharmaceutical' || !hasSubscription
+                )
+                const showPreviousCourseMessage = !hasAccess && !loadingAccess && hasSubscription && !isFirstCourse && selectedFaculty === 'medical'
 
                 return (
                   <div

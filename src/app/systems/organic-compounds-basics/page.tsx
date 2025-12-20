@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import AuthGuard from '@/components/auth/AuthGuard'
@@ -13,14 +13,56 @@ export default function OrganicCompoundsBasicsPage() {
   const { data: session } = useSession()
   const [sectionProgress, setSectionProgress] = useState<Record<string, { score: number | null; completed: boolean }>>({})
   const [loading, setLoading] = useState(true)
+  const [hasCourseAccess, setHasCourseAccess] = useState(false)
+  const [checkingAccess, setCheckingAccess] = useState(true)
 
   useEffect(() => {
     if (session?.user?.id) {
       fetchAllProgress()
+      checkCourseAccess()
+      
+      // Перевіряємо доступ кожні 5 секунд після оплати (для обробки webhook)
+      const interval = setInterval(() => {
+        checkCourseAccess()
+      }, 5000)
+      
+      return () => clearInterval(interval)
     } else {
       setLoading(false)
+      setCheckingAccess(false)
     }
   }, [session?.user?.id])
+
+  const checkCourseAccess = useCallback(async () => {
+    if (!session?.user?.id) {
+      setCheckingAccess(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/courses/check-access?course_id=organic-compounds-basics')
+      const data = await response.json()
+
+      if (data.success) {
+        setHasCourseAccess(data.hasAccess)
+      }
+    } catch (error) {
+      console.error('Помилка перевірки доступу до курсу:', error)
+    } finally {
+      setCheckingAccess(false)
+    }
+  }, [session?.user?.id])
+
+  // Перевіряємо доступ при завантаженні сторінки та після повернення з оплати
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('payment') === 'success') {
+      // Очищаємо параметр з URL
+      window.history.replaceState({}, '', window.location.pathname)
+      // Перевіряємо доступ знову
+      checkCourseAccess()
+    }
+  }, [checkCourseAccess])
 
   async function fetchAllProgress() {
     if (!session?.user?.id) return
@@ -101,8 +143,11 @@ export default function OrganicCompoundsBasicsPage() {
     // Адмін має доступ до всіх розділів
     if (isAdmin) return true
     
-    // Перший розділ завжди доступний
+    // Перший розділ завжди доступний безкоштовно
     if (sectionIndex === 0) return true
+
+    // Для інших розділів потрібна оплата курсу
+    if (!hasCourseAccess) return false
 
     // Перевіряємо попередній розділ
     const previousSection = sections[sectionIndex - 1]
@@ -138,10 +183,25 @@ export default function OrganicCompoundsBasicsPage() {
           </div>
 
           <div className="px-6 py-8 sm:px-8 md:px-12">
-            <div className="space-y-2 mb-10">
+            <div className="space-y-4 mb-10">
               <h1 className="text-3xl font-bold text-gray-900">
                 Основи знань про органічні сполуки
               </h1>
+              {!hasCourseAccess && !checkingAccess && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">
+                      Для доступу до всіх розділів потрібна оплата курсу
+                    </p>
+                  </div>
+                  <Link
+                    href="/#pricing"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium whitespace-nowrap ml-4"
+                  >
+                    Перейти до оплати
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
@@ -206,9 +266,15 @@ export default function OrganicCompoundsBasicsPage() {
                               ))}
                             </p>
                           )}
-                          <p className="text-sm text-gray-500 mt-2 ml-8">
-                            Спочатку пройдіть попередній розділ на 80% і більше
-                          </p>
+                          {!hasCourseAccess ? (
+                            <p className="text-sm text-gray-500 mt-2 ml-8">
+                              Для доступу до цього розділу потрібна оплата курсу
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-500 mt-2 ml-8">
+                              Спочатку пройдіть попередній розділ на 80% і більше
+                            </p>
+                          )}
                         </div>
                       </div>
                     ) : (

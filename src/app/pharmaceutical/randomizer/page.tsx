@@ -199,7 +199,7 @@ function PharmaceuticalRandomizerContent() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">Завантаження питань Randomizer PRO...</p>
+          <p className="text-xl text-gray-600">Завантаження питань Імітація крок...</p>
         </div>
       </div>
     )
@@ -242,7 +242,7 @@ function PharmaceuticalRandomizerContent() {
           <Card className="mb-6">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-bold text-blue-800 mb-2">
-                Результати Randomizer PRO
+                Результати Імітація крок
               </CardTitle>
               <div className="text-2xl text-gray-700">
                 Правильних відповідей: <span className="font-bold text-green-600">{correctAnswers}</span> з {totalQuestions}
@@ -446,7 +446,7 @@ function PharmaceuticalRandomizerContent() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-2xl font-bold text-blue-800">
-                💊 Randomizer PRO ({questions.length} питань)
+                💊 Імітація крок ({questions.length} питань)
                 <span className="text-sm font-normal text-gray-600 ml-2">
                   з бази {totalQuestionsInDatabase || questions.length} питань
                 </span>

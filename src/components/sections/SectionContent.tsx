@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { Section } from '@/app/systems/fundamental-medico-biological-knowledge/data'
 
@@ -37,31 +37,36 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
   const [testScore, setTestScore] = useState<number | null>(null)
   const [savingResults, setSavingResults] = useState(false)
   const [pdfErrors, setPdfErrors] = useState<Record<string, boolean>>({})
-  const [checkingPdf, setCheckingPdf] = useState<Record<string, boolean>>({})
+  const checkingPdfRef = useRef<Set<string>>(new Set())
 
   // Перевіряємо наявність PDF файлів
   useEffect(() => {
-    if (activeTab === 'notes' && section.notes && section.notes.length > 0) {
-      section.notes.forEach((note) => {
-        if (!pdfErrors[note.file] && !checkingPdf[note.file]) {
-          setCheckingPdf(prev => ({ ...prev, [note.file]: true }))
+    if (activeTab === 'notes' && ((section.notes && section.notes.length > 0) || (section.presentations && section.presentations.length > 0))) {
+      const noteFiles = section.notes?.map(n => n.file) || []
+      const presentationFiles = section.presentations?.map(p => p.file) || []
+      const allFiles = [...noteFiles, ...presentationFiles]
+      
+      allFiles.forEach((file) => {
+        // Перевіряємо, чи файл вже перевіряється або має помилку
+        if (!pdfErrors[file] && !checkingPdfRef.current.has(file)) {
+          checkingPdfRef.current.add(file)
           // Перевіряємо, чи файл існує
-          fetch(note.file, { method: 'HEAD' })
+          fetch(file, { method: 'HEAD' })
             .then(response => {
               if (!response.ok || response.status === 404) {
-                setPdfErrors(prev => ({ ...prev, [note.file]: true }))
+                setPdfErrors(prev => ({ ...prev, [file]: true }))
               }
             })
             .catch(() => {
-              setPdfErrors(prev => ({ ...prev, [note.file]: true }))
+              setPdfErrors(prev => ({ ...prev, [file]: true }))
             })
             .finally(() => {
-              setCheckingPdf(prev => ({ ...prev, [note.file]: false }))
+              checkingPdfRef.current.delete(file)
             })
         }
       })
     }
-  }, [activeTab, section.notes, pdfErrors, checkingPdf])
+  }, [activeTab, section.notes, section.presentations, pdfErrors])
 
   // Отримуємо topic_id для поточного розділу та тесту
   useEffect(() => {
@@ -356,9 +361,10 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
           )}
           {activeTab === 'notes' && (
             <div className="px-[3px] md:px-8">
-              {section.notes && section.notes.length > 0 ? (
+              {(section.notes && section.notes.length > 0) || (section.presentations && section.presentations.length > 0) ? (
                 <div className="space-y-12">
-                  {section.notes.map((note) => {
+                  {/* Конспекти */}
+                  {section.notes && section.notes.map((note) => {
                     const hasError = pdfErrors[note.file]
                     return (
                       <div
@@ -392,22 +398,73 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
                                 setPdfErrors(prev => ({ ...prev, [note.file]: true }))
                               }}
                               onLoad={(e) => {
-                                // Перевіряємо, чи iframe завантажився з помилкою
                                 try {
                                   const iframe = e.target as HTMLIFrameElement
-                                  // Якщо iframe показує 404, він все одно завантажиться, але з помилкою
-                                  // Перевіряємо через setTimeout, щоб дати час на завантаження
                                   setTimeout(() => {
                                     try {
-                                      // Якщо не можемо отримати доступ до contentDocument, можливо це помилка CORS
-                                      // Але якщо це 404, браузер покаже помилку
                                       if (iframe.contentDocument?.location.href.includes('404') || 
                                           iframe.contentWindow?.location.href.includes('404')) {
                                         setPdfErrors(prev => ({ ...prev, [note.file]: true }))
                                       }
                                     } catch (err) {
-                                      // CORS помилка - це нормально для PDF, але якщо файл не існує,
-                                      // браузер може показати 404 в iframe
+                                      // CORS помилка
+                                    }
+                                  }, 2000)
+                                } catch (err) {
+                                  // Не можемо перевірити через CORS
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {/* Презентації (відображаються як конспекти) */}
+                  {section.presentations && section.presentations.map((presentation) => {
+                    const hasError = pdfErrors[presentation.file]
+                    return (
+                      <div
+                        key={presentation.file}
+                        className="bg-white/70 rounded-2xl shadow-md border border-blue-100 p-3 md:p-6"
+                      >
+                        {hasError ? (
+                          <div className="w-full h-[600px] md:h-[720px] flex items-center justify-center rounded-xl border border-blue-100 bg-white">
+                            <div className="text-center text-gray-600 px-6">
+                              <p className="text-lg mb-2 font-semibold">{presentation.title || 'Конспект'}</p>
+                              <p className="text-sm">Конспект готується і незабаром буде доступний</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div 
+                            className="w-full h-[600px] md:h-[720px] relative rounded-xl border border-blue-100 bg-white overflow-hidden"
+                            onContextMenu={(e) => e.preventDefault()}
+                            onDragStart={(e) => e.preventDefault()}
+                            style={{ userSelect: 'none' }}
+                          >
+                            <iframe
+                              src={`${presentation.file}#toolbar=0&navpanes=0&scrollbar=1`}
+                              className="w-full h-full border-0"
+                              style={{ 
+                                WebkitOverflowScrolling: 'touch',
+                                overflow: 'auto'
+                              }}
+                              onContextMenu={(e) => e.preventDefault()}
+                              title={presentation.title || 'PDF конспект'}
+                              onError={() => {
+                                setPdfErrors(prev => ({ ...prev, [presentation.file]: true }))
+                              }}
+                              onLoad={(e) => {
+                                try {
+                                  const iframe = e.target as HTMLIFrameElement
+                                  setTimeout(() => {
+                                    try {
+                                      if (iframe.contentDocument?.location.href.includes('404') || 
+                                          iframe.contentWindow?.location.href.includes('404')) {
+                                        setPdfErrors(prev => ({ ...prev, [presentation.file]: true }))
+                                      }
+                                    } catch (err) {
+                                      // CORS помилка
                                     }
                                   }, 2000)
                                 } catch (err) {

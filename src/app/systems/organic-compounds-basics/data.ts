@@ -28,6 +28,19 @@ export interface Section {
 
 export const sections: Section[] = [
   {
+    title: 'ВСТУП. Основи знань про органічні сполуки',
+    slug: 'vstup-osnovy-znan-pro-orhannichi-spoluky',
+    description: 'Будова, номенклатура, ізомерія, хімічні властивості та ідентифікація',
+    topics: [],
+    presentations: [
+      {
+        title: 'ВСТУП. Основи знань про органічні сполуки',
+        file: '/pdfs/osnovy/1.Розділ1 ВСТУП Основи знань про органічні сполуки (будова, номенклатура, ізомерія, хімічні властивості та ідентифікація).pdf',
+        description: 'Презентація: будова, номенклатура, ізомерія, хімічні властивості та ідентифікація'
+      }
+    ]
+  },
+  {
     title: 'Вуглеводні та їх галогенопохідні',
     slug: 'vuhlevodni-ta-yikh-halohhenopokhidni',
     topics: [
@@ -35,6 +48,13 @@ export const sections: Section[] = [
       { title: 'Ненасичені вуглеводні', slug: 'nenasyshcheni-vuhlevodni' },
       { title: 'Ароматичні вуглеводні', slug: 'aromatychni-vuhlevodni' },
       { title: 'Галогенопохідні вуглевод', slug: 'halohhenopokhidni-vuhlevod' }
+    ],
+    presentations: [
+      {
+        title: 'Вуглеводні та їх галогенопохідні',
+        file: '/pdfs/osnovy/2.ПідрозділВуглеводні та їх галогенопохідні.Тема1,2,3,4. Насич, ненасич аромат..pdf',
+        description: 'Презентація: Тема 1, 2, 3, 4 - Насичені, ненасичені, ароматичні вуглеводні'
+      }
     ]
   },
   {
@@ -43,6 +63,13 @@ export const sections: Section[] = [
     topics: [
       { title: 'Нітросполуки', slug: 'nitrospoluky' },
       { title: 'Аміни', slug: 'aminy' }
+    ],
+    presentations: [
+      {
+        title: 'Нітрогеновмісні органічні сполуки',
+        file: '/pdfs/osnovy/3.ПідрозділНітрогеновмісні_органічні_сполуки. ТЕМА 5,6 Нітросполуки. АМІНИ.pdf',
+        description: 'Презентація: Тема 5, 6 - Нітросполуки, Аміни'
+      }
     ]
   },
   {
@@ -54,6 +81,18 @@ export const sections: Section[] = [
       { title: 'Карбонові кислоти та сульфокислоти', slug: 'karbonovi-kysloty-ta-sulfokysloty' },
       { title: 'Функціональні похідні карбонових кислот та сульфокислот', slug: 'funktsionalni-pokhidni-karbonovykh-kyslot-ta-sulfokyslot' },
       { title: 'Гетерофункціональні карбонові кислоти: амінокислоти, оксокислоти, гідроксикислоти', slug: 'heterofunktsionalni-karbonovi-kysloty-aminokysloty-oksokysloty-hidroksykysloty' }
+    ],
+    presentations: [
+      {
+        title: 'Оксигено- та сульфуровмісні органічні сполуки. Частина 1',
+        file: '/pdfs/osnovy/4.ПідрозділОксигено_та_сульфуровмісні_органічні_сполуки. ТЕМА7Спирти. 8Феноли. 9Альдегіди. Кетони.pdf',
+        description: 'Презентація: Тема 7 - Спирти, Тема 8 - Феноли, Тема 9 - Альдегіди, Кетони'
+      },
+      {
+        title: 'Оксигено- та сульфуровмісні органічні сполуки. Частина 2',
+        file: '/pdfs/osnovy/4.Підрозділ.ТЕМА10_Карбонові_кислоти_та_сульфокислоти. 11 Функц.12 Гетерофункц..pdf',
+        description: 'Презентація: Тема 10 - Карбонові кислоти та сульфокислоти, Тема 11 - Функціональні похідні, Тема 12 - Гетерофункціональні'
+      }
     ]
   },
   {
@@ -65,6 +104,23 @@ export const sections: Section[] = [
       { title: 'Шестичленні гетероциклічні сполуки з одним гетероатомом: піридин, піперидин', slug: 'shestychlenni-heterotsyklichni-spoluky-z-odnym-heteroatomom-pirydyn-piperydyn' },
       { title: 'Шестичленні гетероциклічні сполуки з двома гетероатомами: піридазин, піримідин, піразин, тіазин та їх гідровані аналоги', slug: 'shestychlenni-heterotsyklichni-spoluky-z-dvoma-heteroatomamy-piradazyn-pirymidyn-pirazyn-tiazyn-ta-yikh-hidrovani-analohy' },
       { title: 'Конденсовані гетероциклічні сполуки: пурин, бензімідазол, індол, хінолін, ізохінолін, фенотіазин', slug: 'kondensovani-heterotsyklichni-spoluky-puryn-benzimidazol-indol-khinolin-izokhinolin-fenotiazyn' }
+    ],
+    presentations: [
+      {
+        title: 'Гетероциклічні сполуки. Частина 1',
+        file: '/pdfs/osnovy/5.ПІДРОЗДІЛ_Гетероциклічні_сполуки. Тема12 5-чл з одним, Тема13 5-чл з двума..pdf',
+        description: 'Презентація: Тема 12 - П\'ятичленні з одним гетероатомом, Тема 13 - П\'ятичленні з двома гетероатомами'
+      },
+      {
+        title: 'Гетероциклічні сполуки. Частина 2',
+        file: '/pdfs/osnovy/5.ПідрозділГетероциклічні. Тема14,15Шестичленні_гетероциклічні_сполуки_з_одним_гетероатомом_піридин.pdf',
+        description: 'Презентація: Тема 14, 15 - Шестичленні гетероциклічні сполуки з одним гетероатомом (піридин)'
+      },
+      {
+        title: 'Гетероциклічні сполуки. Частина 3',
+        file: '/pdfs/osnovy/5.Підрозділ. Тема16 конденовані гетероциклічні сполуки.pdf',
+        description: 'Презентація: Тема 16 - Конденсовані гетероциклічні сполуки'
+      }
     ]
   },
   {
