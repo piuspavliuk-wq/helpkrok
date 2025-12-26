@@ -133,6 +133,11 @@ export const sections: Section[] = [
         title: 'Запалення',
         description: 'Конспект з запалення',
         file: '/pdfs/Запалення.pdf'
+      },
+      {
+        title: 'Запалення: тести',
+        description: 'Конспект з тестами з запалення',
+        file: '/pdfs/Запалення тест.pdf'
       }
     ]
   },
@@ -146,6 +151,11 @@ export const sections: Section[] = [
         title: 'Новоутвореня: конспект',
         description: 'Конспект від HelpKrok',
         file: '/pdfs/section-8-conspect.pdf'
+      },
+      {
+        title: 'Новоутворення',
+        description: 'Конспект з новоутворень',
+        file: '/pdfs/Новоутворення .pdf.pdf'
       }
     ]
   },
