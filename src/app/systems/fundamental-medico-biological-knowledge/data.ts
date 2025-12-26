@@ -103,6 +103,7 @@ export const sections: Section[] = [
     title: 'Основні патологічні процеси',
     slug: 'section-5',
     topics: [],
+    videos: ['VvSDRpWWlmQ'],
     notes: [
       {
         title: 'Основні патологічні процеси: конспект',
@@ -115,6 +116,7 @@ export const sections: Section[] = [
     title: 'Клітинні процеси адаптації і компенсації',
     slug: 'section-6',
     topics: [],
+    videos: ['wkBUkHgPlT8'],
     notes: [
       {
         title: 'Клітинні процеси адаптації і компенсації: конспект',
