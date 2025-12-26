@@ -121,7 +121,7 @@ export const sections: Section[] = [
       {
         title: 'Клітинні процеси адаптації і компенсації: конспект',
         description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-6-conspect.pdf'
+        file: '/pdfs/Розділ_Клітинні_процеси_адаптації_і_компенсації_pdf.pdf'
       }
     ]
   },
