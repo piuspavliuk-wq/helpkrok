@@ -7,6 +7,7 @@ import UserProfile from '@/components/auth/UserProfile'
 import ProfileEditForm from '@/components/profile/ProfileEditForm'
 import StatisticsTab from '@/components/profile/StatisticsTab'
 import ScheduleTab from '@/components/profile/ScheduleTab'
+import AdminPanel from '@/components/profile/AdminPanel'
 import AuthGuard from '@/components/auth/AuthGuard'
 
 export default function ProfilePage() {
@@ -25,6 +26,8 @@ export default function ProfilePage() {
         return <ScheduleTab />
       case '/profile/edit':
         return <ProfileEditForm />
+      case '/profile/admin':
+        return <AdminPanel />
       default:
         return <ScheduleTab />
     }

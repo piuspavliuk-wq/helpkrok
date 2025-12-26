@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
-import { Calendar, User, BarChart3, LogOut } from 'lucide-react'
+import { signOut, useSession } from 'next-auth/react'
+import { Calendar, User, BarChart3, LogOut, Shield } from 'lucide-react'
 
 interface SubmenuItem {
   id: string
   label: string
   href: string
   icon: React.ComponentType<{ className?: string }>
+  adminOnly?: boolean
 }
 
 const submenuItems: SubmenuItem[] = [
@@ -31,14 +32,25 @@ const submenuItems: SubmenuItem[] = [
     href: '/profile/statistics',
     icon: BarChart3
   },
+  {
+    id: 'admin',
+    label: 'Адмін',
+    href: '/profile/admin',
+    icon: Shield,
+    adminOnly: true
+  },
 ]
 
 export default function ProfileSubmenu() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.email === 'admin@helpkrok.com' || session?.user?.role === 'admin'
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' })
   }
+
+  const visibleItems = submenuItems.filter(item => !item.adminOnly || isAdmin)
 
   return (
     <div className="relative z-10">
@@ -46,12 +58,13 @@ export default function ProfileSubmenu() {
         {/* Desktop layout */}
         <div className="hidden md:flex justify-between items-center">
           <nav className="flex space-x-8">
-            {submenuItems.map((item) => {
+            {visibleItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || 
                 (item.href === '/profile' && (pathname === '/profile' || pathname === '/profile/schedule')) ||
                 (item.href === '/profile/edit' && pathname === '/profile/edit') ||
-                (item.href === '/profile/statistics' && pathname === '/profile/statistics')
+                (item.href === '/profile/statistics' && pathname === '/profile/statistics') ||
+                (item.href === '/profile/admin' && pathname === '/profile/admin')
               
               return (
                 <Link
@@ -98,12 +111,13 @@ export default function ProfileSubmenu() {
           
           <div className="overflow-x-auto scrollbar-hide">
             <nav className="flex space-x-4 min-w-max pb-2">
-              {submenuItems.map((item) => {
+              {visibleItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href || 
                   (item.href === '/profile' && (pathname === '/profile' || pathname === '/profile/schedule')) ||
                   (item.href === '/profile/edit' && pathname === '/profile/edit') ||
-                  (item.href === '/profile/statistics' && pathname === '/profile/statistics')
+                  (item.href === '/profile/statistics' && pathname === '/profile/statistics') ||
+                  (item.href === '/profile/admin' && pathname === '/profile/admin')
                 
                 return (
                   <Link
