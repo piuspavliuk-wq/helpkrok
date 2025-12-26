@@ -56,3 +56,5 @@ WHERE u.email = 'EMAIL_КОРИСТУВАЧА'  -- ЗАМІНІТЬ НА РЕА�
   AND p.status = 'success'
 ORDER BY p.created_at DESC;
 
+
+

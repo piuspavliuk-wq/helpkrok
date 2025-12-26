@@ -325,7 +325,7 @@ function PharmaceuticalRandomizerContent() {
                             const isSelected = selectedAnswer === opt.letter
                             const isCorrectOption = opt.letter === correctAnswer
 
-                            return (
+  return (
                               <div
                                 key={opt.letter}
                                 className={`p-3 rounded-lg border-2 ${
@@ -346,7 +346,7 @@ function PharmaceuticalRandomizerContent() {
                                     <X className="w-5 h-5 text-red-600 ml-2" />
                                   )}
                                 </div>
-                              </div>
+            </div>
                             )
                           })
                         ) : (
@@ -378,8 +378,8 @@ function PharmaceuticalRandomizerContent() {
                                   {isSelected && !isCorrectOption && (
                                     <X className="w-5 h-5 text-red-600 ml-2" />
                                   )}
-                                </div>
-                              </div>
+            </div>
+          </div>
                             )
                           })
                         )}
@@ -400,7 +400,7 @@ function PharmaceuticalRandomizerContent() {
 
                         {/* Кнопка AI Пояснення */}
                         <div className="mt-4">
-                          <Button
+            <Button
                             variant="outline"
                             size="sm"
                             onClick={() => showAIExplanationForQuestion(question)}
@@ -408,8 +408,8 @@ function PharmaceuticalRandomizerContent() {
                           >
                             <Brain className="w-4 h-4 mr-2" />
                             🤖 Отримати AI Пояснення
-                          </Button>
-                        </div>
+            </Button>
+          </div>
                       </CardContent>
                     </Card>
                   )

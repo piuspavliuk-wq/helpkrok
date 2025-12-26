@@ -335,21 +335,29 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
             <div className="px-[3px] md:px-8">
               {section.videos && section.videos.length > 0 ? (
                 <div className="space-y-6">
-                  {section.videos.map((videoId, index) => (
-                    <div key={videoId} className="w-full max-w-3xl">
-                      <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                        <iframe
-                          src={`https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0&app_id=58479`}
-                          className="absolute top-0 left-0 w-full h-full rounded-lg"
-                          frameBorder="0"
-                          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
-                          referrerPolicy="strict-origin-when-cross-origin"
-                          title={`video-${videoId}`}
-                          allowFullScreen
-                        />
+                  {section.videos.map((videoId, index) => {
+                    // Перевіряємо, чи це YouTube відео (містить нецифрові символи)
+                    const isYouTube = /[^0-9]/.test(videoId)
+                    const embedUrl = isYouTube
+                      ? `https://www.youtube.com/embed/${videoId}`
+                      : `https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0&app_id=58479`
+                    
+                    return (
+                      <div key={videoId} className="w-full max-w-3xl">
+                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                          <iframe
+                            src={embedUrl}
+                            className="absolute top-0 left-0 w-full h-full rounded-lg"
+                            frameBorder="0"
+                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            title={`video-${videoId}`}
+                            allowFullScreen
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center text-gray-600 py-20">

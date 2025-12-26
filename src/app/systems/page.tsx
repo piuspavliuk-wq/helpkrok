@@ -437,7 +437,20 @@ export default function CoursesPage() {
         </div>
         <div className="relative z-10 px-6 py-16 sm:px-8 md:px-12">
           <div className="mx-auto max-w-5xl">
-            <header className="mb-12 flex justify-end">
+            <header className="mb-12 flex justify-between items-center">
+              <div>
+                {!loadingAccess && 
+                 !hasSubscription && 
+                 filteredCourses.length > 0 && 
+                 filteredCourses.some((course) => !courseAccess[course.title]) && (
+                  <Link
+                    href="/#pricing"
+                    className="inline-flex items-center gap-2 rounded-full bg-blue-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-blue-500/30 transition-colors duration-150 hover:bg-blue-600"
+                  >
+                    Купити доступ до курсів
+                  </Link>
+                )}
+              </div>
               <CustomSelect
                 value={selectedFaculty}
                 onChange={(value) => setSelectedFaculty(value as (typeof facultyOptions)[number]['value'])}
@@ -453,12 +466,7 @@ export default function CoursesPage() {
                 const isFirstCourse = courseIndex === 0
                 const previousStatus = previousCourseStatus[course.title]
                 
-                // Для фармації: всі курси платні - показуємо кнопку "Купити" якщо немає доступу
-                // Для медицини: якщо немає підписки - показуємо кнопку "Купити" на всіх курсах без доступу
-                // Якщо є підписка - для першого курсу доступ відкритий, для інших показуємо повідомлення
-                const showBuyButton = !hasAccess && !loadingAccess && (
-                  selectedFaculty === 'pharmaceutical' || !hasSubscription
-                )
+                // Для медицини: якщо є підписка - для першого курсу доступ відкритий, для інших показуємо повідомлення
                 const showPreviousCourseMessage = !hasAccess && !loadingAccess && hasSubscription && !isFirstCourse && selectedFaculty === 'medical'
 
                 return (
@@ -497,20 +505,6 @@ export default function CoursesPage() {
                         </div>
                       </div>
                     </Link>
-
-                    {showBuyButton && (
-                      <div className="px-6 pb-8 sm:px-8 sm:pb-10 pt-0">
-                        <Link
-                          href="/#pricing"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                          }}
-                          className="inline-flex items-center gap-2 rounded-full bg-blue-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition-colors duration-150 hover:bg-blue-600 w-full justify-center"
-                        >
-                          Купити
-                        </Link>
-                      </div>
-                    )}
 
                     {showPreviousCourseMessage && (
                       <div className="px-6 pb-8 sm:px-8 sm:pb-10 pt-0">

@@ -54,11 +54,17 @@ export const sections: Section[] = [
     title: 'Метаболізм основних класів біомолекул',
     slug: 'section-2',
     topics: [],
+    videos: ['0X17cvebq74'],
     notes: [
       {
         title: 'Метаболізм: конспект',
         description: 'Конспект від HelpKrok',
         file: '/pdfs/section-2-conspect.pdf'
+      },
+      {
+        title: 'Метаболізм',
+        description: 'Конспект з метаболізму',
+        file: '/pdfs/Метаболізм.pdf.pdf'
       }
     ]
   },
@@ -66,7 +72,7 @@ export const sections: Section[] = [
     title: 'Біологія клітин',
     slug: 'section-3',
     topics: [],
-    videos: ['1142516421'],
+    videos: ['1142516421', 'XvKTH3yd6DQ'],
     notes: [
       {
         title: 'Біологія клітин: конспект',
@@ -84,16 +90,12 @@ export const sections: Section[] = [
     title: 'Розвиток людини й основи генетики',
     slug: 'section-4',
     topics: [],
+    videos: ['slqGew3TgoQ'],
     notes: [
       {
-        title: 'Розвиток людини й основи генетики: конспект 1',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-4-conspect-1.pdf'
-      },
-      {
-        title: 'Розвиток людини й основи генетики: конспект 2',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-4-conspect-2.pdf'
+        title: 'Розвиток людини й основи генетики: відредаговано',
+        description: 'Відредагована версія конспекту',
+        file: '/pdfs/Розвиток_людини_й_основи_генетики_відредаговано_pdf.pdf'
       }
     ]
   },
@@ -125,11 +127,12 @@ export const sections: Section[] = [
     title: 'Запалення',
     slug: 'section-7',
     topics: [],
+    videos: ['pYQDkW2OVh0'],
     notes: [
       {
-        title: 'Запалення: конспект',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-7-conspect.pdf'
+        title: 'Запалення',
+        description: 'Конспект з запалення',
+        file: '/pdfs/Запалення.pdf'
       }
     ]
   },
@@ -137,6 +140,7 @@ export const sections: Section[] = [
     title: 'Новоутвореня',
     slug: 'section-8',
     topics: [],
+    videos: ['U4FPSd9txhs'],
     notes: [
       {
         title: 'Новоутвореня: конспект',
@@ -149,6 +153,7 @@ export const sections: Section[] = [
     title: 'Температурний гомеостаз і його порушення/ Гіпоксія/ Порушення метаболізму',
     slug: 'section-9',
     topics: [],
+    videos: ['QZj68s8fr0c'],
     notes: [
       {
         title: 'Температурний гомеостаз: конспект 1',

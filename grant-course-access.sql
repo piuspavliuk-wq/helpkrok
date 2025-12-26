@@ -94,3 +94,5 @@ WHERE email = 'EMAIL_КОРИСТУВАЧА'
 ON CONFLICT DO NOTHING;
 */
 
+
+
