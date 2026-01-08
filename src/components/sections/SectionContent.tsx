@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Section } from '@/app/systems/fundamental-medico-biological-knowledge/data'
 
@@ -38,6 +38,16 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
   const [savingResults, setSavingResults] = useState(false)
   const [pdfErrors, setPdfErrors] = useState<Record<string, boolean>>({})
   const checkingPdfRef = useRef<Set<string>>(new Set())
+  const [loadingProgress, setLoadingProgress] = useState(false)
+  
+  // Унікальний ідентифікатор тесту для збереження прогресу
+  const getTestIdentifier = useCallback(() => {
+    const baseId = `${faculty}-${section.slug}`
+    if (section.slug === 'section-3') {
+      return `${baseId}-${activeTestTab}`
+    }
+    return baseId
+  }, [faculty, section.slug, activeTestTab])
 
   // Перевіряємо наявність PDF файлів
   useEffect(() => {
@@ -88,6 +98,83 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
       fetchQuestions()
     }
   }, [topicId, activeTab])
+  
+  // Завантажуємо збережений прогрес коли є питання і користувач авторизований
+  useEffect(() => {
+    if (questions.length > 0 && session?.user?.id && activeTab === 'tests' && !testCompleted) {
+      loadSavedProgress()
+    }
+  }, [questions, session?.user?.id, activeTab, testCompleted])
+  
+  // Функція для завантаження збереженого прогресу
+  async function loadSavedProgress() {
+    if (!session?.user?.id || questions.length === 0) return
+    
+    const testType = getTestIdentifier()
+    setLoadingProgress(true)
+    
+    try {
+      const response = await fetch(`/api/test-progress?testType=${encodeURIComponent(testType)}`)
+      const data = await response.json()
+      
+      if (data.success && data.progress) {
+        console.log('Завантажено збережений прогрес:', data.progress)
+        // Конвертуємо збережені відповіді (option_id) у формат для selectedAnswers
+        const loadedAnswers: Record<string, string> = {}
+        Object.entries(data.progress).forEach(([questionId, savedOptionId]) => {
+          // Знаходимо питання і перевіряємо чи option_id валідний
+          const question = questions.find(q => q.id === questionId)
+          if (question) {
+            const option = question.options.find(opt => opt.id === savedOptionId)
+            if (option) {
+              loadedAnswers[questionId] = savedOptionId as string
+            }
+          }
+        })
+        setSelectedAnswers(loadedAnswers)
+      }
+    } catch (error) {
+      console.error('Помилка завантаження прогресу:', error)
+    } finally {
+      setLoadingProgress(false)
+    }
+  }
+  
+  // Функція для збереження відповіді в базу даних
+  async function saveAnswerProgress(questionId: string, optionId: string) {
+    if (!session?.user?.id) return
+    
+    const question = questions.find(q => q.id === questionId)
+    if (!question) return
+    
+    const selectedOption = question.options.find(opt => opt.id === optionId)
+    const correctOption = question.options.find(opt => opt.is_correct)
+    
+    if (!selectedOption || !correctOption) return
+    
+    const testType = getTestIdentifier()
+    
+    try {
+      const response = await fetch('/api/test-progress', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          testType,
+          questionId,
+          selectedAnswer: optionId,
+          correctAnswer: correctOption.id
+        }),
+      })
+      
+      if (!response.ok) {
+        console.error('Помилка збереження прогресу:', response.status)
+      }
+    } catch (error) {
+      console.error('Помилка збереження прогресу:', error)
+    }
+  }
 
   async function fetchTopicId() {
     setLoadingTopic(true)
@@ -201,13 +288,28 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
       ...prev,
       [questionId]: optionId
     }))
+    
+    // Зберігаємо відповідь в базу даних
+    saveAnswerProgress(questionId, optionId)
   }
 
-  function handleRestartTest() {
+  async function handleRestartTest() {
     setTestCompleted(false)
     setTestScore(null)
     setShowAnswers(false)
     setSelectedAnswers({})
+    
+    // Видаляємо збережений прогрес з бази даних
+    if (session?.user?.id) {
+      const testType = getTestIdentifier()
+      try {
+        await fetch(`/api/test-progress?testType=${encodeURIComponent(testType)}`, {
+          method: 'DELETE',
+        })
+      } catch (error) {
+        console.error('Помилка видалення прогресу:', error)
+      }
+    }
   }
 
   async function handleCompleteTest() {
@@ -522,12 +624,37 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
                 </div>
               )}
               
-              {loadingTopic || loading ? (
+              {loadingTopic || loading || loadingProgress ? (
                 <div className="text-center text-gray-600 py-20">
-                  <p className="text-lg mb-2">Завантаження тестів...</p>
+                  <p className="text-lg mb-2">
+                    {loadingProgress ? 'Завантаження збереженого прогресу...' : 'Завантаження тестів...'}
+                  </p>
                 </div>
               ) : questions.length > 0 ? (
                 <div className="space-y-8">
+                  {/* Прогрес-бар */}
+                  {!testCompleted && Object.keys(selectedAnswers).length > 0 && (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-600">
+                          Відповіді: {Object.keys(selectedAnswers).length} з {questions.length}
+                        </span>
+                        <span className="text-sm text-blue-600 font-medium">
+                          {Math.round((Object.keys(selectedAnswers).length / questions.length) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${(Object.keys(selectedAnswers).length / questions.length) * 100}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        ✓ Ваш прогрес автоматично зберігається
+                      </p>
+                    </div>
+                  )}
+                  
                   {testCompleted && testScore !== null && (
                     <div className="mb-6">
                       <div className="space-y-2">

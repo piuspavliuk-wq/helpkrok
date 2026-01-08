@@ -209,7 +209,7 @@ export default function SectionOrTopicPage({ params }: PageProps) {
               </Link>
             </div>
 
-            <SectionContent section={section} />
+            <SectionContent section={section} faculty="medical" courseTitle="Система крові та імунітет" />
           </div>
         </div>
       </AuthGuard>

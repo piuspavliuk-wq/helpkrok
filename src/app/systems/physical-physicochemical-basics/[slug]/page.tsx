@@ -240,7 +240,7 @@ export default function SectionOrTopicPage({ params }: PageProps) {
               </Link>
             </div>
 
-            <SectionContent section={section} />
+            <SectionContent section={section} faculty="pharmaceutical" courseTitle="Фізичні та фізико-хімічні основи" />
           </div>
         </div>
       </AuthGuard>
