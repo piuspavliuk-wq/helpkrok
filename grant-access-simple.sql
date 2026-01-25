@@ -43,4 +43,3 @@ FROM course_access ca
 JOIN users u ON u.id = ca.user_id
 WHERE ca.course_id = 'central-nervous-system'
 ORDER BY ca.granted_at DESC;
-

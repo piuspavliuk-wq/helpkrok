@@ -32,6 +32,7 @@ export const sections: Section[] = [
     slug: 'vstup-osnovy-znan-pro-orhannichi-spoluky',
     description: 'Будова, номенклатура, ізомерія, хімічні властивості та ідентифікація',
     topics: [],
+    videos: ['CToJi7hJiIU'],
     presentations: [
       {
         title: 'ВСТУП. Основи знань про органічні сполуки',
@@ -49,6 +50,7 @@ export const sections: Section[] = [
       { title: 'Ароматичні вуглеводні', slug: 'aromatychni-vuhlevodni' },
       { title: 'Галогенопохідні вуглевод', slug: 'halohhenopokhidni-vuhlevod' }
     ],
+    videos: ['Q6JUgFUc6bI'],
     presentations: [
       {
         title: 'Вуглеводні та їх галогенопохідні',
@@ -64,6 +66,7 @@ export const sections: Section[] = [
       { title: 'Нітросполуки', slug: 'nitrospoluky' },
       { title: 'Аміни', slug: 'aminy' }
     ],
+    videos: ['sD7rzOlDkFs'],
     presentations: [
       {
         title: 'Нітрогеновмісні органічні сполуки',
@@ -82,6 +85,7 @@ export const sections: Section[] = [
       { title: 'Функціональні похідні карбонових кислот та сульфокислот', slug: 'funktsionalni-pokhidni-karbonovykh-kyslot-ta-sulfokyslot' },
       { title: 'Гетерофункціональні карбонові кислоти: амінокислоти, оксокислоти, гідроксикислоти', slug: 'heterofunktsionalni-karbonovi-kysloty-aminokysloty-oksokysloty-hidroksykysloty' }
     ],
+    videos: ['0tFICRybBtk', 'FiQ806HhOSQ'],
     presentations: [
       {
         title: 'Оксигено- та сульфуровмісні органічні сполуки. Частина 1',
@@ -105,6 +109,7 @@ export const sections: Section[] = [
       { title: 'Шестичленні гетероциклічні сполуки з двома гетероатомами: піридазин, піримідин, піразин, тіазин та їх гідровані аналоги', slug: 'shestychlenni-heterotsyklichni-spoluky-z-dvoma-heteroatomamy-piradazyn-pirymidyn-pirazyn-tiazyn-ta-yikh-hidrovani-analohy' },
       { title: 'Конденсовані гетероциклічні сполуки: пурин, бензімідазол, індол, хінолін, ізохінолін, фенотіазин', slug: 'kondensovani-heterotsyklichni-spoluky-puryn-benzimidazol-indol-khinolin-izokhinolin-fenotiazyn' }
     ],
+    videos: ['aNJRk0vB4a8', 'ERdFDvU6QlQ', 'jYXMwIuOQAY'],
     presentations: [
       {
         title: 'Гетероциклічні сполуки. Частина 1',

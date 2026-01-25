@@ -54,7 +54,7 @@ export const sections: Section[] = [
     title: 'Методи кількісного хімічного аналізу',
     slug: 'metodi-kil-kisnogo-himichnogo-analizu',
     topics: [],
-    videos: ['1144992161', '1145230055'],
+    videos: ['1144992161', '1145230055', 'driUJSmcW18'],
     notes: [
       {
         title: 'Титриметричний метод аналізу: конспект',
@@ -72,6 +72,7 @@ export const sections: Section[] = [
     title: 'Інструментальні методи дослідження',
     slug: 'instrumentalni-metodi-doslidzhennya',
     topics: [],
+    videos: ['Re3RS_0FNBg', 'QKXZRLSwlck', 'BlUqF8f5AHQ'],
     notes: [
       {
         title: 'Оптичні методи аналізу: конспект',
