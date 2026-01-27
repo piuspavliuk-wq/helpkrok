@@ -15,7 +15,7 @@ export default function PhysicalPhysicochemicalBasicsPage() {
   const [loading, setLoading] = useState(true)
   const [hasCourseAccess, setHasCourseAccess] = useState(false)
   const [checkingAccess, setCheckingAccess] = useState(true)
-  const baseSectionNumber = 10
+  const baseSectionNumber = 11
 
   useEffect(() => {
     if (session?.user?.id) {
