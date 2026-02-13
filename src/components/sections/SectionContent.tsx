@@ -169,7 +169,13 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
       })
       
       if (!response.ok) {
-        console.error('Помилка збереження прогресу:', response.status)
+        let errorBody: any = null
+        try {
+          errorBody = await response.json()
+        } catch {
+          // ігноруємо, якщо тіло не JSON
+        }
+        console.error('Помилка збереження прогресу:', response.status, errorBody)
       }
     } catch (error) {
       console.error('Помилка збереження прогресу:', error)

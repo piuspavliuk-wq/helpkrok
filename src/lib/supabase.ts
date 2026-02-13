@@ -27,9 +27,13 @@ export const supabaseAdmin = supabaseUrl && supabaseServiceKey
   : null
 
 // Функція для створення клієнта (для серверних компонентів)
+// Якщо є SUPABASE_SERVICE_ROLE_KEY — повертає адмін-клієнт (обходить RLS), інакше anon
 export function createSupabaseClientForServer() {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Supabase URL або ключ не налаштовані')
+  }
+  if (supabaseAdmin) {
+    return supabaseAdmin
   }
   return createSupabaseClient(supabaseUrl, supabaseAnonKey)
 }

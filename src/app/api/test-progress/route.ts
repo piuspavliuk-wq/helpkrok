@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
       console.error('Дані запиту:', {
         userId: session.user.id,
         testType,
+        testTypeLength: testType?.length,
         questionId,
         selectedAnswer,
         correctAnswer,
@@ -138,7 +139,8 @@ export async function POST(request: NextRequest) {
         { 
           error: 'Помилка збереження відповіді',
           details: error.message || 'Unknown error',
-          code: error.code || 'UNKNOWN'
+          code: error.code || 'UNKNOWN',
+          hint: error.details || null
         },
         { status: 500 }
       );
