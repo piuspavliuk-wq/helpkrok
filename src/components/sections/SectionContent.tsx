@@ -9,6 +9,7 @@ interface Question {
   question_text: string
   explanation: string | null
   difficulty: 'easy' | 'medium' | 'hard'
+  image_url?: string | null
   options: {
     id: string
     option_text: string
@@ -39,7 +40,9 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
   const [pdfErrors, setPdfErrors] = useState<Record<string, boolean>>({})
   const checkingPdfRef = useRef<Set<string>>(new Set())
   const [loadingProgress, setLoadingProgress] = useState(false)
-  
+  const [imageModalSrc, setImageModalSrc] = useState<string | null>(null)
+  const [failedImageKeys, setFailedImageKeys] = useState<Record<string, boolean>>({})
+
   // Унікальний ідентифікатор тесту для збереження прогресу
   const getTestIdentifier = useCallback(() => {
     const baseId = `${faculty}-${section.slug}`
@@ -99,6 +102,20 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
     }
   }, [topicId, activeTab])
   
+  // Модалка зображення: Escape та блокування скролу body
+  useEffect(() => {
+    if (!imageModalSrc) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setImageModalSrc(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [imageModalSrc])
+
   // Завантажуємо збережений прогрес коли є питання і користувач авторизований
   useEffect(() => {
     if (questions.length > 0 && session?.user?.id && activeTab === 'tests' && !testCompleted) {
@@ -299,12 +316,26 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
     saveAnswerProgress(questionId, optionId)
   }
 
+  async function handleClearAnswers() {
+    setSelectedAnswers({})
+    if (session?.user?.id) {
+      const testType = getTestIdentifier()
+      try {
+        await fetch(`/api/test-progress?testType=${encodeURIComponent(testType)}`, {
+          method: 'DELETE',
+        })
+      } catch (error) {
+        console.error('Помилка видалення прогресу:', error)
+      }
+    }
+  }
+
   async function handleRestartTest() {
     setTestCompleted(false)
     setTestScore(null)
     setShowAnswers(false)
     setSelectedAnswers({})
-    
+
     // Видаляємо збережений прогрес з бази даних
     if (session?.user?.id) {
       const testType = getTestIdentifier()
@@ -655,9 +686,18 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
                           style={{ width: `${(Object.keys(selectedAnswers).length / questions.length) * 100}%` }}
                         ></div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">
-                        ✓ Ваш прогрес автоматично зберігається
-                      </p>
+                      <div className="flex items-center justify-between mt-2 gap-4">
+                        <p className="text-xs text-gray-500">
+                          ✓ Ваш прогрес автоматично зберігається
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleClearAnswers}
+                          className="text-sm text-gray-600 hover:text-gray-800 underline focus:outline-none focus:ring-2 focus:ring-blue-400 rounded"
+                        >
+                          Скинути відповіді
+                        </button>
+                      </div>
                     </div>
                   )}
                   
@@ -688,36 +728,77 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
                           <h3 className="text-lg font-semibold text-gray-900 mb-4">
                             {question.question_text}
                           </h3>
-                          
+                          {question.image_url && (
+                            <div className="mb-4 flex-shrink-0 space-y-3" key={`img-wrap-${question.id}`}>
+                              {(question.image_url.includes(',') ? question.image_url.split(',').map((u: string) => u.trim()) : [question.image_url])
+                                .filter(Boolean)
+                                .map((url, idx) => {
+                                  const imgKey = `${question.id}-img-${idx}`
+                                  const failed = failedImageKeys[imgKey]
+                                  return (
+                                    <button
+                                      key={imgKey}
+                                      type="button"
+                                      onClick={() => !failed && setImageModalSrc(url)}
+                                      className="block text-left focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 rounded-lg"
+                                    >
+                                      {failed ? (
+                                        <div
+                                          className="rounded-lg border border-amber-200 bg-amber-50 text-amber-700 px-4 py-8 text-center text-sm"
+                                          style={{ minHeight: '120px' }}
+                                        >
+                                          Зображення недоступне. Додайте файл у{' '}
+                                          <code className="bg-amber-100 px-1 rounded">public/test-images/organic/tema1/</code>
+                                        </div>
+                                      ) : (
+                                        <img
+                                          src={url}
+                                          alt="Зображення до питання (натисніть для збільшення)"
+                                          className="max-w-full w-auto h-auto rounded-lg border border-gray-200 object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
+                                          style={{ maxHeight: '400px', minHeight: '120px' }}
+                                          onError={() => setFailedImageKeys(prev => ({ ...prev, [imgKey]: true }))}
+                                        />
+                                      )}
+                                    </button>
+                                  )
+                                })}
+                            </div>
+                          )}
                           <div className="space-y-2">
-                            {question.options
-                              .sort((a, b) => a.order_index - b.order_index)
-                              .map((option) => {
-                                const optionLetter = String.fromCharCode(65 + option.order_index)
-                                return (
-                                  <button
-                                    key={option.id}
-                                    onClick={() => handleAnswerSelect(question.id, option.id)}
-                                    className={`w-full p-4 text-left rounded-lg border-2 transition-colors ${getAnswerClass(question, option.id)}`}
-                                    disabled={showAnswers || testCompleted}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <span className="font-semibold text-gray-700">
-                                        {optionLetter}.
-                                      </span>
-                                      <span className="flex-1">{option.option_text}</span>
-                                      {showAnswers && option.is_correct && (
-                                        <span className="text-green-600 font-bold">✓</span>
-                                      )}
-                                      {showAnswers && 
-                                       selectedAnswers[question.id] === option.id && 
-                                       !option.is_correct && (
-                                        <span className="text-red-600 font-bold">✗</span>
-                                      )}
-                                    </div>
-                                  </button>
-                                )
-                              })}
+                            {((question.options) || []).length === 0 ? (
+                              <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                Варіанти відповіді для цього питання відсутні в базі. Додайте їх або переімпортуйте тест з PDF.
+                              </p>
+                            ) : (
+                              ((question.options) || [])
+                                .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+                                .map((option, index) => {
+                                  const optionLetter = String.fromCharCode(65 + index)
+                                  return (
+                                    <button
+                                      key={option.id}
+                                      onClick={() => handleAnswerSelect(question.id, option.id)}
+                                      className={`w-full p-4 text-left rounded-lg border-2 transition-colors ${getAnswerClass(question, option.id)}`}
+                                      disabled={showAnswers || testCompleted}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <span className="font-semibold text-gray-700">
+                                          {optionLetter}.
+                                        </span>
+                                        <span className="flex-1">{option.option_text}</span>
+                                        {showAnswers && option.is_correct && (
+                                          <span className="text-green-600 font-bold">✓</span>
+                                        )}
+                                        {showAnswers && 
+                                         selectedAnswers[question.id] === option.id && 
+                                         !option.is_correct && (
+                                          <span className="text-red-600 font-bold">✗</span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  )
+                                })
+                            )}
                           </div>
                           
                           {showAnswers && question.explanation && (
@@ -764,6 +845,33 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
           )}
         </div>
       </div>
+
+      {/* Модалка збільшення зображення */}
+      {imageModalSrc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setImageModalSrc(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setImageModalSrc(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Збільшене зображення"
+        >
+          <button
+            type="button"
+            onClick={() => setImageModalSrc(null)}
+            className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/90 text-gray-700 hover:bg-white text-xl font-bold shadow-lg"
+            aria-label="Закрити"
+          >
+            ×
+          </button>
+          <img
+            src={imageModalSrc}
+            alt="Збільшене зображення"
+            className="max-w-[95vw] max-h-[95vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   )
 }

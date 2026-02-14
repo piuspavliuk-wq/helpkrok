@@ -626,7 +626,7 @@ INSERT INTO question_options (question_id, option_text, is_correct, order_index)
 -- Question 38
 WITH inserted_question AS (
   INSERT INTO questions (topic_id, question_text, explanation, difficulty, order_index, is_active, image_url)
-  SELECT t.id, 'Загальна формула алкінів CnH2n−2. Який клас сполук є ізомерними алкінами?', NULL, 'medium', 38, true, '/test-images/organic/tema1/page9_img2.png'
+  SELECT t.id, 'Загальна формула алкінів CnH2n−2. Який клас сполук є ізомерними алкінами?', NULL, 'medium', 38, true, '/test-images/organic/tema1/page9_img1.png'
   FROM topics t
   JOIN courses c ON c.id = t.course_id
   WHERE c.title = 'Основи знань про органічні сполуки'
@@ -836,7 +836,7 @@ INSERT INTO question_options (question_id, option_text, is_correct, order_index)
 -- Question 51
 WITH inserted_question AS (
   INSERT INTO questions (topic_id, question_text, explanation, difficulty, order_index, is_active, image_url)
-  SELECT t.id, 'Продуктами реакції нітрування толуолу переважно будуть: o', NULL, 'medium', 51, true, '/test-images/organic/tema1/page14_img2.png'
+  SELECT t.id, 'Продуктами реакції нітрування толуолу переважно будуть: o', NULL, 'medium', 51, true, '/test-images/organic/tema1/page14_img1.png'
   FROM topics t
   JOIN courses c ON c.id = t.course_id
   WHERE c.title = 'Основи знань про органічні сполуки'

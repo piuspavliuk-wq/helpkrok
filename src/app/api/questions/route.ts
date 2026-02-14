@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       question_text: question.question_text,
       explanation: question.explanation,
       difficulty: question.difficulty,
+      image_url: question.image_url ?? null,
       options: (question.question_options || []).map((option: Record<string, unknown>) => ({
         id: option.id,
         option_text: option.option_text,
