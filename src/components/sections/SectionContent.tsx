@@ -748,7 +748,9 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
                                           style={{ minHeight: '120px' }}
                                         >
                                           Зображення недоступне. Додайте файл у{' '}
-                                          <code className="bg-amber-100 px-1 rounded">public/test-images/organic/tema1/</code>
+                                          <code className="bg-amber-100 px-1 rounded">
+                                            {url.startsWith('/') ? 'public' + url.substring(0, url.lastIndexOf('/')) : url.replace(/\/[^/]+$/, '')}/
+                                          </code>
                                         </div>
                                       ) : (
                                         <img
