@@ -28,26 +28,15 @@ export interface Section {
 
 export const sections: Section[] = [
   {
-    title: 'Нормальний розвиток і структура, вікові зміни',
+    title: 'Лімбічна система й емоційна поведінка',
     slug: 'section-18',
     topics: [],
+    videos: ['jrYeu1YfTU8'],
     notes: [
       {
-        title: 'Нормальний розвиток і структура, вікові зміни: конспект',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-18-conspect.pdf'
-      }
-    ]
-  },
-  {
-    title: 'Лімбічна система й емоційна поведінка',
-    slug: 'section-19',
-    topics: [],
-    notes: [
-      {
-        title: 'Лімбічна система й емоційна поведінка: конспект',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-19-conspect.pdf'
+        title: 'Лімбічна система: конспект',
+        description: 'Конспект лімбічної системи',
+        file: '/pdfs/Лімбічна система.pdf'
       }
     ]
   },
@@ -55,23 +44,38 @@ export const sections: Section[] = [
     title: 'Автономна нервова система і її регуляція',
     slug: 'section-20',
     topics: [],
+    videos: ['E3uOfpwFbfU'],
     notes: [
       {
-        title: 'Автономна нервова система і її регуляція: конспект',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-20-conspect.pdf'
+        title: 'Автономна нервова система: конспект',
+        description: 'Конспект автономної нервової системи',
+        file: '/pdfs/Автономна нс.pdf'
+      }
+    ]
+  },
+  {
+    title: 'Патологічні процеси',
+    slug: 'section-21',
+    topics: [],
+    videos: ['I7kwb7LmzOY'],
+    notes: [
+      {
+        title: 'Патологічні процеси ЦНС і ПНС: конспект',
+        description: 'Конспект патологічних процесів ЦНС і ПНС',
+        file: '/pdfs/Патологічні процеси ЦНС ПНС.pdf'
       }
     ]
   },
   {
     title: 'Лікарські засоби, що впливають на ЦНС і ПНС',
-    slug: 'section-21',
+    slug: 'section-22',
     topics: [],
+    videos: ['LpM2-bV6hfw'],
     notes: [
       {
-        title: 'Лікарські засоби, що впливають на ЦНС і ПНС: конспект',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/section-21-conspect.pdf'
+        title: 'Лікарські засоби ЦНС і ПНС: конспект',
+        description: 'Конспект лікарських засобів, що впливають на ЦНС і ПНС',
+        file: '/pdfs/Лікарські засоби ЦНС ПНС.pdf'
       }
     ]
   }

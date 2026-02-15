@@ -20,9 +20,16 @@ export interface Section {
 
 export const sections: Section[] = [
   {
+    title: 'Нормальний розвиток і структура, вікові зміни',
+    slug: 'normalnij-rozvitok-i-struktura',
+    topics: [],
+    videos: ['FrJk-yl93QQ']
+  },
+  {
     title: 'Біохімія крові',
     slug: 'biohimiya-krovi',
     topics: [],
+    videos: ['HE1Xf4RKQAw'],
     notes: [
       {
         title: 'Біохімія крові: конспект',
@@ -32,15 +39,29 @@ export const sections: Section[] = [
     ]
   },
   {
-    title: 'Нормальний розвиток і структура, вікові зміни',
-    slug: 'normalnij-rozvitok-i-struktura',
-    topics: []
+    title: 'Патологічні процеси',
+    slug: 'patologichni-procesi',
+    topics: [],
+    videos: ['hO2nsTnZ-ZA'],
+    notes: [
+      {
+        title: 'Патологічні процеси: конспект',
+        description: 'Конспект патологічних процесів',
+        file: '/pdfs/пат проц.pdf'
+      }
+    ]
   },
   {
     title: 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття',
     slug: 'tsns-ta-pns-organi-chuttya',
     topics: [],
+    videos: ['unA28AOUSi8'],
     notes: [
+      {
+        title: 'ЦНС: конспект',
+        description: 'Конспект ЦНС та ПНС',
+        file: '/pdfs/ЦНС.pdf'
+      },
       {
         title: 'Патологічні процеси: конспект',
         description: 'Конспект від HelpKrok',

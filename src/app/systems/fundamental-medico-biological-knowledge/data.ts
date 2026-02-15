@@ -183,11 +183,17 @@ export const sections: Section[] = [
     title: 'Мультисистемні процеси',
     slug: 'section-10',
     topics: [],
+    videos: ['bBW_AHixLxw'],
     notes: [
       {
         title: 'Мультисистемні процеси: конспект',
         description: 'Конспект від HelpKrok',
         file: '/pdfs/section-10-conspect.pdf'
+      },
+      {
+        title: 'Мультисистемні процеси: конспект 2.0',
+        description: 'Конспект мультисистеми 2.0',
+        file: '/pdfs/мультисистеми.pdf'
       }
     ]
   },
@@ -195,6 +201,7 @@ export const sections: Section[] = [
     title: 'Мікробіологічні основи діагностики, профілактики, лікування інфекційних хвороб',
     slug: 'section-11',
     topics: [],
+    videos: ['ew11lH2C5CY'],
     notes: [
       {
         title: 'Мікробіологічні основи: конспект',
@@ -207,6 +214,7 @@ export const sections: Section[] = [
     title: 'Гриби і захворювання, спричинені грибами/паразити',
     slug: 'section-12',
     topics: [],
+    videos: ['oS8b0x30dtw'],
     notes: [
       {
         title: 'Гриби і захворювання: конспект',
@@ -216,9 +224,10 @@ export const sections: Section[] = [
     ]
   },
   {
-    title: 'Імунна система, види імунітету, імунні реакції організму',
-    slug: 'section-13',
+    title: 'Імунна система, види імунітету, імунні реакції. Імунопатологія.',
+    slug: 'section-13-14',
     topics: [],
+    videos: ['OmKL5D8LtSM'],
     notes: [
       {
         title: 'Імунна система: конспект',
@@ -226,11 +235,6 @@ export const sections: Section[] = [
         file: '/pdfs/section-13-conspect.pdf'
       }
     ]
-  },
-  {
-    title: 'Імунопатологія',
-    slug: 'section-14',
-    topics: []
   }
 ]
 

@@ -15,6 +15,9 @@ import { sections as biochemicalProcessesSections } from './biochemical-processe
 import { sections as infectiousDiseaseAgentsSections } from './infectious-disease-agents/data'
 import { sections as rationalDrugUseSections } from './rational-drug-use/data'
 import { sections as morphologicalStructureVegetativeOrgansSections } from './morphological-structure-vegetative-organs/data'
+import { sections as integumentarySystemSections } from './integumentary-system/data'
+import { sections as musculoskeletalSystemSections } from './musculoskeletal-system/data'
+import { sections as respiratorySystemSections } from './respiratory-system/data'
 import { CustomSelect } from '@/components/ui/CustomSelect'
 
 const courses = [
@@ -53,6 +56,42 @@ const courses = [
     topicsCount: centralNervousSystemSections.reduce((total, section) => total + section.topics.length, 0),
     faculty: 'medical' as const,
     emoji: '🧠'
+  },
+  {
+    id: 'integumentary-system',
+    title: 'Загальний покрив (шкіра та її деривати)',
+    description:
+      'Комплексний курс з загального покриву: шкіра та її похідні для майбутніх медиків.',
+    slug: '/systems/integumentary-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: integumentarySystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🩹'
+  },
+  {
+    id: 'musculoskeletal-system',
+    title: 'Опорно-руховий апарат. Анатомія',
+    description:
+      'Комплексний курс з анатомії опорно-рухового апарату для майбутніх медиків.',
+    slug: '/systems/musculoskeletal-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: musculoskeletalSystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🦴'
+  },
+  {
+    id: 'respiratory-system',
+    title: 'Дихальна система',
+    description:
+      'Комплексний курс з дихальної системи для майбутніх медиків.',
+    slug: '/systems/respiratory-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: respiratorySystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🫁'
   },
   {
     id: 'organic-compounds-basics',
@@ -205,7 +244,10 @@ export default function CoursesPage() {
   const medicalCourseOrder = [
     'fundamental-medico-biological-knowledge',
     'blood-system-and-immunity',
-    'central-nervous-system'
+    'central-nervous-system',
+    'integumentary-system',
+    'musculoskeletal-system',
+    'respiratory-system'
   ]
   
   // Визначаємо порядок курсів фармацевтичного факультету

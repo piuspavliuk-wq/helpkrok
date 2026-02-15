@@ -234,7 +234,11 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
                               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" 
                             />
                           </svg>
-                          <span className="font-semibold">Розділ {baseSectionNumber + index}: </span>
+                          <span className="font-semibold">
+                            {section.slug === 'section-13-14'
+                              ? 'Розділ 13+14: '
+                              : `Розділ ${baseSectionNumber + index}: `}
+                          </span>
                           <span>{section.title}</span>
                         </div>
                         {section.topics.length > 0 && (
@@ -265,7 +269,11 @@ export default function FundamentalMedicoBiologicalKnowledgePage() {
                     >
                       <div className="flex-1">
                         <div className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-                          <span className="font-semibold">Розділ {baseSectionNumber + index}: </span>
+                          <span className="font-semibold">
+                            {section.slug === 'section-13-14'
+                              ? 'Розділ 13+14: '
+                              : `Розділ ${baseSectionNumber + index}: `}
+                          </span>
                           {section.title}
                         </div>
                         {section.topics.length > 0 && (
