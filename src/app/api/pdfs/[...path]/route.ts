@@ -33,7 +33,7 @@ export async function GET(
   try {
     try {
       const buf = await readFile(publicFile)
-      return new NextResponse(buf, {
+      return new NextResponse(new Uint8Array(buf), {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Length': String(buf.length),
@@ -41,7 +41,7 @@ export async function GET(
       })
     } catch {
       const buf = await readFile(srcFile)
-      return new NextResponse(buf, {
+      return new NextResponse(new Uint8Array(buf), {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Length': String(buf.length),
