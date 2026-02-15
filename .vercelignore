@@ -1,0 +1,2 @@
+# PDFs are served from public/pdfs only; exclude src/pdfs to keep deploy size under Vercel limit
+src/pdfs
