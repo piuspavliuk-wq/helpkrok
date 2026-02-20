@@ -100,8 +100,8 @@ export const sections: Section[] = [
     ]
   },
   {
-    title: 'Гетероциклічні сполуки 28,6',
-    slug: 'heterotsyklichni-spoluky-28-6',
+    title: 'Гетероциклічні сполуки 28',
+    slug: 'heterotsyklichni-spoluky-28',
     topics: [
       { title: 'П\'ятичленні гетероциклічні сполуки з одним гетероатомом: фуран, пірол та їх гідровані аналоги', slug: 'pyatychlenni-heterotsyklichni-spoluky-z-odnym-heteroatomom-furan-pirol-ta-yikh-hidrovani-analohy' },
       { title: 'П\'ятичленні гетероциклічні сполуки з двома гетероатомами: піразол, імідазол, тіазол, оксазол та їх гідровані аналоги', slug: 'pyatychlenni-heterotsyklichni-spoluky-z-dvoma-heteroatomamy-pirazol-imidazol-tiazol-oksazol-ta-yikh-hidrovani-analohy' },

@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     // Визначаємо факультет курсу
     // Оскільки courseId - це рядок типу 'fundamental-medico-biological-knowledge', 
     // а не UUID, визначаємо факультет за списком курсів
-    const medicalCourses = ['fundamental-medico-biological-knowledge', 'blood-system-and-immunity', 'central-nervous-system']
+    const medicalCourses = ['fundamental-medico-biological-knowledge', 'blood-system-and-immunity', 'central-nervous-system', 'integumentary-system', 'musculoskeletal-system', 'respiratory-system', 'cardiovascular-system', 'digestive-system', 'urinary-system', 'reproductive-system', 'endocrine-system']
     const pharmaceuticalCourses = ['organic-compounds-basics', 'pharmaceutical-analysis-theory', 'physical-physicochemical-basics', 'pharmaceutical-botany', 'pathological-processes', 'biochemical-processes', 'infectious-disease-agents', 'rational-drug-use']
     
     let courseFaculty: 'medical' | 'pharmaceutical' | null = null
@@ -189,9 +189,17 @@ export async function GET(request: NextRequest) {
     if (hasBaseAccess) {
       // Визначаємо порядок курсів залежно від факультету
       const medicalCourseOrder = [
-        'fundamental-medico-biological-knowledge', // 1-й курс
-        'blood-system-and-immunity', // 2-й курс
-        'central-nervous-system' // 3-й курс
+        'fundamental-medico-biological-knowledge',
+        'blood-system-and-immunity',
+        'central-nervous-system',
+        'integumentary-system',
+        'musculoskeletal-system',
+        'respiratory-system',
+        'cardiovascular-system',
+        'digestive-system',
+        'urinary-system',
+        'reproductive-system',
+        'endocrine-system'
       ]
       
       const pharmaceuticalCourseOrder = [

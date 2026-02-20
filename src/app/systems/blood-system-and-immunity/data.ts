@@ -23,7 +23,14 @@ export const sections: Section[] = [
     title: 'Нормальний розвиток і структура, вікові зміни',
     slug: 'normalnij-rozvitok-i-struktura',
     topics: [],
-    videos: ['FrJk-yl93QQ']
+    videos: ['FrJk-yl93QQ'],
+    notes: [
+      {
+        title: 'Системи кровотворення й імунного захисту: конспект',
+        description: 'Конспект нормального розвитку і структури',
+        file: '/pdfs/Системи_кровотворення_й_імунного_захисту.pdf'
+      }
+    ]
   },
   {
     title: 'Біохімія крові',

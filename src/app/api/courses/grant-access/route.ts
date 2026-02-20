@@ -54,7 +54,15 @@ export async function POST(request: NextRequest) {
     const medicalCourses = [
       'fundamental-medico-biological-knowledge',
       'blood-system-and-immunity',
-      'central-nervous-system'
+      'central-nervous-system',
+      'integumentary-system',
+      'musculoskeletal-system',
+      'respiratory-system',
+      'cardiovascular-system',
+      'digestive-system',
+      'urinary-system',
+      'reproductive-system',
+      'endocrine-system'
     ]
 
     const pharmaceuticalCourses = [

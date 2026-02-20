@@ -533,7 +533,7 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
                             style={{ userSelect: 'none' }}
                           >
                             <iframe
-                              src={`${note.file}#toolbar=0&navpanes=0&scrollbar=1`}
+                              src={`${encodeURI(note.file)}#toolbar=0&navpanes=0&scrollbar=1`}
                               className="w-full h-full border-0"
                               style={{ 
                                 WebkitOverflowScrolling: 'touch',
@@ -590,7 +590,7 @@ export default function SectionContent({ section, courseTitle, faculty = 'medica
                             style={{ userSelect: 'none' }}
                           >
                             <iframe
-                              src={`${presentation.file}#toolbar=0&navpanes=0&scrollbar=1`}
+                              src={`${encodeURI(presentation.file)}#toolbar=0&navpanes=0&scrollbar=1`}
                               className="w-full h-full border-0"
                               style={{ 
                                 WebkitOverflowScrolling: 'touch',

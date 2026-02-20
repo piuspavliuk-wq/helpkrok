@@ -16,19 +16,21 @@ export interface Section {
   videos?: string[]
   notes?: SectionNote[]
   tests?: string[]
+  sectionNumberLabel?: string
 }
 
 export const sections: Section[] = [
   {
-    title: 'Опорно-руховий апарат. Анатомія',
-    slug: 'oporno-ruhovij-aparat-anatomiya',
+    title: 'Репродуктивна система',
+    slug: 'reproduktivna-systema',
+    sectionNumberLabel: '35',
     topics: [],
-    videos: ['3icOlVLafbQ'],
+    videos: ['IjaWcTgKRzc'],
     notes: [
       {
-        title: 'Опорно-руховий апарат. Анатомія: конспект',
-        description: 'Конспект анатомії опорно-рухового апарату',
-        file: '/pdfs/Опорно-руховий апарат анатомія..pdf'
+        title: 'Репродуктивна система: конспект',
+        description: 'Конспект репродуктивної системи',
+        file: '/pdfs/ilovepdf_merged-7.pdf'
       }
     ]
   }

@@ -18,6 +18,11 @@ import { sections as morphologicalStructureVegetativeOrgansSections } from './mo
 import { sections as integumentarySystemSections } from './integumentary-system/data'
 import { sections as musculoskeletalSystemSections } from './musculoskeletal-system/data'
 import { sections as respiratorySystemSections } from './respiratory-system/data'
+import { sections as cardiovascularSystemSections } from './cardiovascular-system/data'
+import { sections as digestiveSystemSections } from './digestive-system/data'
+import { sections as urinarySystemSections } from './urinary-system/data'
+import { sections as reproductiveSystemSections } from './reproductive-system/data'
+import { sections as endocrineSystemSections } from './endocrine-system/data'
 import { CustomSelect } from '@/components/ui/CustomSelect'
 
 const courses = [
@@ -92,6 +97,69 @@ const courses = [
     topicsCount: respiratorySystemSections.reduce((total, section) => total + section.topics.length, 0),
     faculty: 'medical' as const,
     emoji: '🫁'
+  },
+  {
+    id: 'cardiovascular-system',
+    title: 'Серцево-судинна система',
+    description:
+      'Комплексний курс з серцево-судинної системи для майбутніх медиків.',
+    slug: '/systems/cardiovascular-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: cardiovascularSystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '❤️'
+  },
+  {
+    id: 'digestive-system',
+    title: 'Травна система',
+    description:
+      'Комплексний курс з травної системи для майбутніх медиків.',
+    slug: '/systems/digestive-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: digestiveSystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🫃',
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/4848/4848865.png'
+  },
+  {
+    id: 'urinary-system',
+    title: 'Сечова система',
+    description:
+      'Комплексний курс з сечової системи для майбутніх медиків.',
+    slug: '/systems/urinary-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: urinarySystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🫘',
+    iconUrl: 'https://cdn-icons-png.freepik.com/512/16825/16825756.png'
+  },
+  {
+    id: 'reproductive-system',
+    title: 'Репродуктивна система',
+    description:
+      'Комплексний курс з репродуктивної системи для майбутніх медиків.',
+    slug: '/systems/reproductive-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: reproductiveSystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🫃',
+    iconUrl: 'https://image.similarpng.com/file/similarpng/original-picture/2020/07/Female-reproductive-system-Clipart-PNG.png'
+  },
+  {
+    id: 'endocrine-system',
+    title: 'Ендокринна система',
+    description:
+      'Комплексний курс з ендокринної системи для майбутніх медиків.',
+    slug: '/systems/endocrine-system',
+    price: '3000 грн',
+    isTrialAvailable: true,
+    topicsCount: endocrineSystemSections.reduce((total, section) => total + section.topics.length, 0),
+    faculty: 'medical' as const,
+    emoji: '🩺'
   },
   {
     id: 'organic-compounds-basics',
@@ -247,7 +315,12 @@ export default function CoursesPage() {
     'central-nervous-system',
     'integumentary-system',
     'musculoskeletal-system',
-    'respiratory-system'
+    'respiratory-system',
+    'cardiovascular-system',
+    'digestive-system',
+    'urinary-system',
+    'reproductive-system',
+    'endocrine-system'
   ]
   
   // Визначаємо порядок курсів фармацевтичного факультету
@@ -523,9 +596,18 @@ export default function CoursesPage() {
                       <div className="relative h-56 bg-gradient-to-r from-blue-200 via-blue-100 to-sky-100">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_60%)]"></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-7xl" aria-hidden="true">
-                            {course.emoji}
-                          </span>
+                          {'iconUrl' in course && course.iconUrl ? (
+                            <img
+                              src={course.iconUrl}
+                              alt=""
+                              className="h-20 w-20 object-contain sm:h-24 sm:w-24"
+                              aria-hidden
+                            />
+                          ) : (
+                            <span className="text-7xl" aria-hidden="true">
+                              {course.emoji}
+                            </span>
+                          )}
                         </div>
                         <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-none bg-white/75 backdrop-blur-sm opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                           <div className="flex flex-col items-center gap-2 text-gray-800">

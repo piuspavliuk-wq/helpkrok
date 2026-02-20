@@ -20,17 +20,24 @@ export interface Section {
 
 export const sections: Section[] = [
   {
-    title: 'Опорно-руховий апарат. Анатомія',
-    slug: 'oporno-ruhovij-aparat-anatomiya',
+    title: 'Серцево-судинна система, патологічні процеси',
+    slug: 'serdevo-sudynna-systema-tema-patologichni-procesy',
     topics: [],
-    videos: ['3icOlVLafbQ'],
+    videos: ['RfEXMXI8RIw', 'm9NuK44KcBQ'],
     notes: [
       {
-        title: 'Опорно-руховий апарат. Анатомія: конспект',
-        description: 'Конспект анатомії опорно-рухового апарату',
-        file: '/pdfs/Опорно-руховий апарат анатомія..pdf'
+        title: 'Серцево-судинна система: конспект',
+        description: 'Конспект серцево-судинної системи',
+        file: '/pdfs/Серцево-судинна система.pdf'
       }
     ]
+  },
+  {
+    title: 'Лікарські засоби серцево-судинної системи',
+    slug: 'likarski-zasoby-serdevo-sudynnoji-systemy',
+    topics: [],
+    videos: ['ORCjFFQ40XI'],
+    notes: []
   }
 ]
 

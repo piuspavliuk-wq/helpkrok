@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Parse DOCX questions and generate SQL for topic "ВСТУП. Основи знань про органічні сполуки".
+Parse DOCX questions and generate SQL for organic chemistry topics.
 
 Usage:
-  python parse_tema1_docx_to_sql.py /path/to/Тема_1_Вуглеводні_та_їх_галогенопохідні.docx
+  python parse_tema1_docx_to_sql.py /path/to/file.docx
+  python parse_tema1_docx_to_sql.py /path/to/file.docx --topic "Гетероциклічні сполуки 28,6" --images-subdir heterotsyklichni --header-lines 2
 
 Outputs:
-  - public/test-images/organic/vstup/img{N}.png (extracted images)
-  - supabase/vstup-questions.sql (INSERT statements)
+  - public/test-images/organic/{subdir}/img{N}.png (extracted images)
+  - supabase/{output}.sql (INSERT statements)
 """
 
+import argparse
 import os
 import re
 import sys
@@ -19,17 +21,11 @@ from pathlib import Path
 from docx import Document
 
 COURSE_TITLE = "Основи знань про органічні сполуки"
-TOPIC_TITLE = "ВСТУП. Основи знань про органічні сполуки"
-IMAGES_DIR = "public/test-images/organic/vstup"
-PUBLIC_PREFIX = "/test-images/organic/vstup"
-SQL_OUTPUT = "supabase/vstup-questions.sql"
 
-# Paragraph indices that contain embedded images (empty text, have drawing)
-IMAGE_PARAGRAPH_INDICES = {
-    10, 41, 72, 79, 86, 94, 131, 162, 169, 176, 183, 208, 239, 246,
-    265, 266, 369, 405, 430, 437, 450, 474, 493, 500, 513, 520, 527,
-    534, 535, 554, 561, 598, 606, 626, 651, 688,
-}
+# Defaults for Тема 1
+DEFAULT_TOPIC = "ВСТУП. Основи знань про органічні сполуки"
+DEFAULT_SUBDIR = "vstup"
+DEFAULT_HEADER_LINES = 8
 
 
 def has_drawing(para) -> bool:
@@ -83,15 +79,20 @@ def looks_like_question(text: str) -> bool:
     return t.endswith(":") or t.endswith("?") or t.endswith(".")
 
 
-def parse_questions(doc, rid_to_path: dict) -> list:
+def parse_questions(doc, rid_to_path: dict, header_lines: int = 8) -> list:
     """
     Parse document into list of {question_text, image_urls, options}.
     Images are associated with the question they follow in document flow.
     """
     questions = []
     paras = doc.paragraphs
-    pos = 8  # Skip P0-P7 (headers)
+    pos = header_lines
     pending_question_prefix = None
+
+    def is_image_para(idx: int) -> bool:
+        if idx >= len(paras):
+            return False
+        return has_drawing(paras[idx])
 
     while pos < len(paras):
         p = paras[pos]
@@ -108,7 +109,7 @@ def parse_questions(doc, rid_to_path: dict) -> list:
 
         # Image paragraph - add to current (last) question
         # If we have pending_question_prefix, the image belongs to the NEXT question - start it first
-        if pos in IMAGE_PARAGRAPH_INDICES and has_drawing(p):
+        if is_image_para(pos):
             if pending_question_prefix and questions and len(questions[-1]["options"]) == 5:
                 questions.append({
                     "question_text": pending_question_prefix,
@@ -120,11 +121,6 @@ def parse_questions(doc, rid_to_path: dict) -> list:
             paths = [rid_to_path[r] for r in rids if r in rid_to_path]
             if questions and paths:
                 questions[-1]["image_urls"].extend(paths)
-            pos += 1
-            continue
-
-        # Empty image-only paragraph
-        if pos in IMAGE_PARAGRAPH_INDICES and not text:
             pos += 1
             continue
 
@@ -167,13 +163,14 @@ def parse_questions(doc, rid_to_path: dict) -> list:
     return questions
 
 
-def extract_images_in_order(docx_path: str, doc, output_dir: str) -> dict:
+def extract_images_in_order(
+    docx_path: str, doc, output_dir: str, public_prefix: str
+) -> dict:
     """
     Extract images in document order and build rid_to_path.
     Must be called before parse_questions so we have paths for image association.
     """
     os.makedirs(output_dir, exist_ok=True)
-    seen_rids = {}
     rid_to_path = {}
     img_counter = [0]
 
@@ -202,45 +199,47 @@ def extract_images_in_order(docx_path: str, doc, output_dir: str) -> dict:
             out_path = os.path.join(output_dir, out_name)
             with open(out_path, "wb") as f:
                 f.write(data)
-            public_path = f"{PUBLIC_PREFIX}/{out_name}"
+            public_path = f"{public_prefix}/{out_name}"
             rid_to_path[rid] = public_path
             return public_path
 
-        # Iterate paragraphs in order, extract images as we go
-        for i, para in enumerate(doc.paragraphs):
-            if i in IMAGE_PARAGRAPH_INDICES and has_drawing(para):
+        for para in doc.paragraphs:
+            if has_drawing(para):
                 for rid in get_image_rids(para):
                     get_path_for_rid(rid)
 
     return rid_to_path
 
 
-def generate_sql(questions: list, sql_path: str) -> None:
+def generate_sql(
+    questions: list, sql_path: str, topic_title: str, course_title: str = COURSE_TITLE
+) -> None:
     """Generate SQL file."""
+    topic_esc = sql_escape(topic_title)
     lines = [
         "BEGIN;",
         "",
-        f"-- Тема: {TOPIC_TITLE}. Питання з Тема_1_Вуглеводні_та_їх_галогенопохідні.docx",
+        f"-- Тема: {topic_title}",
         "",
         "INSERT INTO topics (course_id, title, description, order_index, is_active)",
-        f"SELECT c.id, '{TOPIC_TITLE}', '{TOPIC_TITLE}', 0, true",
+        f"SELECT c.id, '{topic_esc}', '{topic_esc}', 0, true",
         f"FROM courses c",
-        f"WHERE c.title = '{COURSE_TITLE}'",
-        f"  AND NOT EXISTS (SELECT 1 FROM topics t WHERE t.course_id = c.id AND t.title = '{TOPIC_TITLE}');",
+        f"WHERE c.title = '{course_title}'",
+        f"  AND NOT EXISTS (SELECT 1 FROM topics t WHERE t.course_id = c.id AND t.title = '{topic_esc}');",
         "",
         "DELETE FROM question_options WHERE question_id IN (",
         "  SELECT q.id FROM questions q",
         "  JOIN topics t ON t.id = q.topic_id",
         "  JOIN courses c ON c.id = t.course_id",
-        f"  WHERE c.title = '{COURSE_TITLE}'",
-        f"    AND t.title = '{TOPIC_TITLE}'",
+        f"  WHERE c.title = '{course_title}'",
+        f"    AND t.title = '{topic_esc}'",
         ");",
         "",
         "DELETE FROM questions WHERE topic_id = (",
         "  SELECT t.id FROM topics t",
         "  JOIN courses c ON c.id = t.course_id",
-        f"  WHERE c.title = '{COURSE_TITLE}'",
-        f"    AND t.title = '{TOPIC_TITLE}'",
+        f"  WHERE c.title = '{course_title}'",
+        f"    AND t.title = '{topic_esc}'",
         ");",
         "",
     ]
@@ -254,9 +253,6 @@ def generate_sql(questions: list, sql_path: str) -> None:
             image_url = "'" + image_url + "'"
 
         opts = q.get("options", [])
-        if len(opts) != 5:
-            # Log warning but still emit
-            pass
 
         lines.append(f"-- Question {order_idx}")
         lines.append("WITH inserted_question AS (")
@@ -268,8 +264,8 @@ def generate_sql(questions: list, sql_path: str) -> None:
         )
         lines.append("  FROM topics t")
         lines.append("  JOIN courses c ON c.id = t.course_id")
-        lines.append(f"  WHERE c.title = '{COURSE_TITLE}'")
-        lines.append(f"    AND t.title = '{TOPIC_TITLE}'")
+        lines.append(f"  WHERE c.title = '{course_title}'")
+        lines.append(f"    AND t.title = '{topic_esc}'")
         lines.append("  RETURNING id")
         lines.append(")")
         opt_rows = []
@@ -291,35 +287,59 @@ def generate_sql(questions: list, sql_path: str) -> None:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(
-            "Usage: python parse_tema1_docx_to_sql.py /path/to/Тема_1_Вуглеводні_та_їх_галогенопохідні.docx",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Parse DOCX questions and generate SQL for organic chemistry topics."
+    )
+    parser.add_argument("docx_path", help="Path to .docx file")
+    parser.add_argument(
+        "--topic",
+        default=DEFAULT_TOPIC,
+        help=f"Topic title (default: {DEFAULT_TOPIC})",
+    )
+    parser.add_argument(
+        "--images-subdir",
+        default=DEFAULT_SUBDIR,
+        help=f"Subdir under public/test-images/organic/ (default: {DEFAULT_SUBDIR})",
+    )
+    parser.add_argument(
+        "--header-lines",
+        type=int,
+        default=DEFAULT_HEADER_LINES,
+        help=f"Paragraphs to skip at start (default: {DEFAULT_HEADER_LINES})",
+    )
+    parser.add_argument(
+        "--sql-output",
+        default=None,
+        help="Output SQL filename (default: derived from subdir)",
+    )
+    args = parser.parse_args()
 
-    docx_path = sys.argv[1]
+    docx_path = args.docx_path
     if not os.path.isfile(docx_path):
         print(f"File not found: {docx_path}", file=sys.stderr)
         sys.exit(1)
 
     script_dir = Path(__file__).parent.resolve()
-    images_dir = script_dir / IMAGES_DIR
-    sql_path = script_dir / SQL_OUTPUT
+    images_dir = script_dir / "public" / "test-images" / "organic" / args.images_subdir
+    public_prefix = f"/test-images/organic/{args.images_subdir}"
+    sql_name = args.sql_output or f"{args.images_subdir}-questions.sql"
+    sql_path = script_dir / "supabase" / sql_name
 
     print("Loading document...", file=sys.stderr)
     doc = Document(docx_path)
 
     print("Extracting images...", file=sys.stderr)
-    rid_to_path = extract_images_in_order(docx_path, doc, str(images_dir))
+    rid_to_path = extract_images_in_order(
+        docx_path, doc, str(images_dir), public_prefix
+    )
     print(f"  Extracted {len(rid_to_path)} images to {images_dir}", file=sys.stderr)
 
     print("Parsing questions...", file=sys.stderr)
-    questions = parse_questions(doc, rid_to_path)
+    questions = parse_questions(doc, rid_to_path, args.header_lines)
     print(f"  Found {len(questions)} questions", file=sys.stderr)
 
     print("Generating SQL...", file=sys.stderr)
-    generate_sql(questions, str(sql_path))
+    generate_sql(questions, str(sql_path), args.topic)
     print(f"  Written to {sql_path}", file=sys.stderr)
     print("Done.", file=sys.stderr)
 

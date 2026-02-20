@@ -34,9 +34,17 @@ async function checkAndUnlockNextCourse(userId: string, topicId: string) {
 
     // Визначаємо порядок курсів медичного факультету
     const medicalCourseOrder = [
-      'fundamental-medico-biological-knowledge', // 1-й курс
-      'blood-system-and-immunity', // 2-й курс
-      'central-nervous-system' // 3-й курс
+      'fundamental-medico-biological-knowledge',
+      'blood-system-and-immunity',
+      'central-nervous-system',
+      'integumentary-system',
+      'musculoskeletal-system',
+      'respiratory-system',
+      'cardiovascular-system',
+      'digestive-system',
+      'urinary-system',
+      'reproductive-system',
+      'endocrine-system'
     ]
 
     const courseIndex = medicalCourseOrder.indexOf(courseSlug)
