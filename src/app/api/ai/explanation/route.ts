@@ -2,60 +2,89 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 
-// Функція для отримання доступних моделей та автоматичного вибору підходящої
+// Пріоритет моделей за вартістю: спочатку найдешевші (Flash), потім Pro.
+// Gemini 2.5 Flash — оптимальний варіант: недорого й якісно.
+const CHEAPEST_MODELS_FIRST = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-2.5-pro',
+  'gemini-1.5-pro',
+  'gemini-pro'
+];
+
+// Функція для отримання доступних моделей та вибору найвигіднішої (найдешевшої)
 async function fetchAvailableModel(): Promise<string> {
   try {
     if (!GEMINI_API_KEY) {
-      return 'gemini-1.5-flash'; // дефолт якщо немає API ключа
+      return CHEAPEST_MODELS_FIRST[0];
     }
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`, {
       headers: {
-        'Authorization': `Bearer ${GEMINI_API_KEY}`,
         'Content-Type': 'application/json'
       }
     });
 
     if (!response.ok) {
       console.warn('Не вдалося отримати список моделей, використовуємо дефолт');
-      return 'gemini-1.5-flash';
+      return CHEAPEST_MODELS_FIRST[0];
     }
 
     const data = await response.json();
     const models = data.models || [];
 
-    // Шукаємо першу модель, яка підтримує generateContent (пріоритет) або generateText
+    const toModelId = (name: string) => (name || '').replace(/^models\//, '');
+
+    // Збираємо id моделей, які підтримують generateContent
+    const availableIds = new Set<string>();
     for (const model of models) {
-      const supportedMethods = model.supportedGenerationMethods || [];
-      if (supportedMethods.includes('generateContent')) {
-        console.log(`✅ Вибрано модель з generateContent: ${model.name}`);
-        return model.name;
+      const methods = model.supportedGenerationMethods || [];
+      if (methods.includes('generateContent')) {
+        const id = toModelId(model.name);
+        if (id) availableIds.add(id);
       }
     }
-    
-    // Якщо немає моделей з generateContent, шукаємо з generateText
+    if (availableIds.size === 0) {
+      for (const model of models) {
+        const methods = model.supportedGenerationMethods || [];
+        if (methods.includes('generateText')) {
+          const id = toModelId(model.name);
+          if (id) availableIds.add(id);
+        }
+      }
+    }
+
+    // Обираємо першу з нашого списку "від дешевих до дорогих", яка доступна
+    for (const id of CHEAPEST_MODELS_FIRST) {
+      if (availableIds.has(id)) {
+        console.log(`✅ Вибрано найвигіднішу модель: ${id}`);
+        return id;
+      }
+    }
+
+    // Якщо жодна з пріоритетних недоступна — беремо будь-яку першу з API
     for (const model of models) {
-      const supportedMethods = model.supportedGenerationMethods || [];
-      if (supportedMethods.includes('generateText')) {
-        console.log(`✅ Вибрано модель з generateText: ${model.name}`);
-        return model.name;
+      const methods = model.supportedGenerationMethods || [];
+      if (methods.includes('generateContent') || methods.includes('generateText')) {
+        const id = toModelId(model.name);
+        if (id) {
+          console.log(`✅ Вибрано модель з API: ${id}`);
+          return id;
+        }
       }
     }
 
     console.warn('Не знайдено підходящих моделей, використовуємо дефолт');
-    return 'gemini-1.5-flash';
+    return CHEAPEST_MODELS_FIRST[0];
   } catch (error) {
     console.error('Помилка при отриманні моделей:', error);
-    return 'gemini-1.5-flash';
+    return CHEAPEST_MODELS_FIRST[0];
   }
 }
 
-// Актуальні моделі Gemini на 2025 рік (безкоштовні та доступні):
-// - gemini-1.5-flash (швидка, економна)
-// - gemini-1.5-pro (потужна, для складних завдань)
-// - gemini-2.0-flash-exp (експериментальна)
-// - gemini-pro (legacy, якщо доступна)
-const SUPPORTED_METHOD = 'generateContent'; // або 'generateText'
+// Метод API для генерації тексту.
+const SUPPORTED_METHOD = 'generateContent';
 
 // Функція для очищення форматування від AI та покращення структури тексту
 function cleanAIFormatting(text: string): string {
@@ -97,14 +126,9 @@ export async function POST(request: NextRequest) {
     // Цей код автоматично вибирає правильну модель, яку реально підтримує API-ключ
     let GEMINI_MODEL = await fetchAvailableModel();
     
-    // Fallback: якщо автоматичний вибір повернув дефолт, спробуємо популярні моделі
-    if (GEMINI_MODEL === 'gemini-1.5-flash') {
-      const fallbackModels = [
-        'gemini-1.5-flash',
-        'gemini-1.5-pro', 
-        'gemini-2.0-flash-exp',
-        'gemini-pro'
-      ];
+    // Fallback: якщо обрано дефолтну модель, перевіряємо по списку від дешевих до дорогих
+    if (GEMINI_MODEL === CHEAPEST_MODELS_FIRST[0]) {
+      const fallbackModels = [...CHEAPEST_MODELS_FIRST];
       
       for (const model of fallbackModels) {
         try {
@@ -193,7 +217,7 @@ ${selectedAnswer ? `ОБРАНА ВІДПОВІДЬ: ${selectedAnswer}` : ''}
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 4096,
         }
       })
     });
@@ -204,6 +228,26 @@ ${selectedAnswer ? `ОБРАНА ВІДПОВІДЬ: ${selectedAnswer}` : ''}
     if (!response.ok) {
       const errorData = await response.text();
       console.error('❌ Gemini API error:', response.status, errorData);
+      
+      // Спеціальна обробка помилки 400 (API key expired / invalid)
+      if (response.status === 400) {
+        try {
+          const errJson = JSON.parse(errorData);
+          const msg = errJson?.error?.message || '';
+          const isKeyError = msg.includes('expired') || msg.includes('API key') ||
+            (Array.isArray(errJson?.error?.details) && errJson.error.details.some((d: { reason?: string }) => d.reason === 'API_KEY_INVALID'));
+          if (isKeyError) {
+            return NextResponse.json(
+              {
+                error: 'Ключ Google Gemini застарів або недійсний.\n\nПереконайтесь, що:\n1. Ключ створений на https://aistudio.google.com/apikey\n2. У .env.local вказано GOOGLE_GEMINI_API_KEY=ваш_ключ\n3. Після зміни .env.local перезапущено dev-сервер (npm run dev)',
+                errorCode: 400,
+                errorType: 'API_KEY_INVALID'
+              },
+              { status: 500 }
+            );
+          }
+        } catch (_) { /* ignore */ }
+      }
       
       // Спеціальна обробка помилки 429 (Quota exceeded)
       if (response.status === 429) {
@@ -231,7 +275,7 @@ ${selectedAnswer ? `ОБРАНА ВІДПОВІДЬ: ${selectedAnswer}` : ''}
       // Якщо помилка 404, спробуємо іншу модель
       if (response.status === 404) {
         console.log('🔄 Спробуємо іншу модель через fallback...');
-        const fallbackModels = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-pro'];
+        const fallbackModels = [...CHEAPEST_MODELS_FIRST];
         
         for (const fallbackModel of fallbackModels) {
           try {
@@ -253,7 +297,7 @@ ${selectedAnswer ? `ОБРАНА ВІДПОВІДЬ: ${selectedAnswer}` : ''}
                   temperature: 0.7,
                   topK: 40,
                   topP: 0.95,
-                  maxOutputTokens: 1024,
+                  maxOutputTokens: 4096,
                 }
               })
             });

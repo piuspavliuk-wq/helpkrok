@@ -588,8 +588,22 @@ function RandomizerTestContent() {
                       }`}
                     >
                       <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <CardTitle className="text-lg font-bold text-gray-800 flex-1">
+                        <div className="space-y-2">
+                          {/* Мітка Правильно/Неправильно зверху — не займає місце біля тексту питання */}
+                          <div className="flex justify-end">
+                            {isCorrect ? (
+                              <div className="flex items-center text-green-600 font-semibold">
+                                <Check className="w-5 h-5 mr-1" />
+                                <span>Правильно</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center text-red-600 font-semibold">
+                                <X className="w-5 h-5 mr-1" />
+                                <span>Неправильно</span>
+                              </div>
+                            )}
+                          </div>
+                          <CardTitle className="text-lg font-bold text-gray-800">
                             <span className={`font-bold mr-3 ${
                               isCorrect ? 'text-green-600' : 'text-red-600'
                             }`}>
@@ -607,19 +621,6 @@ function RandomizerTestContent() {
                               </div>
                             )}
                           </CardTitle>
-                          <div className="ml-4">
-                            {isCorrect ? (
-                              <div className="flex items-center text-green-600 font-semibold">
-                                <Check className="w-6 h-6 mr-1" />
-                                <span>Правильно</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center text-red-600 font-semibold">
-                                <X className="w-6 h-6 mr-1" />
-                                <span>Неправильно</span>
-                              </div>
-                            )}
-                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-2">

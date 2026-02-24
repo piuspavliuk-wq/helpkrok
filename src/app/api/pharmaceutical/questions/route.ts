@@ -39,12 +39,100 @@ export async function GET(request: NextRequest) {
       query = query.eq('category', category);
     }
 
-    // Сортування
-    if (random) {
-      query = query.order('id', { ascending: false });
-    } else {
-      query = query.order('id', { ascending: true });
+    // Справді випадковий набір питань: спочатку отримуємо id (з фільтрами), випадково вибираємо limit, потім завантажуємо повні рядки
+    if (random && limit) {
+      const allIds: number[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        let pageQuery = supabase
+          .from('pharmaceutical_questions')
+          .select('id')
+          .eq('is_active', true)
+          .eq('faculty', 'pharmaceutical');
+        if (year) pageQuery = pageQuery.eq('year', parseInt(year));
+        if (subject) pageQuery = pageQuery.eq('subject', subject);
+        if (category) pageQuery = pageQuery.eq('category', category);
+        const { data: pageData, error: pageErr } = await pageQuery.range(from, from + pageSize - 1);
+        if (pageErr || !pageData?.length) break;
+        allIds.push(...pageData.map((r: { id: number }) => r.id));
+        if (pageData.length < pageSize) break;
+        from += pageSize;
+      }
+
+      // Fisher-Yates: випадково вибираємо limit id з усіх
+      const sampleSize = Math.min(limit, allIds.length);
+      const pickedIds: number[] = [];
+      const indices = [...Array(allIds.length).keys()];
+      for (let i = 0; i < sampleSize; i++) {
+        const j = i + Math.floor(Math.random() * (indices.length - i));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+        pickedIds.push(allIds[indices[i]]);
+      }
+
+      if (pickedIds.length === 0) {
+        return NextResponse.json({
+          questions: [],
+          total: 0,
+          returned: 0
+        });
+      }
+
+      const { data: questions, error } = await supabase
+        .from('pharmaceutical_questions')
+        .select('*')
+        .in('id', pickedIds);
+
+      if (error) {
+        console.error('Error fetching pharmaceutical questions by ids:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch questions' },
+          { status: 500 }
+        );
+      }
+
+      // Зберігаємо порядок як у pickedIds (вже випадковий)
+      const idToRow = new Map((questions || []).map((q: any) => [q.id, q]));
+      const orderedQuestions = pickedIds.map(id => idToRow.get(id)).filter(Boolean);
+
+      const formattedQuestions = orderedQuestions.map((q: any) => ({
+        id: q.id,
+        question_text: q.question_text,
+        question_image: q.question_image,
+        option_a: q.option_a,
+        option_a_image: q.option_a_image,
+        option_b: q.option_b,
+        option_b_image: q.option_b_image,
+        option_c: q.option_c,
+        option_c_image: q.option_c_image,
+        option_d: q.option_d,
+        option_d_image: q.option_d_image,
+        option_e: q.option_e,
+        option_e_image: q.option_e_image,
+        correct_answer: q.correct_answer,
+        explanation: q.explanation_text,
+        year: q.year,
+        faculty: q.faculty,
+        subject: q.subject,
+        category: q.category,
+        question_type: q.question_type,
+        created_at: q.created_at
+      }));
+
+      const { count: totalCount } = await supabase
+        .from('pharmaceutical_questions')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .eq('faculty', 'pharmaceutical');
+
+      return NextResponse.json({
+        questions: formattedQuestions,
+        total: totalCount ?? formattedQuestions.length,
+        returned: formattedQuestions.length
+      });
     }
+
+    // Звичайний запит: сортування по id
 
     // Ліміт
     if (limit) {
@@ -92,20 +180,6 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true)
       .eq('faculty', 'pharmaceutical');
-
-    // Якщо потрібно випадковий порядок, перемішуємо в JavaScript
-    if (random && formattedQuestions.length > 0) {
-      const shuffledQuestions = [...formattedQuestions];
-      for (let i = shuffledQuestions.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
-      }
-      return NextResponse.json({ 
-        questions: shuffledQuestions,
-        total: totalCount || formattedQuestions.length,
-        returned: shuffledQuestions.length
-      });
-    }
 
     return NextResponse.json({ 
       questions: formattedQuestions,

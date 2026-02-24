@@ -41,12 +41,99 @@ export async function GET(request: NextRequest) {
       query = query.eq('difficulty', difficulty);
     }
 
-    // Сортування
+    // Якщо потрібно справді випадковий набір питань — використовуємо SQL RPC або fallback по id
     if (random) {
-      query = query.order('id', { ascending: false }); // Використовуємо RANDOM() в SQL
-    } else {
-      query = query.order('id', { ascending: true });
+      const requestLimit = limit || 150;
+      let rawQuestions: any[] | null = null;
+
+      const { data: rpcQuestions, error: rpcError } = await supabase.rpc('get_random_krok_questions_unified', {
+        p_year: year ? parseInt(year) : null,
+        p_faculty: faculty || 'medical',
+        p_category: category || null,
+        p_difficulty: difficulty || null,
+        p_limit: requestLimit
+      });
+
+      if (!rpcError && rpcQuestions?.length) {
+        rawQuestions = rpcQuestions;
+      } else {
+        if (rpcError) {
+          console.warn('RPC get_random_krok_questions_unified failed, using id-based random sample:', rpcError.message);
+        }
+        // Fallback: отримуємо всі id з фільтрами, випадково вибираємо requestLimit, потім завантажуємо рядки
+        const allIds: number[] = [];
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+          let pageQuery = supabase
+            .from('krok_questions_unified')
+            .select('id')
+            .eq('is_active', true)
+            .eq('faculty', faculty || 'medical');
+          if (year) pageQuery = pageQuery.eq('year', parseInt(year));
+          if (category) pageQuery = pageQuery.eq('category', category);
+          if (difficulty) pageQuery = pageQuery.eq('difficulty', difficulty);
+          const { data: pageData, error: pageErr } = await pageQuery.range(from, from + pageSize - 1);
+          if (pageErr || !pageData?.length) break;
+          allIds.push(...pageData.map((r: { id: number }) => r.id));
+          if (pageData.length < pageSize) break;
+          from += pageSize;
+        }
+        const sampleSize = Math.min(requestLimit, allIds.length);
+        const indices = [...Array(allIds.length).keys()];
+        const pickedIds: number[] = [];
+        for (let i = 0; i < sampleSize; i++) {
+          const j = i + Math.floor(Math.random() * (indices.length - i));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+          pickedIds.push(allIds[indices[i]]);
+        }
+        if (pickedIds.length > 0) {
+          const { data: byId } = await supabase
+            .from('krok_questions_unified')
+            .select('*')
+            .in('id', pickedIds);
+          const idToRow = new Map((byId || []).map((r: any) => [r.id, r]));
+          rawQuestions = pickedIds.map(id => idToRow.get(id)).filter(Boolean);
+        }
+      }
+
+      const shuffledQuestions = (rawQuestions || []).slice(0, requestLimit);
+
+      const formattedQuestions = shuffledQuestions.map((q: any) => ({
+        id: q.id,
+        question_text: q.question_text,
+        year: q.year,
+        faculty: q.faculty,
+        category: q.category,
+        difficulty: q.difficulty,
+        options: [
+          { letter: 'A', text: q.option_a || '', is_correct: q.correct_answer === 'A' },
+          { letter: 'B', text: q.option_b || '', is_correct: q.correct_answer === 'B' },
+          { letter: 'C', text: q.option_c || '', is_correct: q.correct_answer === 'C' },
+          { letter: 'D', text: q.option_d || '', is_correct: q.correct_answer === 'D' },
+          { letter: 'E', text: q.option_e || '', is_correct: q.correct_answer === 'E' }
+        ].filter(option => option.text.trim() !== ''),
+        explanation_text: q.explanation_text,
+        reference_text: q.reference_text,
+        correct_answer: q.correct_answer
+      }));
+
+      const { count: totalInDatabase } = await supabase
+        .from('krok_questions_unified')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .eq('faculty', faculty || 'medical');
+
+      return NextResponse.json({
+        questions: formattedQuestions,
+        total: totalInDatabase || formattedQuestions.length,
+        returned: formattedQuestions.length,
+        filters: { year, faculty, category, difficulty, limit, random }
+      });
     }
+
+    // Звичайний запит без random — сортування по id
+    query = query.order('id', { ascending: true });
 
     // Ліміт
     if (limit) {
@@ -100,18 +187,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Якщо потрібно випадковий порядок, перемішуємо в JavaScript
-    let shuffledQuestions = questions || [];
-    if (random) {
-      shuffledQuestions = questions?.sort(() => Math.random() - 0.5) || [];
-      // Обмежуємо кількість після перемішування
-      if (limit && shuffledQuestions.length > limit) {
-        shuffledQuestions = shuffledQuestions.slice(0, limit);
-      }
-    }
-
     // Форматуємо відповідь у формат, сумісний з існуючими компонентами
-    const formattedQuestions = shuffledQuestions.map(q => ({
+    const formattedQuestions = (questions || []).map(q => ({
       id: q.id,
       question_text: q.question_text,
       year: q.year,
