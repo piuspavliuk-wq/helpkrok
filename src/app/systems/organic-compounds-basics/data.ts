@@ -127,12 +127,6 @@ export const sections: Section[] = [
         description: 'Презентація: Тема 16 - Конденсовані гетероциклічні сполуки'
       }
     ]
-  },
-  {
-    title: 'Вуглеводи',
-    slug: 'vuhlevody',
-    description: 'моносахариди, ди- та полісахариди',
-    topics: []
   }
 ]
 

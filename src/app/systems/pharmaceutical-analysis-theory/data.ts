@@ -28,18 +28,6 @@ export interface Section {
 
 export const sections: Section[] = [
   {
-    title: 'Фазова рівновага',
-    slug: 'fazova-rivnovaga',
-    topics: [],
-    notes: [
-      {
-        title: 'Фазова рівновага: конспект',
-        description: 'Конспект від HelpKrok',
-        file: '/pdfs/PDF-файл.pdf'
-      }
-    ]
-  },
-  {
     title: 'Якісний аналіз. Реакції ідентифікації іонів',
     slug: 'yakisniy-analiz-reaktsiyi-identifikatsiyi-ioniv',
     topics: [],
@@ -100,6 +88,18 @@ export const sections: Section[] = [
         title: 'Хроматографічні методи аналізу: конспект',
         description: 'Конспект від HelpKrok',
         file: '/pdfs/instrumentalni-hromatografiya.pdf'
+      }
+    ]
+  },
+  {
+    title: 'Фазова рівновага',
+    slug: 'fazova-rivnovaga',
+    topics: [],
+    notes: [
+      {
+        title: 'Фазова рівновага: конспект',
+        description: 'Конспект від HelpKrok',
+        file: '/pdfs/PDF-файл.pdf'
       }
     ]
   }
