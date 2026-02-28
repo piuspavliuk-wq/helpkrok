@@ -312,6 +312,16 @@ def main():
         default=None,
         help="Output SQL filename (default: derived from subdir)",
     )
+    parser.add_argument(
+        "--course",
+        default=COURSE_TITLE,
+        help=f"Course title in DB (default: {COURSE_TITLE!r})",
+    )
+    parser.add_argument(
+        "--images-base",
+        default="organic",
+        help="Base dir under public/test-images/ for images (default: organic)",
+    )
     args = parser.parse_args()
 
     docx_path = args.docx_path
@@ -320,8 +330,8 @@ def main():
         sys.exit(1)
 
     script_dir = Path(__file__).parent.resolve()
-    images_dir = script_dir / "public" / "test-images" / "organic" / args.images_subdir
-    public_prefix = f"/test-images/organic/{args.images_subdir}"
+    images_dir = script_dir / "public" / "test-images" / args.images_base / args.images_subdir
+    public_prefix = f"/test-images/{args.images_base}/{args.images_subdir}"
     sql_name = args.sql_output or f"{args.images_subdir}-questions.sql"
     sql_path = script_dir / "supabase" / sql_name
 
@@ -339,7 +349,7 @@ def main():
     print(f"  Found {len(questions)} questions", file=sys.stderr)
 
     print("Generating SQL...", file=sys.stderr)
-    generate_sql(questions, str(sql_path), args.topic)
+    generate_sql(questions, str(sql_path), args.topic, args.course)
     print(f"  Written to {sql_path}", file=sys.stderr)
     print("Done.", file=sys.stderr)
 
