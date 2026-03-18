@@ -60,13 +60,35 @@ export async function GET(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    // Нормалізуємо ідентифікатор курсу:
+    // - фронт часто передає UUID (courses.id)
+    // - платежі / course_access в багатьох місцях використовують slug як ідентифікатор курсу
+    let normalizedCourseId = courseId
+    let normalizedCourseFaculty: 'medical' | 'pharmaceutical' | null = null
+    try {
+      const { data: courseRow } = await supabase
+        .from('courses')
+        .select('id, slug, faculty')
+        .eq('id', courseId)
+        .maybeSingle()
+
+      if (courseRow?.slug) {
+        normalizedCourseId = courseRow.slug
+      }
+      if (courseRow?.faculty) {
+        normalizedCourseFaculty = courseRow.faculty as 'medical' | 'pharmaceutical'
+      }
+    } catch {
+      // Якщо таблиця не має slug або courseId не UUID — ігноруємо, працюємо як є
+    }
+
     // Перевіряємо чи є успішний платіж за курс
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .select('*')
       .eq('user_id', session.user.id)
       .eq('payment_type', 'course')
-      .eq('package_id', courseId) // Використовуємо package_id для зберігання course_id
+      .eq('package_id', normalizedCourseId) // package_id зберігає slug курсу
       .eq('status', 'success')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -99,7 +121,7 @@ export async function GET(request: NextRequest) {
         .from('course_access')
         .select('*')
         .eq('user_id', session.user.id)
-        .eq('course_id', courseId)
+        .eq('course_id', normalizedCourseId)
         .eq('access_granted', true)
         .maybeSingle()
 
@@ -118,9 +140,11 @@ export async function GET(request: NextRequest) {
     
     let courseFaculty: 'medical' | 'pharmaceutical' | null = null
     
-    if (medicalCourses.includes(courseId)) {
+    if (normalizedCourseFaculty) {
+      courseFaculty = normalizedCourseFaculty
+    } else if (medicalCourses.includes(normalizedCourseId)) {
       courseFaculty = 'medical'
-    } else if (pharmaceuticalCourses.includes(courseId)) {
+    } else if (pharmaceuticalCourses.includes(normalizedCourseId)) {
       courseFaculty = 'pharmaceutical'
     }
     
@@ -131,7 +155,7 @@ export async function GET(request: NextRequest) {
         const { data: course } = await supabase
           .from('courses')
           .select('faculty')
-          .or(`id.eq.${courseId},title.ilike.%${courseId}%`)
+          .or(`id.eq.${courseId},title.ilike.%${normalizedCourseId}%`)
           .maybeSingle()
 
         if (course?.faculty) {
@@ -214,7 +238,7 @@ export async function GET(request: NextRequest) {
       ]
       
       const courseOrder = courseFaculty === 'pharmaceutical' ? pharmaceuticalCourseOrder : medicalCourseOrder
-      const courseIndex = courseOrder.indexOf(courseId)
+      const courseIndex = courseOrder.indexOf(normalizedCourseId)
       
       // Якщо це не перший курс, перевіряємо чи пройдено попередній на 80%+
       // Поки що перевірка попередніх курсів працює тільки для медицини
@@ -318,7 +342,8 @@ export async function GET(request: NextRequest) {
     const finalAccess = hasBaseAccess
 
     console.log('Перевірка доступу до курсу:', {
-      courseId,
+      courseId: normalizedCourseId,
+      rawCourseId: courseId,
       userId: session.user.id,
       hasPaymentAccess,
       hasCourseAccess: !!courseAccess,
@@ -333,6 +358,7 @@ export async function GET(request: NextRequest) {
       grantedAt: courseAccess?.granted_at || payment?.created_at || null,
       accessType: hasSubscriptionAccess ? 'subscription' : (hasPaymentAccess ? 'payment' : (courseAccess ? 'access' : null)),
       debug: {
+        normalizedCourseId,
         hasPaymentAccess,
         hasCourseAccess: !!courseAccess,
         hasSubscriptionAccess,
