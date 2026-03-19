@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const courseId = searchParams.get('course_id')
     const title = searchParams.get('title')
+    const includeQuestionCount = searchParams.get('include_question_count') === 'true'
 
     if (!supabase) {
       return NextResponse.json(
@@ -16,7 +17,11 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('topics')
-      .select('*')
+      .select(
+        includeQuestionCount
+          ? '*, questions:questions(count)'
+          : '*'
+      )
       .eq('is_active', true)
       .order('order_index', { ascending: true })
 

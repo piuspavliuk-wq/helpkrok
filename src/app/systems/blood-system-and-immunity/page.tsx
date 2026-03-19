@@ -19,6 +19,19 @@ export default function BloodSystemAndImmunityPage() {
   const [checkingPreviousCourse, setCheckingPreviousCourse] = useState(true)
   const baseSectionNumber = 15
 
+  function findCourseBySlugOrTitle(
+    courses: Array<{ id: string; title?: string; slug?: string }>,
+    desiredSlug: string,
+    desiredTitle: string
+  ) {
+    return (
+      courses.find((c) => c.slug === desiredSlug) ||
+      courses.find((c) => c.slug === `/systems/${desiredSlug}`) ||
+      courses.find((c) => c.title === desiredTitle) ||
+      courses.find((c) => (c.title || '').toLowerCase().includes(desiredTitle.toLowerCase().slice(0, 18)))
+    )
+  }
+
   useEffect(() => {
     if (session?.user?.id) {
       fetchCourseAccess()
@@ -34,30 +47,16 @@ export default function BloodSystemAndImmunityPage() {
     if (!session?.user?.id) return
 
     try {
-      // Отримуємо курс
-      const courseResponse = await fetch('/api/courses?faculty=medical')
-      const courseData = await courseResponse.json()
-      
-      if (!courseData.success || !courseData.courses) {
-        return
-      }
-
-      const course = courseData.courses.find((c: { title: string }) => 
-        c.title === 'Система кровотворення й імунного захисту, кров'
-      )
-
-      if (!course) {
-        return
-      }
-
-      setCourseId(course.id)
-
-      // Перевіряємо доступ до курсу
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=${course.id}`)
+      // Курс може бути відсутній у таблиці public.courses (як у твоєму випадку),
+      // тому для доступу НЕ покладаємось на /api/courses — перевіряємо напряму.
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=blood-system-and-immunity`)
       const accessData = await accessResponse.json()
       
       if (accessData.success) {
         setHasCourseAccess(accessData.hasAccess)
+        // Якщо курс колись зʼявиться у БД, курсId підтягнеться в інших місцях.
+        // Для відкриття розділів він не потрібен.
+        setCourseId(null)
       }
     } catch (error) {
       console.error('Помилка перевірки доступу до курсу:', error)
@@ -80,8 +79,10 @@ export default function BloodSystemAndImmunityPage() {
         return
       }
 
-      const previousCourse = coursesData.courses.find((c: { title: string }) => 
-        c.title === 'Фундаментальні медико-біологічні знання'
+      const previousCourse = findCourseBySlugOrTitle(
+        coursesData.courses,
+        'fundamental-medico-biological-knowledge',
+        'Фундаментальні медико-біологічні знання'
       )
 
       if (!previousCourse) {
@@ -90,7 +91,7 @@ export default function BloodSystemAndImmunityPage() {
       }
 
       // Перевіряємо чи є доступ до попереднього курсу
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=${previousCourse.id}`)
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=fundamental-medico-biological-knowledge`)
       const accessData = await accessResponse.json()
 
       if (!accessData.success || !accessData.hasAccess) {
@@ -100,12 +101,25 @@ export default function BloodSystemAndImmunityPage() {
       }
 
       // Перевіряємо прогрес попереднього курсу
-      const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}`)
+      // Беремо тільки ті topics, де реально є питання (інакше курс ніколи "не закінчиться")
+      const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}&include_question_count=true`)
       const topicsData = await topicsResponse.json()
 
       if (topicsData.success && topicsData.topics && topicsData.topics.length > 0) {
-        // Перевіряємо прогрес по всіх topics
-        const progressPromises = topicsData.topics.map(async (topic: { id: string }) => {
+        const topicsWithTests = topicsData.topics.filter((t: any) => {
+          const count = Array.isArray(t.questions) ? t.questions?.[0]?.count : undefined
+          return Number(count ?? 0) > 0
+        })
+
+        // Якщо в курсі немає жодного topic з питаннями — не блокуємо наступний курс
+        if (topicsWithTests.length === 0) {
+          setPreviousCourseCompleted(true)
+          setCheckingPreviousCourse(false)
+          return
+        }
+
+        // Перевіряємо прогрес тільки по topics з тестами
+        const progressPromises = topicsWithTests.map(async (topic: { id: string }) => {
           const progressResponse = await fetch(`/api/topics/progress?topic_id=${topic.id}`)
           const progressData = await progressResponse.json()
           
@@ -122,7 +136,7 @@ export default function BloodSystemAndImmunityPage() {
         // Перевіряємо чи всі тести пройдені на 80%+
         const allCompleted = progressResults.every(p => 
           p.completed && p.score >= 80
-        ) && progressResults.length === topicsData.topics.length
+        ) && progressResults.length === topicsWithTests.length
 
         setPreviousCourseCompleted(allCompleted)
       } else {
@@ -309,7 +323,7 @@ export default function BloodSystemAndImmunityPage() {
                           )}
                           <p className="text-sm text-gray-500 mt-2 ml-8">
                             {!hasCourseAccess && !checkingPreviousCourse
-                              ? 'Спочатку пройдіть попередній курс "Фундаментальні медико-біологічні знання" на 80% і більше'
+                              ? 'Для доступу до цього курсу потрібна підписка/оплата'
                               : index === 0 && !previousCourseCompleted && !checkingPreviousCourse
                                 ? 'Спочатку пройдіть попередній курс "Фундаментальні медико-біологічні знання" на 80% і більше'
                                 : index > 0
