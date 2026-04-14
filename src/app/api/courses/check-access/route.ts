@@ -258,6 +258,27 @@ export async function GET(request: NextRequest) {
     // Перевіряємо чи користувач має базовий доступ (оплату підписки)
     const hasBaseAccess = hasPaymentAccess || !!courseAccess || hasSubscriptionAccess || hasSubscriptionPayment
 
+    // Якщо доступ явно виданий через course_access — не перевіряємо попередній курс повторно
+    // (course_access створюється лише після успішного завершення попереднього курсу)
+    if (courseAccess) {
+      return NextResponse.json({
+        success: true,
+        hasAccess: true,
+        paymentId: payment?.id || null,
+        grantedAt: courseAccess.granted_at || payment?.created_at || null,
+        accessType: 'access',
+        debug: {
+          normalizedCourseId,
+          resolvedCourseUuid,
+          packageIdCandidates,
+          hasPaymentAccess,
+          hasCourseAccess: true,
+          hasSubscriptionAccess,
+          hasSubscriptionPayment
+        }
+      })
+    }
+
     // Якщо є базовий доступ, перевіряємо чи потрібно пройти попередній курс
     if (hasBaseAccess) {
       // Визначаємо порядок курсів залежно від факультету

@@ -7,7 +7,9 @@ import AuthGuard from '@/components/auth/AuthGuard'
 import { sections } from './data'
 
 const courseTitle = 'Ендокринна система'
+const courseSlug = 'endocrine-system'
 const previousCourseTitle = 'Репродуктивна система'
+const previousCourseSlug = 'reproductive-system'
 
 export default function EndocrineSystemPage() {
   const { data: session } = useSession()

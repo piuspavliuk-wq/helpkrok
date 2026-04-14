@@ -7,7 +7,9 @@ import AuthGuard from '@/components/auth/AuthGuard'
 import { sections } from './data'
 
 const courseTitle = 'Травна система'
+const courseSlug = 'digestive-system'
 const previousCourseTitle = 'Серцево-судинна система'
+const previousCourseSlug = 'cardiovascular-system'
 
 export default function DigestiveSystemPage() {
   const { data: session } = useSession()
@@ -33,15 +35,18 @@ export default function DigestiveSystemPage() {
   async function fetchCourseAccess() {
     if (!session?.user?.id) return
     try {
-      const courseResponse = await fetch('/api/courses?faculty=medical')
-      const courseData = await courseResponse.json()
-      if (!courseData.success || !courseData.courses) return
-      const course = courseData.courses.find((c: { title: string }) => c.title === courseTitle)
-      if (!course) return
-      setCourseId(course.id)
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=${course.id}`)
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=${courseSlug}`)
       const accessData = await accessResponse.json()
       if (accessData.success) setHasCourseAccess(accessData.hasAccess)
+
+      const courseResponse = await fetch('/api/courses?faculty=medical')
+      const courseData = await courseResponse.json()
+      if (courseData.success && courseData.courses) {
+        const course = courseData.courses.find((c: { title: string; slug?: string }) =>
+          c.slug === courseSlug || c.title === courseTitle
+        )
+        if (course) setCourseId(course.id)
+      }
     } catch (error) {
       console.error('Помилка перевірки доступу до курсу:', error)
     }
@@ -53,28 +58,41 @@ export default function DigestiveSystemPage() {
       return
     }
     try {
-      const coursesResponse = await fetch('/api/courses?faculty=medical')
-      const coursesData = await coursesResponse.json()
-      if (!coursesData.success || !coursesData.courses) {
-        setCheckingPreviousCourse(false)
-        return
-      }
-      const previousCourse = coursesData.courses.find((c: { title: string }) => c.title === previousCourseTitle)
-      if (!previousCourse) {
-        setCheckingPreviousCourse(false)
-        return
-      }
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=${previousCourse.id}`)
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=${previousCourseSlug}`)
       const accessData = await accessResponse.json()
       if (!accessData.success || !accessData.hasAccess) {
         setPreviousCourseCompleted(false)
         setCheckingPreviousCourse(false)
         return
       }
-      const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}`)
+      const coursesResponse = await fetch('/api/courses?faculty=medical')
+      const coursesData = await coursesResponse.json()
+      if (!coursesData.success || !coursesData.courses) {
+        setPreviousCourseCompleted(true)
+        setCheckingPreviousCourse(false)
+        return
+      }
+      const previousCourse = coursesData.courses.find((c: { title: string; slug?: string }) =>
+        c.slug === previousCourseSlug || c.title === previousCourseTitle
+      )
+      if (!previousCourse) {
+        setPreviousCourseCompleted(true)
+        setCheckingPreviousCourse(false)
+        return
+      }
+      const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}&include_question_count=true`)
       const topicsData = await topicsResponse.json()
       if (topicsData.success && topicsData.topics?.length > 0) {
-        const progressPromises = topicsData.topics.map(async (topic: { id: string }) => {
+        const topicsWithTests = topicsData.topics.filter((t: any) => {
+          const count = Array.isArray(t.questions) ? t.questions?.[0]?.count : undefined
+          return Number(count ?? 0) > 0
+        })
+        if (topicsWithTests.length === 0) {
+          setPreviousCourseCompleted(true)
+          setCheckingPreviousCourse(false)
+          return
+        }
+        const progressPromises = topicsWithTests.map(async (topic: { id: string }) => {
           const progressResponse = await fetch(`/api/topics/progress?topic_id=${topic.id}`)
           const progressData = await progressResponse.json()
           return progressData.success && progressData.progress
@@ -83,10 +101,11 @@ export default function DigestiveSystemPage() {
         })
         const progressResults = await Promise.all(progressPromises)
         const allCompleted =
-          progressResults.every((p) => p.completed && p.score >= 80) && progressResults.length === topicsData.topics.length
+          progressResults.every((p) => p.completed && p.score >= 80) &&
+          progressResults.length === topicsWithTests.length
         setPreviousCourseCompleted(allCompleted)
       } else {
-        setPreviousCourseCompleted(false)
+        setPreviousCourseCompleted(true)
       }
     } catch (error) {
       console.error('Помилка перевірки попереднього курсу:', error)

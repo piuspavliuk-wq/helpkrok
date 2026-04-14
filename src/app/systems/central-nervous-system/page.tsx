@@ -34,30 +34,26 @@ export default function CentralNervousSystemPage() {
     if (!session?.user?.id) return
 
     try {
-      // Отримуємо курс
-      const courseResponse = await fetch('/api/courses?faculty=medical')
-      const courseData = await courseResponse.json()
-      
-      if (!courseData.success || !courseData.courses) {
-        return
-      }
-
-      const course = courseData.courses.find((c: { title: string }) => 
-        c.title === 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття'
-      )
-
-      if (!course) {
-        return
-      }
-
-      setCourseId(course.id)
-
-      // Перевіряємо доступ до курсу
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=${course.id}`)
+      // Перевіряємо доступ напряму за slug курсу (надійніше ніж пошук за заголовком)
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=central-nervous-system`)
       const accessData = await accessResponse.json()
-      
+
       if (accessData.success) {
         setHasCourseAccess(accessData.hasAccess)
+      }
+
+      // Отримуємо UUID курсу для інших запитів
+      const courseResponse = await fetch('/api/courses?faculty=medical')
+      const courseData = await courseResponse.json()
+
+      if (courseData.success && courseData.courses) {
+        const course = courseData.courses.find((c: { title: string; slug?: string }) =>
+          c.slug === 'central-nervous-system' ||
+          c.title === 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття'
+        )
+        if (course) {
+          setCourseId(course.id)
+        }
       }
     } catch (error) {
       console.error('Помилка перевірки доступу до курсу:', error)
@@ -72,25 +68,7 @@ export default function CentralNervousSystemPage() {
 
     try {
       // Перевіряємо попередній курс - "Система кровотворення й імунного захисту, кров"
-      const coursesResponse = await fetch('/api/courses?faculty=medical')
-      const coursesData = await coursesResponse.json()
-      
-      if (!coursesData.success || !coursesData.courses) {
-        setCheckingPreviousCourse(false)
-        return
-      }
-
-      const previousCourse = coursesData.courses.find((c: { title: string }) => 
-        c.title === 'Система кровотворення й імунного захисту, кров'
-      )
-
-      if (!previousCourse) {
-        setCheckingPreviousCourse(false)
-        return
-      }
-
-      // Перевіряємо чи є доступ до попереднього курсу
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=${previousCourse.id}`)
+      const accessResponse = await fetch(`/api/courses/check-access?course_id=blood-system-and-immunity`)
       const accessData = await accessResponse.json()
 
       if (!accessData.success || !accessData.hasAccess) {
@@ -99,18 +77,52 @@ export default function CentralNervousSystemPage() {
         return
       }
 
-      // Перевіряємо прогрес попереднього курсу
-      const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}`)
+      // Отримуємо курс для перевірки прогресу topics
+      const coursesResponse = await fetch('/api/courses?faculty=medical')
+      const coursesData = await coursesResponse.json()
+
+      if (!coursesData.success || !coursesData.courses) {
+        // Якщо не вдалося отримати курси, але доступ є — не блокуємо
+        setPreviousCourseCompleted(true)
+        setCheckingPreviousCourse(false)
+        return
+      }
+
+      const previousCourse = coursesData.courses.find((c: { title: string; slug?: string }) =>
+        c.slug === 'blood-system-and-immunity' ||
+        c.title === 'Система кровотворення й імунного захисту, кров'
+      )
+
+      if (!previousCourse) {
+        // Курс не в БД — не блокуємо (перевірка вже пройшла через check-access)
+        setPreviousCourseCompleted(true)
+        setCheckingPreviousCourse(false)
+        return
+      }
+
+      // Перевіряємо прогрес попереднього курсу (тільки topics з питаннями)
+      const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}&include_question_count=true`)
       const topicsData = await topicsResponse.json()
 
       if (topicsData.success && topicsData.topics && topicsData.topics.length > 0) {
-        // Перевіряємо прогрес по всіх topics
-        const progressPromises = topicsData.topics.map(async (topic: { id: string }) => {
+        const topicsWithTests = topicsData.topics.filter((t: any) => {
+          const count = Array.isArray(t.questions) ? t.questions?.[0]?.count : undefined
+          return Number(count ?? 0) > 0
+        })
+
+        // Якщо в курсі немає topics з питаннями — не блокуємо
+        if (topicsWithTests.length === 0) {
+          setPreviousCourseCompleted(true)
+          setCheckingPreviousCourse(false)
+          return
+        }
+
+        const progressPromises = topicsWithTests.map(async (topic: { id: string }) => {
           const progressResponse = await fetch(`/api/topics/progress?topic_id=${topic.id}`)
           const progressData = await progressResponse.json()
-          
-          return progressData.success && progressData.progress 
-            ? { 
+
+          return progressData.success && progressData.progress
+            ? {
                 completed: progressData.progress.test_completed,
                 score: progressData.progress.test_score || 0
               }
@@ -118,15 +130,15 @@ export default function CentralNervousSystemPage() {
         })
 
         const progressResults = await Promise.all(progressPromises)
-        
-        // Перевіряємо чи всі тести пройдені на 80%+
-        const allCompleted = progressResults.every(p => 
-          p.completed && p.score >= 80
-        ) && progressResults.length === topicsData.topics.length
+
+        const allCompleted =
+          progressResults.every(p => p.completed && p.score >= 80) &&
+          progressResults.length === topicsWithTests.length
 
         setPreviousCourseCompleted(allCompleted)
       } else {
-        setPreviousCourseCompleted(false)
+        // Немає topics взагалі — курс вважається завершеним (немає тестів для блокування)
+        setPreviousCourseCompleted(true)
       }
     } catch (error) {
       console.error('Помилка перевірки попереднього курсу:', error)
