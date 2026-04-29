@@ -8,6 +8,9 @@ import AuthGuard from '@/components/auth/AuthGuard'
 import { topicMap, sectionMap, sections } from '../data'
 import SectionContent from '@/components/sections/SectionContent'
 
+const courseSlug = 'central-nervous-system'
+const courseTitle = 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття'
+
 interface PageProps {
   params: Promise<{
     slug: string
@@ -57,8 +60,8 @@ export default function SectionOrTopicPage({ params }: PageProps) {
         return
       }
 
-      const course = courseData.courses.find((c: { title: string }) => 
-        c.title === 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття'
+      const course = courseData.courses.find((c: { title: string; slug?: string }) =>
+        c.slug === courseSlug || c.title === courseTitle
       )
 
       if (!course) {
@@ -123,22 +126,10 @@ export default function SectionOrTopicPage({ params }: PageProps) {
     }
 
     try {
-      const courseResponse = await fetch('/api/courses?faculty=medical')
-      const courseData = await courseResponse.json()
-      
-      if (courseData.success && courseData.courses) {
-        const course = courseData.courses.find((c: { title: string }) => 
-          c.title === 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття'
-        )
-        
-        if (course) {
-          const response = await fetch(`/api/courses/check-access?course_id=${course.id}`)
-          const data = await response.json()
-
-          if (data.success) {
-            setHasCourseAccess(data.hasAccess)
-          }
-        }
+      const response = await fetch(`/api/courses/check-access?course_id=${courseSlug}`)
+      const data = await response.json()
+      if (data.success) {
+        setHasCourseAccess(data.hasAccess)
       }
     } catch (error) {
       console.error('Помилка перевірки доступу до курсу:', error)

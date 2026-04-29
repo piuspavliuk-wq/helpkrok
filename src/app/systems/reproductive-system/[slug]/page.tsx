@@ -9,6 +9,7 @@ import { topicMap, sectionMap, sections } from '../data'
 import SectionContent from '@/components/sections/SectionContent'
 
 const courseTitle = 'Репродуктивна система'
+const courseSlug = 'reproductive-system'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -46,7 +47,7 @@ export default function SectionOrTopicPage({ params }: PageProps) {
         setLoading(false)
         return
       }
-      const course = courseData.courses.find((c: { title: string }) => c.title === courseTitle)
+      const course = courseData.courses.find((c: { title: string; slug?: string }) => c.slug === courseSlug || c.title === courseTitle)
       if (!course) {
         setLoading(false)
         return
