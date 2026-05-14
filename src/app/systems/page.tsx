@@ -303,7 +303,6 @@ export default function CoursesPage() {
   const [selectedFaculty, setSelectedFaculty] = useState<(typeof facultyOptions)[number]['value']>('medical')
   const [courseAccess, setCourseAccess] = useState<Record<string, boolean>>({})
   const [loadingAccess, setLoadingAccess] = useState(true)
-  const [previousCourseStatus, setPreviousCourseStatus] = useState<Record<string, { completed: boolean; hasAccess: boolean }>>({})
   const [hasSubscription, setHasSubscription] = useState(false)
   const [profileLoaded, setProfileLoaded] = useState(false)
   const filteredCourses = courses.filter((course) => course.faculty === selectedFaculty)
@@ -423,11 +422,6 @@ export default function CoursesPage() {
       // Перевіряємо чи є у користувача підписка/оплата
       await checkSubscriptionStatus()
 
-      // Перевіряємо статус попередніх курсів для медичного факультету
-      // Для фармації поки що не перевіряємо послідовність курсів
-      if (selectedFaculty === 'medical') {
-        await checkPreviousCoursesStatus(data.courses, accessMap)
-      }
     } catch (error) {
       console.error('Помилка перевірки доступу до курсів:', error)
     } finally {
@@ -469,79 +463,6 @@ export default function CoursesPage() {
     }
   }
 
-  async function checkPreviousCoursesStatus(coursesList: Array<{ id: string; title: string; slug?: string }>, accessMap: Record<string, boolean>) {
-    if (!session?.user?.id) return
-
-    const statusMap: Record<string, { completed: boolean; hasAccess: boolean }> = {}
-
-    try {
-      // Для кожного курсу (крім першого) перевіряємо попередній
-      // Використовуємо порядок курсів для поточного факультету
-      const courseOrder = selectedFaculty === 'medical' ? medicalCourseOrder : pharmaceuticalCourseOrder
-      
-      for (let i = 1; i < courseOrder.length; i++) {
-        const currentCourseId = courseOrder[i]
-        const previousCourseId = courseOrder[i - 1]
-
-        const currentCourse = coursesList.find((c: { slug?: string }) => 
-          c.slug === `/systems/${currentCourseId}`
-        )
-        const previousCourse = coursesList.find((c: { slug?: string }) => 
-          c.slug === `/systems/${previousCourseId}`
-        )
-
-        if (currentCourse && previousCourse) {
-          // Перевіряємо чи є доступ до попереднього курсу
-          const hasAccess = accessMap[previousCourse.title] || false
-
-          if (hasAccess) {
-            // Перевіряємо чи завершено попередній курс
-            const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}`)
-            const topicsData = await topicsResponse.json()
-
-            if (topicsData.success && topicsData.topics && topicsData.topics.length > 0) {
-              const progressPromises = topicsData.topics.map(async (topic: { id: string }) => {
-                const progressResponse = await fetch(`/api/topics/progress?topic_id=${topic.id}`)
-                const progressData = await progressResponse.json()
-                
-                return progressData.success && progressData.progress 
-                  ? { 
-                      completed: progressData.progress.test_completed,
-                      score: progressData.progress.test_score || 0
-                    }
-                  : { completed: false, score: 0 }
-              })
-
-              const progressResults = await Promise.all(progressPromises)
-              
-              const allCompleted = progressResults.every(p => 
-                p.completed && p.score >= 80
-              ) && progressResults.length === topicsData.topics.length
-
-              statusMap[currentCourse.title] = {
-                hasAccess: true,
-                completed: allCompleted
-              }
-            } else {
-              statusMap[currentCourse.title] = {
-                hasAccess: true,
-                completed: false
-              }
-            }
-          } else {
-            statusMap[currentCourse.title] = {
-              hasAccess: false,
-              completed: false
-            }
-          }
-        }
-      }
-
-      setPreviousCourseStatus(statusMap)
-    } catch (error) {
-      console.error('Помилка перевірки попередніх курсів:', error)
-    }
-  }
 
   return (
     <AuthGuard>
@@ -582,12 +503,6 @@ export default function CoursesPage() {
             <div className="grid gap-8 sm:grid-cols-2">
               {filteredCourses.map((course) => {
                 const hasAccess = courseAccess[course.title] || false
-                const courseIndex = currentCourseOrder.indexOf(course.id)
-                const isFirstCourse = courseIndex === 0
-                const previousStatus = previousCourseStatus[course.title]
-                
-                // Для медицини: якщо є підписка - для першого курсу доступ відкритий, для інших показуємо повідомлення
-                const showPreviousCourseMessage = !hasAccess && !loadingAccess && hasSubscription && !isFirstCourse && selectedFaculty === 'medical'
 
                 return (
                   <div
@@ -635,20 +550,6 @@ export default function CoursesPage() {
                       </div>
                     </Link>
 
-                    {showPreviousCourseMessage && (
-                      <div className="px-6 pb-8 sm:px-8 sm:pb-10 pt-0">
-                        <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
-                          <p className="text-sm text-gray-700 text-center">
-                            {previousStatus && previousStatus.hasAccess && !previousStatus.completed
-                              ? 'Спочатку пройдіть попередній курс на 80% і більше'
-                              : previousStatus && !previousStatus.hasAccess
-                                ? 'Спочатку пройдіть попередній курс "Фундаментальні медико-біологічні знання"'
-                                : 'Спочатку пройдіть попередній курс на 80% і більше'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )
               })}
