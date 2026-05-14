@@ -451,9 +451,14 @@ export default function CoursesPage() {
       const response = await fetch(`/api/courses/check-access?course_id=${firstCourseId}`)
       const data = await response.json()
 
-      if (data.success && data.debug) {
-        // Перевіряємо чи є підписка через debug інформацію
-        const hasSub = data.debug.hasSubscriptionAccess || data.debug.hasSubscriptionPayment
+      if (data.success) {
+        // Якщо є будь-який доступ до першого курсу (підписка, оплата, course_access) —
+        // вважаємо що користувач заплатив і ховаємо кнопку "Купити доступ"
+        const hasSub =
+          data.hasAccess ||
+          data.debug?.hasSubscriptionAccess ||
+          data.debug?.hasSubscriptionPayment ||
+          data.debug?.hasCourseAccess
         setHasSubscription(hasSub || false)
       } else {
         setHasSubscription(false)
