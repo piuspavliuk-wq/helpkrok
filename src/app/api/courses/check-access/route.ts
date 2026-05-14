@@ -285,7 +285,7 @@ export async function GET(request: NextRequest) {
         success: true,
         hasAccess: true,
         paymentId: payment?.id || null,
-        grantedAt: courseAccess.granted_at || payment?.created_at || null,
+        grantedAt: (courseAccess as any).granted_at || payment?.created_at || null,
         accessType: 'access',
         debug: {
           normalizedCourseId,
@@ -298,6 +298,36 @@ export async function GET(request: NextRequest) {
         }
       })
     }
+
+    // Перевіряємо чи є course_access для попереднього курсу в ланцюжку медицини
+    // (послідовне розблокування: завершив курс N → отримав course_access для курсу N+1)
+    try {
+      const medicalOrder = [
+        'fundamental-medico-biological-knowledge', 'blood-system-and-immunity',
+        'central-nervous-system', 'integumentary-system', 'musculoskeletal-system',
+        'respiratory-system', 'cardiovascular-system', 'digestive-system',
+        'urinary-system', 'reproductive-system', 'endocrine-system'
+      ]
+      const idx = medicalOrder.indexOf(normalizedCourseId)
+      if (idx > 0 && courseFaculty === 'medical') {
+        const prevSlug = medicalOrder[idx - 1]
+        const { data: prevAccess } = await supabase
+          .from('course_access')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('course_id', prevSlug)
+          .eq('access_granted', true)
+          .maybeSingle()
+        if (prevAccess) {
+          return NextResponse.json({
+            success: true, hasAccess: true,
+            paymentId: null, grantedAt: null, accessType: 'sequential',
+            debug: { normalizedCourseId, resolvedCourseUuid, packageIdCandidates,
+              hasPaymentAccess, hasCourseAccess: false, hasSubscriptionAccess, hasSubscriptionPayment }
+          })
+        }
+      }
+    } catch { /* ігноруємо помилки */ }
 
     // Якщо є базовий доступ (індивідуальна оплата курсу), перевіряємо послідовність
     if (hasBaseAccess) {

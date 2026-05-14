@@ -4,6 +4,21 @@ import { supabase } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 
 // Функція для перевірки та автоматичного відкриття наступного курсу
+// Маппінг назв курсів із БД → slug для випадку коли courses.slug = null
+const courseTitleToSlug: Record<string, string> = {
+  'Фундаментальні медико-біологічні знання': 'fundamental-medico-biological-knowledge',
+  'Система кровотворення й імунного захисту, кров': 'blood-system-and-immunity',
+  'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття': 'central-nervous-system',
+  'Загальний покрив (шкіра та її деривати)': 'integumentary-system',
+  'Опорно-руховий апарат. Анатомія': 'musculoskeletal-system',
+  'Дихальна система': 'respiratory-system',
+  'Серцево-судинна система': 'cardiovascular-system',
+  'Травна система': 'digestive-system',
+  'Сечова система': 'urinary-system',
+  'Репродуктивна система': 'reproductive-system',
+  'Ендокринна система': 'endocrine-system',
+}
+
 async function checkAndUnlockNextCourse(userId: string, topicId: string) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -16,10 +31,10 @@ async function checkAndUnlockNextCourse(userId: string, topicId: string) {
 
     const adminSupabase = createClient(supabaseUrl, supabaseKey)
 
-    // Отримуємо topic та курс
+    // Отримуємо topic та курс (з title як запасний варіант якщо slug = null)
     const { data: topic } = await adminSupabase
       .from('topics')
-      .select('id, course_id, course:courses(slug)')
+      .select('id, course_id, course:courses(slug, title)')
       .eq('id', topicId)
       .single()
 
@@ -27,12 +42,14 @@ async function checkAndUnlockNextCourse(userId: string, topicId: string) {
       return
     }
 
-    const courseSlug = (topic.course as any)?.slug
+    // Визначаємо slug курсу: беремо з БД або шукаємо за title
+    const courseFromDb = topic.course as any
+    const courseSlug = courseFromDb?.slug || courseTitleToSlug[courseFromDb?.title || '']
     if (!courseSlug) {
+      console.log(`Не вдалось визначити slug для курсу: ${courseFromDb?.title}`)
       return
     }
 
-    // Визначаємо порядок курсів медичного факультету
     const medicalCourseOrder = [
       'fundamental-medico-biological-knowledge',
       'blood-system-and-immunity',
@@ -48,81 +65,106 @@ async function checkAndUnlockNextCourse(userId: string, topicId: string) {
     ]
 
     const courseIndex = medicalCourseOrder.indexOf(courseSlug)
-    
-    // Якщо це останній курс або курс не знайдено, нічого не робимо
+
     if (courseIndex < 0 || courseIndex >= medicalCourseOrder.length - 1) {
       return
     }
 
-    // Перевіряємо чи користувач має доступ до поточного курсу через підписку
+    // Перевіряємо чи є у користувача будь-який доступ до поточного курсу
+    // (підписка АБО пряма оплата курсу АБО course_access)
     const { data: subscriptions } = await adminSupabase
       .from('user_subscriptions')
-      .select('*')
+      .select('id')
       .eq('user_id', userId)
       .eq('status', 'active')
       .in('subscription_type', ['medical', 'premium'])
       .gte('end_date', new Date().toISOString())
       .limit(1)
 
-    const hasSubscription = subscriptions && subscriptions.length > 0
-    if (!hasSubscription) {
-      return // Користувач не має підписки, не відкриваємо наступний курс
+    const { data: subscriptionPayment } = await adminSupabase
+      .from('payments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('payment_type', 'subscription')
+      .eq('status', 'success')
+      .limit(1)
+
+    const { data: currentCourseAccess } = await adminSupabase
+      .from('course_access')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('course_id', courseSlug)
+      .eq('access_granted', true)
+      .maybeSingle()
+
+    const hasAccess =
+      (subscriptions && subscriptions.length > 0) ||
+      (subscriptionPayment && subscriptionPayment.length > 0) ||
+      !!currentCourseAccess
+
+    if (!hasAccess) {
+      console.log(`Користувач ${userId} не має доступу до курсу ${courseSlug}, пропускаємо розблокування`)
+      return
     }
 
-    // Отримуємо всі topics поточного курсу
+    // Отримуємо всі topics поточного курсу з кількістю питань
     const { data: allTopics } = await adminSupabase
       .from('topics')
-      .select('id')
+      .select('id, questions:questions(count)')
       .eq('course_id', topic.course_id)
 
-    if (!allTopics || allTopics.length === 0) {
-      return
-    }
-
-    // Отримуємо прогрес по всіх topics
-    const { data: allProgress } = await adminSupabase
-      .from('user_topic_progress')
-      .select('test_score, test_completed')
-      .eq('user_id', userId)
-      .in('topic_id', allTopics.map(t => t.id))
-
-    if (!allProgress || allProgress.length === 0) {
-      return
-    }
-
-    // Перевіряємо чи всі тести пройдені на 80%+
-    const allPassed = allProgress.every(p => 
-      p.test_completed && (p.test_score || 0) >= 80
+    // Якщо немає topics або немає topics з питаннями — автоматично відкриваємо наступний курс
+    const topicsWithTests = (allTopics || []).filter(
+      (t: any) => Number(t.questions?.[0]?.count ?? 0) > 0
     )
 
-    if (allPassed) {
-      // Всі тести пройдені на 80%+, відкриваємо наступний курс
-      const nextCourseId = medicalCourseOrder[courseIndex + 1]
-      
-      // Перевіряємо чи вже є доступ до наступного курсу
-      const { data: existingAccess } = await adminSupabase
-        .from('course_access')
-        .select('*')
+    if (topicsWithTests.length === 0) {
+      console.log(`Курс ${courseSlug} не має тестів — автоматично відкриваємо наступний курс`)
+    } else {
+      // Перевіряємо прогрес тільки по topics з питаннями
+      const { data: allProgress } = await adminSupabase
+        .from('user_topic_progress')
+        .select('test_score, test_completed')
         .eq('user_id', userId)
-        .eq('course_id', nextCourseId)
-        .maybeSingle()
+        .in('topic_id', topicsWithTests.map((t: any) => t.id))
 
-      if (!existingAccess) {
-        // Створюємо доступ до наступного курсу
-        const { error: courseAccessError } = await adminSupabase
-          .from('course_access')
-          .insert({
-            user_id: userId,
-            course_id: nextCourseId,
-            access_granted: true,
-            granted_at: new Date().toISOString()
-          })
+      if (!allProgress || allProgress.length === 0) {
+        return
+      }
 
-        if (courseAccessError && courseAccessError.code !== 'PGRST116') {
-          console.error(`Помилка відкриття наступного курсу ${nextCourseId}:`, courseAccessError)
-        } else {
-          console.log(`✅ Автоматично відкрито наступний курс ${nextCourseId} для користувача ${userId}`)
-        }
+      const allPassed = allProgress.every(
+        (p: any) => p.test_completed && (p.test_score || 0) >= 80
+      )
+
+      if (!allPassed) {
+        return
+      }
+    }
+
+    // Відкриваємо наступний курс
+    const nextCourseId = medicalCourseOrder[courseIndex + 1]
+
+    const { data: existingAccess } = await adminSupabase
+      .from('course_access')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('course_id', nextCourseId)
+      .maybeSingle()
+
+    if (!existingAccess) {
+      const { error: courseAccessError } = await adminSupabase
+        .from('course_access')
+        .insert({
+          user_id: userId,
+          course_id: nextCourseId,
+          access_granted: true,
+          granted_at: new Date().toISOString()
+        })
+
+      if (courseAccessError && courseAccessError.code !== 'PGRST116') {
+        console.error(`Помилка відкриття наступного курсу ${nextCourseId}:`, courseAccessError)
+      } else {
+        console.log(`✅ Автоматично відкрито наступний курс ${nextCourseId} для користувача ${userId}`)
       }
     }
   } catch (error) {
