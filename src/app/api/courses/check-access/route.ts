@@ -299,35 +299,113 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Перевіряємо чи є course_access для попереднього курсу в ланцюжку медицини
-    // (послідовне розблокування: завершив курс N → отримав course_access для курсу N+1)
-    try {
-      const medicalOrder = [
-        'fundamental-medico-biological-knowledge', 'blood-system-and-immunity',
-        'central-nervous-system', 'integumentary-system', 'musculoskeletal-system',
-        'respiratory-system', 'cardiovascular-system', 'digestive-system',
-        'urinary-system', 'reproductive-system', 'endocrine-system'
-      ]
-      const idx = medicalOrder.indexOf(normalizedCourseId)
-      if (idx > 0 && courseFaculty === 'medical') {
-        const prevSlug = medicalOrder[idx - 1]
-        const { data: prevAccess } = await supabase
-          .from('course_access')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .eq('course_id', prevSlug)
-          .eq('access_granted', true)
-          .maybeSingle()
-        if (prevAccess) {
-          return NextResponse.json({
-            success: true, hasAccess: true,
-            paymentId: null, grantedAt: null, accessType: 'sequential',
-            debug: { normalizedCourseId, resolvedCourseUuid, packageIdCandidates,
-              hasPaymentAccess, hasCourseAccess: false, hasSubscriptionAccess, hasSubscriptionPayment }
-          })
+    // Перевірка послідовного доступу для медичних курсів:
+    // Якщо попередній курс пройдено на 80%+ → відкриваємо поточний.
+    // Це спрацьовує для БУДЬ-ЯКОГО авторизованого користувача (не вимагає підписки),
+    // бо виконання тестів вже підтверджує що користувач мав доступ до попереднього курсу.
+    if (courseFaculty === 'medical') {
+      try {
+        const medicalOrder = [
+          'fundamental-medico-biological-knowledge', 'blood-system-and-immunity',
+          'central-nervous-system', 'integumentary-system', 'musculoskeletal-system',
+          'respiratory-system', 'cardiovascular-system', 'digestive-system',
+          'urinary-system', 'reproductive-system', 'endocrine-system'
+        ]
+        const idx = medicalOrder.indexOf(normalizedCourseId)
+
+        if (idx > 0) {
+          const prevSlug = medicalOrder[idx - 1]
+
+          // Швидкий шлях: course_access попереднього курсу
+          const { data: prevCourseAccess } = await supabase
+            .from('course_access')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .eq('course_id', prevSlug)
+            .eq('access_granted', true)
+            .maybeSingle()
+
+          if (prevCourseAccess) {
+            return NextResponse.json({
+              success: true, hasAccess: true, paymentId: null,
+              grantedAt: null, accessType: 'sequential',
+              debug: { normalizedCourseId, resolvedCourseUuid, packageIdCandidates,
+                hasPaymentAccess, hasCourseAccess: false, hasSubscriptionAccess, hasSubscriptionPayment }
+            })
+          }
+
+          // Прямий шлях: перевіряємо прогрес попереднього курсу в БД
+          // (спрацьовує навіть якщо course_access не було створено через старі баги)
+          const prevTitle = slugToTitle[prevSlug]
+          let prevCourseDbId: string | null = null
+
+          const { data: prevBySlug } = await supabase
+            .from('courses').select('id').eq('slug', prevSlug).maybeSingle()
+          if (prevBySlug?.id) {
+            prevCourseDbId = prevBySlug.id
+          } else if (prevTitle) {
+            const { data: prevByTitle } = await supabase
+              .from('courses').select('id').eq('title', prevTitle).maybeSingle()
+            if (prevByTitle?.id) prevCourseDbId = prevByTitle.id
+          }
+
+          if (prevCourseDbId) {
+            const { data: prevTopics } = await supabase
+              .from('topics')
+              .select('id, questions:questions(count)')
+              .eq('course_id', prevCourseDbId)
+
+            const prevTopicsWithTests = (prevTopics || []).filter(
+              (t: any) => Number(t.questions?.[0]?.count ?? 0) > 0
+            )
+
+            const grantAccessAndReturn = async () => {
+              // Створюємо course_access для поточного курсу щоб наступного разу спрацював швидкий шлях
+              try {
+                const { data: existing } = await supabase
+                  .from('course_access').select('id')
+                  .eq('user_id', session.user.id).eq('course_id', normalizedCourseId).maybeSingle()
+                if (!existing) {
+                  await supabase.from('course_access').insert({
+                    user_id: session.user.id, course_id: normalizedCourseId,
+                    access_granted: true, granted_at: new Date().toISOString()
+                  })
+                  console.log(`✅ Створено course_access для ${normalizedCourseId} (sequential progress)`)
+                }
+              } catch { /* некритично */ }
+              return NextResponse.json({
+                success: true, hasAccess: true, paymentId: null,
+                grantedAt: null, accessType: 'sequential_progress',
+                debug: { normalizedCourseId, resolvedCourseUuid, packageIdCandidates,
+                  hasPaymentAccess, hasCourseAccess: false, hasSubscriptionAccess, hasSubscriptionPayment }
+              })
+            }
+
+            if (prevTopicsWithTests.length === 0) {
+              // Попередній курс без тестів → відкриваємо
+              return await grantAccessAndReturn()
+            }
+
+            const { data: prevProgress } = await supabase
+              .from('user_topic_progress')
+              .select('test_score, test_completed')
+              .eq('user_id', session.user.id)
+              .in('topic_id', prevTopicsWithTests.map((t: any) => t.id))
+
+            if (prevProgress && prevProgress.length >= prevTopicsWithTests.length) {
+              const allPassed = prevProgress.every(
+                (p: any) => p.test_completed && (p.test_score || 0) >= 80
+              )
+              if (allPassed) {
+                return await grantAccessAndReturn()
+              }
+            }
+          }
         }
+      } catch (e) {
+        console.error('Помилка sequential progress check:', e)
       }
-    } catch { /* ігноруємо помилки */ }
+    }
 
     // Якщо є базовий доступ (індивідуальна оплата курсу), перевіряємо послідовність
     if (hasBaseAccess) {
