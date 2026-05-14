@@ -360,18 +360,13 @@ export async function GET(request: NextRequest) {
             )
 
             const grantAccessAndReturn = async () => {
-              // Створюємо course_access для поточного курсу щоб наступного разу спрацював швидкий шлях
+              // Зберігаємо course_access щоб наступного разу спрацював швидкий шлях
               try {
-                const { data: existing } = await supabase
-                  .from('course_access').select('id')
-                  .eq('user_id', session.user.id).eq('course_id', normalizedCourseId).maybeSingle()
-                if (!existing) {
-                  await supabase.from('course_access').insert({
-                    user_id: session.user.id, course_id: normalizedCourseId,
-                    access_granted: true, granted_at: new Date().toISOString()
-                  })
-                  console.log(`✅ Створено course_access для ${normalizedCourseId} (sequential progress)`)
-                }
+                await supabase.from('course_access').upsert({
+                  user_id: session.user.id, course_id: normalizedCourseId,
+                  access_granted: true, granted_at: new Date().toISOString()
+                }, { onConflict: 'user_id,course_id', ignoreDuplicates: true })
+                console.log(`✅ Збережено course_access для ${normalizedCourseId} (sequential progress)`)
               } catch { /* некритично */ }
               return NextResponse.json({
                 success: true, hasAccess: true, paymentId: null,

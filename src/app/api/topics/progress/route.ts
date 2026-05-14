@@ -97,9 +97,19 @@ async function checkAndUnlockNextCourse(userId: string, topicId: string) {
       .eq('access_granted', true)
       .maybeSingle()
 
+    // Також перевіряємо пряму оплату поточного курсу
+    const { data: coursePayment } = await adminSupabase
+      .from('payments')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('payment_type', 'course')
+      .eq('status', 'success')
+      .limit(1)
+
     const hasAccess =
       (subscriptions && subscriptions.length > 0) ||
       (subscriptionPayment && subscriptionPayment.length > 0) ||
+      (coursePayment && coursePayment.length > 0) ||
       !!currentCourseAccess
 
     if (!hasAccess) {
@@ -144,28 +154,19 @@ async function checkAndUnlockNextCourse(userId: string, topicId: string) {
     // Відкриваємо наступний курс
     const nextCourseId = medicalCourseOrder[courseIndex + 1]
 
-    const { data: existingAccess } = await adminSupabase
+    const { error: courseAccessError } = await adminSupabase
       .from('course_access')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('course_id', nextCourseId)
-      .maybeSingle()
+      .upsert({
+        user_id: userId,
+        course_id: nextCourseId,
+        access_granted: true,
+        granted_at: new Date().toISOString()
+      }, { onConflict: 'user_id,course_id', ignoreDuplicates: false })
 
-    if (!existingAccess) {
-      const { error: courseAccessError } = await adminSupabase
-        .from('course_access')
-        .insert({
-          user_id: userId,
-          course_id: nextCourseId,
-          access_granted: true,
-          granted_at: new Date().toISOString()
-        })
-
-      if (courseAccessError && courseAccessError.code !== 'PGRST116') {
-        console.error(`Помилка відкриття наступного курсу ${nextCourseId}:`, courseAccessError)
-      } else {
-        console.log(`✅ Автоматично відкрито наступний курс ${nextCourseId} для користувача ${userId}`)
-      }
+    if (courseAccessError) {
+      console.error(`Помилка відкриття наступного курсу ${nextCourseId}:`, courseAccessError)
+    } else {
+      console.log(`✅ Автоматично відкрито наступний курс ${nextCourseId} для користувача ${userId}`)
     }
   } catch (error) {
     console.error('Помилка в checkAndUnlockNextCourse:', error)
