@@ -69,13 +69,13 @@ export async function GET(request: NextRequest) {
       'fundamental-medico-biological-knowledge': 'Фундаментальні медико-біологічні знання',
       'blood-system-and-immunity': 'Система кровотворення й імунного захисту, кров',
       'central-nervous-system': 'Центральна нервова система (ЦНС) і периферична нервова система (ПНС). Органи чуття',
-      'integumentary-system': 'Покривна система',
-      'musculoskeletal-system': "Опорно-руховий апарат",
+      'integumentary-system': 'Загальний покрив (шкіра та її деривати)',
+      'musculoskeletal-system': 'Опорно-руховий апарат. Анатомія',
       'respiratory-system': 'Дихальна система',
       'cardiovascular-system': 'Серцево-судинна система',
       'digestive-system': 'Травна система',
-      'urinary-system': 'Сечовидільна система',
-      'reproductive-system': 'Статева система',
+      'urinary-system': 'Сечова система',
+      'reproductive-system': 'Репродуктивна система',
       'endocrine-system': 'Ендокринна система'
     }
 
@@ -258,8 +258,28 @@ export async function GET(request: NextRequest) {
     // Перевіряємо чи користувач має базовий доступ (оплату підписки)
     const hasBaseAccess = hasPaymentAccess || !!courseAccess || hasSubscriptionAccess || hasSubscriptionPayment
 
+    // Підписка дає доступ до ВСІХ курсів факультету — без послідовної перевірки між курсами.
+    // Послідовне розблокування (80%+) діє лише для розділів ВСЕРЕДИНІ курсу.
+    if (hasSubscriptionAccess || hasSubscriptionPayment) {
+      return NextResponse.json({
+        success: true,
+        hasAccess: true,
+        paymentId: payment?.id || null,
+        grantedAt: payment?.created_at || null,
+        accessType: 'subscription',
+        debug: {
+          normalizedCourseId,
+          resolvedCourseUuid,
+          packageIdCandidates,
+          hasPaymentAccess,
+          hasCourseAccess: !!courseAccess,
+          hasSubscriptionAccess,
+          hasSubscriptionPayment
+        }
+      })
+    }
+
     // Якщо доступ явно виданий через course_access — не перевіряємо попередній курс повторно
-    // (course_access створюється лише після успішного завершення попереднього курсу)
     if (courseAccess) {
       return NextResponse.json({
         success: true,
@@ -279,7 +299,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Якщо є базовий доступ, перевіряємо чи потрібно пройти попередній курс
+    // Якщо є базовий доступ (індивідуальна оплата курсу), перевіряємо послідовність
     if (hasBaseAccess) {
       // Визначаємо порядок курсів залежно від факультету
       const medicalCourseOrder = [
