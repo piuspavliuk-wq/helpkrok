@@ -70,53 +70,6 @@ async function checkAndUnlockNextCourse(userId: string, topicId: string) {
       return
     }
 
-    // Перевіряємо чи є у користувача будь-який доступ до поточного курсу
-    // (підписка АБО пряма оплата курсу АБО course_access)
-    const { data: subscriptions } = await adminSupabase
-      .from('user_subscriptions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .in('subscription_type', ['medical', 'premium'])
-      .gte('end_date', new Date().toISOString())
-      .limit(1)
-
-    const { data: subscriptionPayment } = await adminSupabase
-      .from('payments')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('payment_type', 'subscription')
-      .eq('status', 'success')
-      .limit(1)
-
-    const { data: currentCourseAccess } = await adminSupabase
-      .from('course_access')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('course_id', courseSlug)
-      .eq('access_granted', true)
-      .maybeSingle()
-
-    // Також перевіряємо пряму оплату поточного курсу
-    const { data: coursePayment } = await adminSupabase
-      .from('payments')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('payment_type', 'course')
-      .eq('status', 'success')
-      .limit(1)
-
-    const hasAccess =
-      (subscriptions && subscriptions.length > 0) ||
-      (subscriptionPayment && subscriptionPayment.length > 0) ||
-      (coursePayment && coursePayment.length > 0) ||
-      !!currentCourseAccess
-
-    if (!hasAccess) {
-      console.log(`Користувач ${userId} не має доступу до курсу ${courseSlug}, пропускаємо розблокування`)
-      return
-    }
-
     // Отримуємо всі topics поточного курсу з кількістю питань
     const { data: allTopics } = await adminSupabase
       .from('topics')

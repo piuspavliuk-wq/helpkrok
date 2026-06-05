@@ -90,16 +90,6 @@ export default function BloodSystemAndImmunityPage() {
         return
       }
 
-      // Перевіряємо чи є доступ до попереднього курсу
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=fundamental-medico-biological-knowledge`)
-      const accessData = await accessResponse.json()
-
-      if (!accessData.success || !accessData.hasAccess) {
-        setPreviousCourseCompleted(false)
-        setCheckingPreviousCourse(false)
-        return
-      }
-
       // Перевіряємо прогрес попереднього курсу
       // Беремо тільки ті topics, де реально є питання (інакше курс ніколи "не закінчиться")
       const topicsResponse = await fetch(`/api/topics?course_id=${previousCourse.id}&include_question_count=true`)
@@ -229,8 +219,9 @@ export default function BloodSystemAndImmunityPage() {
     // Адмін має доступ до всіх розділів
     if (isAdmin) return true
     
-    // Всі розділи вимагають оплату курсу
-    if (!hasCourseAccess) return false
+    // Доступ є якщо: оплачено/підписка АБО завершено попередній курс на 80%+
+    const hasAccess = hasCourseAccess || (!checkingPreviousCourse && previousCourseCompleted)
+    if (!hasAccess) return false
 
     // Перевіряємо попередній розділ (якщо це не перший розділ)
     if (sectionIndex === 0) return true

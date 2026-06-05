@@ -68,15 +68,6 @@ export default function CentralNervousSystemPage() {
 
     try {
       // Перевіряємо попередній курс - "Система кровотворення й імунного захисту, кров"
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=blood-system-and-immunity`)
-      const accessData = await accessResponse.json()
-
-      if (!accessData.success || !accessData.hasAccess) {
-        setPreviousCourseCompleted(false)
-        setCheckingPreviousCourse(false)
-        return
-      }
-
       // Отримуємо курс для перевірки прогресу topics
       const coursesResponse = await fetch('/api/courses?faculty=medical')
       const coursesData = await coursesResponse.json()
@@ -227,8 +218,9 @@ export default function CentralNervousSystemPage() {
     // Адмін має доступ до всіх розділів
     if (isAdmin) return true
     
-    // Всі розділи вимагають оплату курсу
-    if (!hasCourseAccess) return false
+    // Доступ є якщо: оплачено/підписка АБО завершено попередній курс на 80%+
+    const hasAccess = hasCourseAccess || (!checkingPreviousCourse && previousCourseCompleted)
+    if (!hasAccess) return false
 
     // Перевіряємо попередній розділ (якщо це не перший розділ)
     if (sectionIndex === 0) return true

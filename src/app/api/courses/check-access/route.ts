@@ -316,26 +316,7 @@ export async function GET(request: NextRequest) {
         if (idx > 0) {
           const prevSlug = medicalOrder[idx - 1]
 
-          // Швидкий шлях: course_access попереднього курсу
-          const { data: prevCourseAccess } = await supabase
-            .from('course_access')
-            .select('id')
-            .eq('user_id', session.user.id)
-            .eq('course_id', prevSlug)
-            .eq('access_granted', true)
-            .maybeSingle()
-
-          if (prevCourseAccess) {
-            return NextResponse.json({
-              success: true, hasAccess: true, paymentId: null,
-              grantedAt: null, accessType: 'sequential',
-              debug: { normalizedCourseId, resolvedCourseUuid, packageIdCandidates,
-                hasPaymentAccess, hasCourseAccess: false, hasSubscriptionAccess, hasSubscriptionPayment }
-            })
-          }
-
-          // Прямий шлях: перевіряємо прогрес попереднього курсу в БД
-          // (спрацьовує навіть якщо course_access не було створено через старі баги)
+          // Знаходимо UUID попереднього курсу в БД (може зберігатись як UUID а не slug)
           const prevTitle = slugToTitle[prevSlug]
           let prevCourseDbId: string | null = null
 
@@ -347,6 +328,25 @@ export async function GET(request: NextRequest) {
             const { data: prevByTitle } = await supabase
               .from('courses').select('id').eq('title', prevTitle).maybeSingle()
             if (prevByTitle?.id) prevCourseDbId = prevByTitle.id
+          }
+
+          // Швидкий шлях: course_access попереднього курсу (перевіряємо і slug і UUID)
+          const prevAccessCandidates = [prevSlug, prevCourseDbId].filter(Boolean) as string[]
+          const { data: prevCourseAccess } = await supabase
+            .from('course_access')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .in('course_id', prevAccessCandidates)
+            .eq('access_granted', true)
+            .maybeSingle()
+
+          if (prevCourseAccess) {
+            return NextResponse.json({
+              success: true, hasAccess: true, paymentId: null,
+              grantedAt: null, accessType: 'sequential',
+              debug: { normalizedCourseId, resolvedCourseUuid, packageIdCandidates,
+                hasPaymentAccess, hasCourseAccess: false, hasSubscriptionAccess, hasSubscriptionPayment }
+            })
           }
 
           if (prevCourseDbId) {

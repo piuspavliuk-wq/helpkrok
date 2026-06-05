@@ -58,13 +58,6 @@ export default function EndocrineSystemPage() {
       return
     }
     try {
-      const accessResponse = await fetch(`/api/courses/check-access?course_id=${previousCourseSlug}`)
-      const accessData = await accessResponse.json()
-      if (!accessData.success || !accessData.hasAccess) {
-        setPreviousCourseCompleted(false)
-        setCheckingPreviousCourse(false)
-        return
-      }
       const coursesResponse = await fetch('/api/courses?faculty=medical')
       const coursesData = await coursesResponse.json()
       if (!coursesData.success || !coursesData.courses) {
@@ -169,7 +162,8 @@ export default function EndocrineSystemPage() {
   function canAccessSection(sectionIndex: number): boolean {
     const isAdmin = session?.user?.email === 'admin@helpkrok.com'
     if (isAdmin) return true
-    if (!hasCourseAccess) return false
+    const hasAccess = hasCourseAccess || (!checkingPreviousCourse && previousCourseCompleted)
+    if (!hasAccess) return false
     if (sectionIndex === 0) return true
     const previousSection = sections[sectionIndex - 1]
     const previousProgress = sectionProgress[previousSection.slug]
